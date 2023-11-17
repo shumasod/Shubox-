@@ -17,5 +17,11 @@ Router(config-if)#exit
 ##ルーティングを有効化
 Switch(config)#ip routing
 
+##VTY接続
+Router(config)#line  vty 04
+Router(config-Line)#login local
+Router(config-Line)
+
+
 
 
