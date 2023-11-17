@@ -22,6 +22,10 @@ Router(config)#line  vty 04
 Router(config-Line)#login local
 Router(config-Line)
 
+##ドメイン名設定
+Router（Config)#hostname R1
+R1(config)#
+R1(config)#ip domain-name ”ドメイン"
 
 
 
