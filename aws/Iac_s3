@@ -1,0 +1,180 @@
+# S3
+# VPCフローログ and ALBログ and Cloudfrontログ 保管用
+resource "aws_s3_bucket" "log-bucket" {
+  bucket = "vpcflow-and-alb-and-cfloglog"
+  region = var.aws_region
+  #acl    = "private"
+  acl           = "log-delivery-write"
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_public_access_block" "vpc-log" {
+  bucket = aws_s3_bucket.log-bucket.id
+
+  /*   S3がこのバケットのパブリックACLをブロックする必要があるか。デフォルトはfalseです。
+  この設定を有効にしても、既存のポリシーやACLには影響しません。 trueに設定すると、次の動作が発生します。 
+  指定されたACLがパブリックアクセスを許可している場合、PUTバケットaclおよびPUTオブジェクトacl呼び出しは失敗します。 
+  リクエストにオブジェクトACLが含まれている場合、PUTオブジェクトの呼び出しは失敗します。 */
+  block_public_acls = true
+
+  /*   AmazonS3がこのバケットのパブリックバケットポリシーをブロックする必要があるかどうか。デフォルトはfalseです。
+  この設定を有効にしても、既存のバケットポリシーには影響しません。 trueに設定すると、AmazonS3は次のようになります。 
+  指定されたバケットポリシーがパブリックアクセスを許可している場合、PUTバケットポリシーへの呼び出しを拒否します。 */
+  block_public_policy = true
+
+  /*   AmazonS3がこのバケットのパブリックACLを無視するかどうか。デフォルトはfalseです。
+  この設定を有効にしても、既存のACLの永続性には影響せず、新しいパブリックACLの設定が妨げられることもありません。
+   trueに設定すると、AmazonS3は次のようになります。 このバケットとそれに含まれるオブジェクトのパブリックACLは無視してください。 */
+  ignore_public_acls = true
+
+  /*   AmazonS3がこのバケットのパブリックバケットポリシーを制限する必要があるかどうか。デフォルトはfalseです。
+  この設定を有効にしても、特定のアカウントへの非公開の委任を含む、公開バケットポリシー内の公開およびクロスアカウントアクセスがブロックされることを除いて、
+  以前に保存されたバケットポリシーには影響しません。 trueに設定した場合： パブリックポリシーがある場合、バケットの所有者とAWSサービスのみがこのバケットにアクセスできます。 */
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_policy" "log-bucket-policy" {
+  bucket = aws_s3_bucket.log-bucket.id
+  policy = data.aws_iam_policy_document.log-bucket-policy.json
+}
+
+# ポリシードキュメントなのでS3アクセス制御にも使える
+data "aws_iam_policy_document" "log-bucket-policy" {
+  statement {
+    principals {
+      type = "AWS"
+
+      # 操作主体、誰が
+      identifiers = [
+        "arn:aws:iam::AWSアカウントナンバー:root",
+      ]
+    }
+
+    effect = "Allow"
+
+    actions = [
+      "s3:Put*"
+    ]
+
+    resources = [
+      "arn:aws:s3:::${aws_s3_bucket.log-bucket.bucket}/AWSLogs/${data.aws_caller_identity.self.account_id}/*",
+    ]
+  }
+}
+
+#CF配布用のS3バケットを作成
+#OAI使用
+
+#バケットポリシー
+data "aws_iam_policy_document" "oai_bucket_policy" {
+  statement {
+    sid    = ""
+    effect = "Allow"
+
+    ## アクセス元の設定。
+    principals {
+      identifiers = ["${aws_cloudfront_origin_access_identity.origin_access_identity.iam_arn}"]
+      type        = "AWS"
+    }
+
+    ## バケットに対して制御するアクションを設定する。
+    actions = [
+      "s3:GetObject" ## オブジェクトの読み取りアクション。
+    ]
+
+    ## アクセス先の設定。
+    resources = [
+      "arn:aws:s3:::${aws_s3_bucket.oai_bucket.bucket}/*"
+    ]
+  }
+}
+
+#S3バケット(OAI)
+resource "aws_s3_bucket" "oai_bucket" {
+  bucket = "oai-bucket"
+  region = var.aws_region
+
+  /* OAIによってアクセスするのでprivateでも問題ない。
+private:デフォルトACL。所有者に FULL_CONTROL が付与される。
+バケット上の READ、WRITE、READ_ACP、WRITE_ACP アクセス許可を許可する。 */
+  acl = "private"
+
+  /* デフォルト：false バケットをエラーなしで破棄できるように、
+すべてのオブジェクト（ロックされたオブジェクトを含む）をバケットから削除する必要があることを示す値。
+オブジェクトは回復できない。 */
+  force_destroy = true
+
+  ## Webサイト設定。
+  website {
+    ## バケットにアクセスした時にデフォルトで表示されるコンテンツを設定。
+    index_document = "画像"
+  }
+
+  /* server access logging. log-bucketへ送る。 */
+  logging {
+    target_bucket = aws_s3_bucket.log-bucket.id
+    target_prefix = "s3-logging-server-log/"
+  }
+
+}
+
+resource "aws_s3_bucket_public_access_block" "oai_bucket" {
+  bucket                  = aws_s3_bucket.oai_bucket.bucket
+  block_public_acls       = true
+  block_public_policy     = false ## バケットポリシーで制御したいため無効にする。
+  ignore_public_acls      = true
+  restrict_public_buckets = false ## バケットポリシーで制御したいため無効にする。
+}
+
+resource "aws_s3_bucket_policy" "oai_bucket_policy" {
+  bucket = aws_s3_bucket.oai_bucket.id
+  policy = data.aws_iam_policy_document.oai_bucket_policy.json
+}
+
+/* 画像格納用のS3バケットを作成
+   バケットポリシー */
+
+data "aws_iam_policy_document" "image_bucket" {
+  statement {
+    sid    = ""
+    effect = "Allow"
+
+    principals {
+      identifiers = ["*"]
+      type        = "*"
+    }
+
+    actions = [
+      "s3:ListBucket",
+      "s3:PutObject",
+      "s3:GetObject"
+    ]
+
+    resources = [
+      "arn:aws:s3:::${aws_s3_bucket.image_bucket.bucket}/*"    ]
+  }
+}
+
+#S3バケット
+#image保存用　
+resource "aws_s3_bucket" "image_bucket" {
+  bucket        = "image-bucket"
+  region        = var.aws_region
+  acl           = "private"
+  force_destroy = true
+  versioning {
+    enabled    = true
+    mfa_delete = false
+  }
+  request_payer = "BucketOwner"
+}
+
+# S3 Public Access Block
+## パブリックアクセスはしないため全て有効にする。
+resource "aws_s3_bucket_public_access_block" "image_bucket" {
+  bucket                  = aws_s3_bucket.image_bucket.bucket
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
