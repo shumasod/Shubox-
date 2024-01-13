@@ -64,3 +64,14 @@ export class TestLambdaBasicRoleStack extends cdk.Stack {
 
   }
 }
+
+
+// 自前の IAM ポリシー作成
+    const ssmRunCmdPolicy = new iam.PolicyStatement({
+      actions: ['ssm:SendCommand'],
+      effect: iam.Effect.ALLOW,
+      resources: [
+        'arn:aws:ec2:*:*:instance/*',
+        "arn:aws:ssm:*:*:document/*"
+      ],
+    });
