@@ -21,3 +21,10 @@ MyRDSDBInstanceApplicationFirst:
 ---
 >     # ReplicationSourceIdentifier: 'arn:aws:rds:<AZ>:<AccountId>:db:<SourceInstanceName>'
 >     SnapshotIdentifier: arn:aws:rds:<AZ>:<AccountId>:cluster-snapshot:<SnapShotName>
+
+
+#パフォーマンスインサイトの有効化
+SampleAuroraInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      EnablePerformanceInsights: true
