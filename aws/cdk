@@ -23,3 +23,44 @@ export class TestLambdaBasicRoleStack extends cdk.Stack {
 
   }
 }
+
+##IAM作成　アタッチ
+
+import * as cdk from 'aws-cdk-lib';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import { Construct } from 'constructs';
+
+export class TestLambdaBasicRoleStack extends cdk.Stack {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
+
+    // Lambda
+    const ssmRunCmdLambda = new lambda.Function(this, 'ssmRunCmdHandler', {
+      runtime: lambda.Runtime.PYTHON,
+      code: lambda.Code.fromAsset('lambda'),
+      handler: 'ssm-runcmd.handler',
+      architecture: lambda.Architecture.ARM_64, // or lambda.Architecture.X86_64
+      timeout: cdk.Duration.seconds(60),
+      logRetention: 90,
+      environment: {
+        INSTANCE_ID: '',
+      }
+    });
+
+    // 自前の IAM ポリシー作成
+    const ssmRunCmdPolicy = new iam.PolicyStatement({
+      actions: ['ssm:SendCommand'],
+      effect: iam.Effect.ALLOW,
+      resources: [
+        'arn:aws:ec2:*:*:instance/*',
+        "arn:aws:ssm:*:*:document/*"
+      ],
+    });
+
+    // IAM ロールにアタッチ
+    const lambdaRole = ssmRunCmdLambda.role as iam.Role;
+    lambdaRole.addToPolicy(ssmRunCmdPolicy);
+
+  }
+}
