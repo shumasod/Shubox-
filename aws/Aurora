@@ -15,3 +15,9 @@ MyRDSDBInstanceApplicationFirst:
     DBClusterIdentifier: !Ref MyRDSDBCluster
     Engine: 'aurora'
     
+
+#スナップショットRDS
+<     ReplicationSourceIdentifier: 'arn:aws:rds:<AZ>:<AccountId>:db:<SourceInstanceName>'
+---
+>     # ReplicationSourceIdentifier: 'arn:aws:rds:<AZ>:<AccountId>:db:<SourceInstanceName>'
+>     SnapshotIdentifier: arn:aws:rds:<AZ>:<AccountId>:cluster-snapshot:<SnapShotName>
