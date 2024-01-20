@@ -5,7 +5,7 @@ Ciscoルータへのアクセス方法
 Router#vlan database
 Router(vlan)#vlan 10
 VLAN 10 added:
-    Name: VLAN0010
+    Name: VLAN
 Router(vlan)#applyAPPLY completed.
 
 ##VLANをinterfaceに割り当てる
