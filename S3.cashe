@@ -41,7 +41,7 @@ resource "aws_cloudwatch_event_rule" "my-rule" {
   event_pattern = {
     source = ["aws.s3"]
     resources = ["${aws_s3_bucket.my-bucket.arn}/*"]
-    action = ["s3:ObjectCreated:*"]
+    action = ["s3:ObjectCreated:*", "s3:ObjectUpdated:*"]
   }
 }
 
