@@ -1,7 +1,7 @@
-# CloudFrontのディストリビューションを作成する
-resource "aws_cloudfront_distribution" "my-distribution" {
+##  CloudFrontのディストリビューションを作成する
+resource "aws_cloudfront_distribution" "my-distribution" { //distributionの部分は例となる
   origin {
-    domain_name = "${aws_s3_bucket.my-bucket.bucket_domain_name}"
+    domain_name = "${aws_s3_bucket.my-bucket.bucket_domain_name}"//取得するLPページ
     origin_id = "my-origin"
   }
 
