@@ -1,0 +1,34 @@
+Ciscoルータへのアクセス方法
+１，VTY接続　2,コンソール接続
+
+##Vlan作成
+Router#vlan database
+Router(vlan)#vlan 10
+VLAN 10 added:
+    Name: VLAN
+Router(vlan)#applyAPPLY completed.
+
+##VLANをinterfaceに割り当てる
+Router(config)#interface FastEthernet 2
+Router(config-if)#switchport mode access
+Router(config-if)#switchport access vlan 10
+Router(config-if)#exit
+
+##ルーティングを有効化
+Switch(config)#ip routing
+
+##VTY接続
+Router(config)#line  vty 04
+Router(config-Line)#login local
+Router(config-Line)
+
+##ドメイン名設定
+Router（Config)#hostname R1
+R1(config)#
+R1(config)#ip domain-name ”ドメイン"
+
+
+###
+
+
+

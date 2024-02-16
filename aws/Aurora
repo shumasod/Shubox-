@@ -1,0 +1,30 @@
+# Auroraクラスタを作成
+MyRDSDBCluster:
+  Type: "AWS::RDS::DBCluster"
+  Properties:
+    # （各種必須プロパティを省略）
+    Engine: 'aurora'
+    EngineVersion: 
+    ReplicationSourceIdentifier: 'arn:aws:rds:<AZ>:<AccountId>:db:<SourceInstanceName>'
+    
+# Auroraインスタンス1台目を作成
+MyRDSDBInstanceApplicationFirst:
+  Type: "AWS::RDS::DBInstance"
+  Properties:
+    # （各種必須プロパティを省略）
+    DBClusterIdentifier: !Ref MyRDSDBCluster
+    Engine: 'aurora'
+    
+
+#スナップショットRDS
+<     ReplicationSourceIdentifier: 'arn:aws:rds:<AZ>:<AccountId>:db:<SourceInstanceName>'
+---
+>     # ReplicationSourceIdentifier: 'arn:aws:rds:<AZ>:<AccountId>:db:<SourceInstanceName>'
+>     SnapshotIdentifier: arn:aws:rds:<AZ>:<AccountId>:cluster-snapshot:<SnapShotName>
+
+
+#パフォーマンスインサイトの有効化
+SampleAuroraInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      EnablePerformanceInsights: true
