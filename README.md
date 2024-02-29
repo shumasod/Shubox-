@@ -23,20 +23,20 @@ Visual Studio Code またはその他のテキストエディタ
 アプリ > オプション機能 > 関連設定 > Windows Subsystem for Linux を選択します。
 Windows Subsystem for Linux の 有効化 をクリックします。
 コンピュータを再起動します。
-1.2. Ubuntu のインストール
+## 1.2. Ubuntu のインストール
 
 Microsoft Store を開き、Ubuntu を検索します。
 Ubuntu を選択し、インストール をクリックします。
 インストールが完了したら、Ubuntu を起動します。
 ユーザー名とパスワードを設定します。
-2. Docker Desktop のインストール
+## 2. Docker Desktop のインストール
 
 Docker Desktop の公式サイト (https://www.docker.com/get-started) からインストーラーをダウンロードします。
 ダウンロードしたインストーラーを実行します。
 インストーラーの指示に従って、Docker Desktop をインストールします。
-3. Laravel Sail のインストール
+## 3. Laravel Sail のインストール
 
-3.1. プロジェクトの作成
+## 3.1. プロジェクトの作成
 
 任意のディレクトリに移動します。
 以下のコマンドを実行して、Laravel プロジェクトを作成します。
@@ -48,7 +48,7 @@ cd my-project
 以下のコマンドを実行して、Laravel Sail をインストールします。
 
 composer global require laravel/sail
-4. コンテナの起動
+## 4. コンテナの起動
 
 以下のコマンドを実行して、開発環境用のコンテナを起動します。
 
