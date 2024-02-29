@@ -59,22 +59,22 @@ sail up
 
 ## 6. プロジェクトへのアクセス
 
-6.1. WSL2 からのアクセス
+## 6.1. WSL2 からのアクセス
 
 以下のコマンドを実行して、WSL2 上でプロジェクトフォルダにアクセスします。
 
 cd /mnt/c/Users/<ユーザー名>/my-project
-6.2. Visual Studio Code からのアクセス
+## 6.2. Visual Studio Code からのアクセス
 
 Visual Studio Code を開き、ファイル > 開くフォルダー を選択します。
 WSL: Ubuntu を選択します。
 /mnt/c/Users/<ユーザー名>/my-project を選択して、開く をクリックします。
-7. 終了
+## 7. 終了
 
 以下のコマンドを実行して、コンテナを停止します。
 
 sail down
-8. その他
+## 8. その他
 
 詳細については、Laravel Sail の公式ドキュメント (https://laravel.com/docs/9.x/sail) を参照してください。
 問題が発生した場合は、GitHub の Issue Tracker (https://github.com/laravel/sail/issues) で報告してください。
