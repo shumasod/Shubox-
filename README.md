@@ -12,7 +12,7 @@ Laravel Sail 環境構築手順（WSL、Ubuntu23.04 Docker、Windows 11）
 Windows 11 
 WSL2 が有効になっていること
 Ubuntuがインストールされていること
-Docker Desktop 以上がインストールされていること
+Docker Desktop がインストールされていること
 Visual Studio Code またはその他のテキストエディタ
 手順
 ## 1. WSL2 と Ubuntu のインストール
