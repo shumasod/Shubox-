@@ -77,6 +77,7 @@ sail down
 ## 8. その他
 
 詳細については、Laravel Sail の公式ドキュメント (https://laravel.com/docs/9.x/sail) を参照してください。
+
 注意事項
 上記の手順は、Windows 11 Pro または Enterprise を使用していることを前提としています。
 WSL2 と Ubuntu のバージョンによっては、上記の手順が異なる場合があります。
