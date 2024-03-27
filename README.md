@@ -17,6 +17,8 @@ Visual Studio Code またはその他のテキストエディタ
 手順
 ## 1. WSL2 と Ubuntu のインストール
 
+
+
 ## 1.1. WSL2 の有効化
 
 スタートメニュー を開き、設定 を選択します。
@@ -34,6 +36,7 @@ Ubuntu を選択し、インストール をクリックします。
 Docker Desktop の公式サイト (https://www.docker.com/get-started) からインストーラーをダウンロードします。
 ダウンロードしたインストーラーを実行します。
 インストーラーの指示に従って、Docker Desktop をインストールします。
+
 ## 3. Laravel Sail のインストール
 
 ## 3.1. プロジェクトの作成
