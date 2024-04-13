@@ -22,7 +22,7 @@ Visual Studio Code またはその他のテキストエディタ
 ## 1.1. WSL2 の有効化
 
 スタートメニュー を開き、設定 を選択します。
-アプリ > オプション機能 > 関連設定 > Windows Subsystem for Linux を選択します。
+アプリ > オプション機能 > 関連設定 > Wslを選択します。
 Windows Subsystem for Linux の 有効化 をクリックします。
 コンピュータを再起動します。
 ## 1.2. Ubuntu のインストール
