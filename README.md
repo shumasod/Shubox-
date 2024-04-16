@@ -9,7 +9,7 @@
 このReadmeは、WSL2、Ubuntu、Docker、Windows 11環境で Laravel Sail を使用した開発環境を構築するための手順をより具体的に説明します。
 
 ### 前提条件
-Windows 11 
+Windows 
 WSL2 が有効になっていること
 Ubuntuがインストールされていること
 Docker Desktop がインストールされていること
