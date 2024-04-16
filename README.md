@@ -55,7 +55,7 @@ composer global require laravel/sail
 
 以下のコマンドを実行して、開発環境用のコンテナを起動します。
 
-sail up
+
 5. ログイン
 
 ブラウザで http://localhost:8080 を開き、Laravel アプリケーションが表示されることを確認します。
