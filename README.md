@@ -6,7 +6,7 @@
 
 
 #### Laravel Sail 環境構築手順（WSL、Ubuntu23.04 Docker、hyper-v Windows 11）
-このReadmeは、WSL2、Ubuntu、Docker、Windows 11環境で Laravel Sail を使用した開発環境を構築するための手順をより具体的に説明します。
+このReadmeは、WSL2、Ubuntu、Docker、Windows 環境で Laravel Sail を使用した開発環境を構築するための手順をより具体的に説明します。
 
 ### 前提条件
 Windows 
