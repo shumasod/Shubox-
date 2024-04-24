@@ -1,0 +1,88 @@
+## CloudFrontのディストリビューションを作成する
+resource "aws_cloudfront_distribution" "my-distribution" {
+  origin {
+    domain_name = aws_s3_bucket.my-bucket.bucket_regional_domain_name
+    origin_id   = "my-origin"
+  }
+
+  default_cache_behavior {
+    allowed_methods  = ["GET", "HEAD"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "my-origin"
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 300
+    max_ttl                = 3600
+  }
+
+  custom_error_response {
+    error_code            = 404
+    response_page_path    = "/404.html"
+    response_code         = 404
+    error_caching_min_ttl = 0
+  }
+}
+
+# S3バケットを作成する
+resource "aws_s3_bucket" "my-bucket" {
+  bucket = "my-bucket"
+  acl    = "public-read"
+}
+
+# ランディングページのファイルをS3バケットにアップロードする
+resource "aws_s3_object" "index-html" {
+  bucket  = aws_s3_bucket.my-bucket.id
+  key     = "index.html"
+  content = "Hello, world!"
+}
+
+# ランディングページのキャッシュを自動的に削除するCloudWatchイベントルールを作成・登録する
+resource "aws_cloudwatch_event_rule" "my-rule" {
+  name        = "my-rule"
+  description = "ランディングページのキャッシュを自動的に削除する"
+
+  event_pattern = <<PATTERN
+{
+  "source": ["aws.s3"],
+  "detail-type": ["Object Created", "Object Updated"],
+  "detail": {
+    "bucket": {
+      "name": ["${aws_s3_bucket.my-bucket.id}"]
+    }
+  }
+}
+PATTERN
+}
+
+# CloudWatchイベントルールにトリガーされるLambda関数を作成・登録する
+resource "aws_lambda_function" "my-function" {
+  function_name = "my-function"
+  runtime       = "python3.8"
+  handler       = "index.handler"
+
+  code = <<EOF
+import boto3
+
+def handler(event, context):
+    # CloudFrontのディストリビューションのキャッシュを削除する
+    client = boto3.client("cloudfront")
+    client.create_invalidation(
+        DistributionId="${aws_cloudfront_distribution.my-distribution.id}",
+        InvalidationBatch={
+            "Paths": {
+                "Quantity": 1,
+                "Items": ["/*"]
+            },
+            "CallerReference": "my-reference"
+        }
+    )
+EOF
+}
+
+# CloudWatchイベントルールとLambda関数を関連付ける
+resource "aws_cloudwatch_event_target" "my-target" {
+  rule      = aws_cloudwatch_event_rule.my-rule.name
+  target_id = "my-target"
+  arn       = aws_lambda_function.my-function.arn
+}
