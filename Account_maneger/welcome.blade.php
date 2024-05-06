@@ -11,15 +11,21 @@
 <body class="bg-gray-200">
     <div class="container mx-auto p-4">
         <h1 class="text-2xl font-bold mb-4">Account Management</h1>
-
         <button class="bg-blue-500 text-white py-2 px-4 rounded" onclick="createAccount()">Create Account</button>
         <button class="bg-red-500 text-white py-2 px-4 rounded" onclick="deleteAccount()">Delete Account</button>
-
         <table class="mt-4">
-            <!-- ここにアカウントリストを表示するHTMLを追加 -->
+            <thead>
+                <tr>
+                    <th class="py-2 px-4 bg-gray-300">ID</th>
+                    <th class="py-2 px-4 bg-gray-300">Name</th>
+                    <th class="py-2 px-4 bg-gray-300">Email</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- ここにアカウントリストを表示するHTMLを追加 -->
+            </tbody>
         </table>
     </div>
-
     <script src="{{ asset('js/app.js') }}"></script>
 </body>
 </html>
