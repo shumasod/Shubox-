@@ -1,0 +1,115 @@
+# Create an S3 bucket
+Resources:
+  MyBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my-bucket
+      AccessControl: PublicRead
+
+# Upload the index.html file to the S3 bucket
+  IndexHtml:
+    Type: AWS::S3::BucketObject
+    Properties:
+      Bucket: !Ref MyBucket
+      Key: index.html
+      Body: Hello, world!
+
+# Create a CloudFront distribution
+  MyDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          TargetOriginId: my-origin
+          ViewerProtocolPolicy: redirect-to-https
+          MinTTL: 0
+          DefaultTTL: 300
+          MaxTTL: 3600
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponsePagePath: /404.html
+            ResponseCode: 404
+            ErrorCachingMinTTL: 0
+        Enabled: true
+        HttpVersion: http2
+        Origins:
+          - Id: my-origin
+            DomainName: !GetAtt MyBucket.RegionalDomainName
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: http-only
+
+# Create a CloudWatch event rule
+  MyEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: my-rule
+      Description: Automatically invalidate the landing page cache
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - 'Object Created'
+          - 'Object Updated'
+        detail:
+          bucket:
+            name:
+              - !Ref MyBucket
+
+# Create a Lambda function
+  MyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: my-function
+      Runtime: python3.8
+      Handler: index.handler
+      Role: !GetAtt LambdaRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+
+          def handler(event, context):
+              # Invalidate the CloudFront distribution cache
+              client = boto3.client("cloudfront")
+              client.create_invalidation(
+                  DistributionId="{MyDistribution.Id}",
+                  InvalidationBatch={
+                      "Paths": {
+                          "Quantity": 1,
+                          "Items": ["/*"]
+                      },
+                      "CallerReference": "my-reference"
+                  }
+              )
+
+# Create an IAM role for the Lambda function
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/CloudFrontReadOnlyAccess
+
+# Associate the CloudWatch event rule with the Lambda function
+  MyEventTarget:
+    Type: AWS::Events::EventTarget
+    Properties:
+      Rule: !Ref MyEventRule
+      TargetId: my-target
+      Arn: !GetAtt MyFunction.Arn
