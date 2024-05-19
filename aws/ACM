@@ -2,6 +2,7 @@
 import boto3
 import requests
 import json
+from datetime import datetime
 
 # ACMクライアントを作成する
 acm = boto3.client('acm')
@@ -33,4 +34,7 @@ if days_left <= 30:
     }
 
     # Teamsにメッセージを送信する
-    requests.post(webhook_url, data=json.dumps(message))
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    requests.post(webhook_url, headers=headers, data=json.dumps(message))
