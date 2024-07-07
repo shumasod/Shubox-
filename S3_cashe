@@ -1,88 +1,209 @@
-## CloudFrontのディストリビューションを作成する
-resource "aws_cloudfront_distribution" "my-distribution" {
-  origin {
-    domain_name = aws_s3_bucket.my-bucket.bucket_regional_domain_name
-    origin_id   = "my-origin"
-  }
+AWSTemplateFormatVersion: '2010-09-09'
+Description: S3 static website with CloudFront and automatic cache invalidation
 
-  default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "my-origin"
+Resources:
+  MyBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-my-bucket-${AWS::AccountId}'
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
 
-    viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 300
-    max_ttl                = 3600
-  }
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MyBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${MyBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${MyDistribution}'
 
-  custom_error_response {
-    error_code            = 404
-    response_page_path    = "/404.html"
-    response_code         = 404
-    error_caching_min_ttl = 0
-  }
-}
+  IndexHtml:
+    Type: AWS::S3::Object
+    Properties:
+      Bucket: !Ref MyBucket
+      Key: index.html
+      ContentType: text/html
+      Source: 
+        Fn::Sub: 
+          - |
+            <html>
+            <body>
+              <h1>Hello, world!</h1>
+              <p>This is a sample page hosted on S3 and served through CloudFront.</p>
+              <p>Stack ID: ${StackId}</p>
+            </body>
+            </html>
+          - { StackId: !Ref 'AWS::StackId' }
 
-# S3バケットを作成する
-resource "aws_s3_bucket" "my-bucket" {
-  bucket = "my-bucket"
-  acl    = "public-read"
-}
+  ErrorHtml:
+    Type: AWS::S3::Object
+    Properties:
+      Bucket: !Ref MyBucket
+      Key: error.html
+      ContentType: text/html
+      Source: |
+        <html>
+        <body>
+          <h1>404 - Page Not Found</h1>
+          <p>The requested page could not be found.</p>
+        </body>
+        </html>
 
-# ランディングページのファイルをS3バケットにアップロードする
-resource "aws_s3_object" "index-html" {
-  bucket  = aws_s3_bucket.my-bucket.id
-  key     = "index.html"
-  content = "Hello, world!"
-}
+  MyDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          Compress: true
+          DefaultTTL: 300
+          ForwardedValues:
+            QueryString: false
+          MaxTTL: 1200
+          MinTTL: 0
+          SmoothStreaming: false
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - DomainName: !GetAtt MyBucket.RegionalDomainName
+            Id: S3Origin
+            S3OriginConfig: {}
+        PriceClass: PriceClass_100
 
-# ランディングページのキャッシュを自動的に削除するCloudWatchイベントルールを作成・登録する
-resource "aws_cloudwatch_event_rule" "my-rule" {
-  name        = "my-rule"
-  description = "ランディングページのキャッシュを自動的に削除する"
+  MyEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${AWS::StackName}-s3-event-rule'
+      Description: "Rule to trigger Lambda when objects are created or updated in S3"
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - 'Object Created'
+          - 'Object Updated'
+        detail:
+          bucket:
+            name:
+              - !Ref MyBucket
 
-  event_pattern = <<PATTERN
-{
-  "source": ["aws.s3"],
-  "detail-type": ["Object Created", "Object Updated"],
-  "detail": {
-    "bucket": {
-      "name": ["${aws_s3_bucket.my-bucket.id}"]
-    }
-  }
-}
-PATTERN
-}
+  MyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-cache-invalidator'
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !GetAtt LambdaRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          import time
+          
+          def handler(event, context):
+              distribution_id = os.environ['DISTRIBUTION_ID']
+              client = boto3.client('cloudfront')
+              
+              response = client.create_invalidation(
+                  DistributionId=distribution_id,
+                  InvalidationBatch={
+                      'Paths': {
+                          'Quantity': 1,
+                          'Items': ['/*']
+                      },
+                      'CallerReference': str(time.time())
+                  }
+              )
+              
+              print(f"Invalidation created: {response['Invalidation']['Id']}")
+              return response
+      Environment:
+        Variables:
+          DISTRIBUTION_ID: !Ref MyDistribution
 
-# CloudWatchイベントルールにトリガーされるLambda関数を作成・登録する
-resource "aws_lambda_function" "my-function" {
-  function_name = "my-function"
-  runtime       = "python3.8"
-  handler       = "index.handler"
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: LambdaExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+              - Effect: Allow
+                Action:
+                  - 'cloudfront:CreateInvalidation'
+                Resource: '*'
 
-  code = <<EOF
-import boto3
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MyFunction
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt MyEventRule.Arn
 
-def handler(event, context):
-    # CloudFrontのディストリビューションのキャッシュを削除する
-    client = boto3.client("cloudfront")
-    client.create_invalidation(
-        DistributionId="${aws_cloudfront_distribution.my-distribution.id}",
-        InvalidationBatch={
-            "Paths": {
-                "Quantity": 1,
-                "Items": ["/*"]
-            },
-            "CallerReference": "my-reference"
-        }
-    )
-EOF
-}
+  MyEventTarget:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "CloudWatch Events Rule to trigger Lambda function"
+      EventPattern:
+        source:
+          - "aws.s3"
+        detail-type:
+          - "Object Created"
+        detail:
+          bucket:
+            name:
+              - !Ref MyBucket
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt MyFunction.Arn
+          Id: "S3ToLambda"
 
-# CloudWatchイベントルールとLambda関数を関連付ける
-resource "aws_cloudwatch_event_target" "my-target" {
-  rule      = aws_cloudwatch_event_rule.my-rule.name
-  target_id = "my-target"
-  arn       = aws_lambda_function.my-function.arn
-}
+Outputs:
+  WebsiteURL:
+    Value: !GetAtt MyDistribution.DomainName
+    Description: CloudFront Distribution Domain Name
+  S3BucketName:
+    Value: !Ref MyBucket
+    Description: Name of the S3 bucket
