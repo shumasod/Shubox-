@@ -100,10 +100,4 @@ cd /mnt/c/Users/<ユーザー名>/my-project
 
 詳細については、Laravel Sailの公式ドキュメント（<https://laravel.com/docs/9.x/sail>）を参照してください。
 
-## 注意事項
-
-- 上記の手順は、Windows 11 Pro またはEnterpriseを使用していることを前提としています。
-- WSL2とUbuntuのバージョンによっては、上記の手順が異なる場合があります。
-- Docker Desktopのバージョンによっては、上記の手順が異なる場合があります。
-- Laravel Sailのバージョンによっては、上記の手順が異なる場合があります。
 ```
