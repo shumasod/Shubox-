@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>詳細なイルミナティシンボル</title>
+    <style>
+        body {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .illuminati {
+            width: 300px;
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+        .pyramid {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #d4af37, #ffd700);
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            position: absolute;
+        }
+        .eye {
+            width: 100px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            overflow: hidden;
+        }
+        .pupil {
+            width: 40px;
+            height: 40px;
+            background: #8b0000;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .glow {
+            width: 300%;
+            height: 100px;
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+            position: absolute;
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .hands {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        .hand {
+            width: 60px;
+            height: 100px;
+            background: #ffd700;
+            position: absolute;
+            bottom: 0;
+        }
+        .hand:nth-child(1) { left: 10%; transform: rotate(30deg); }
+        .hand:nth-child(2) { right: 10%; transform: rotate(-30deg); }
+    </style>
+</head>
+<body>
+    <div class="illuminati">
+        <div class="pyramid"></div>
+        <div class="eye">
+            <div class="pupil"></div>
+        </div>
+        <div class="glow"></div>
+        <div class="hands">
+            <div class="hand"></div>
+            <div class="hand"></div>
+        </div>
+    </div>
+</body>
+</html>
