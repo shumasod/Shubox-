@@ -30,7 +30,7 @@ Resources:
             Resource: !Sub '${MyBucket.Arn}/*'
             Condition:
               StringEquals:
-                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${MyDistribution}'
+                AWS:SourceArn: !Sub '
 
   IndexHtml:
     Type: AWS::S3::Object
