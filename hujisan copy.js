@@ -75,8 +75,7 @@ const MountFujiDisplay = () => {
           to { opacity: 1; }
         }
         .animate-float {
-          animation: float 10s ease-in-out infinite;
-        }
+          animation: float 10s ease-in-out 
         .animate-float-delay {
           animation: float 13s ease-in-out infinite;
         }
