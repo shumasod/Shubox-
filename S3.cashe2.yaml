@@ -42,7 +42,7 @@ Resources:
         HttpVersion: http2
         Origins:
           - Id: my-origin
-            DomainName: !GetAtt MyBucket.RegionalDomainName
+            DomainName: !GetAtt
             S3OriginConfig:
               OriginAccessIdentity: origin-access-identity/cloudfront/E127EXAMPLE51Z
 
@@ -60,7 +60,7 @@ Resources:
         detail:
           bucket:
             name:
-              - !Ref MyBucket
+              - !Ref 
 
   MyFunction:
     Type: AWS::Lambda::Function
@@ -68,7 +68,7 @@ Resources:
       FunctionName: my-function
       Runtime: python3.8
       Handler: index.handler
-      Role: !GetAtt LambdaRole.Arn
+      Role: !GetAtt 
       Code:
         ZipFile: |
           import boto3
@@ -105,6 +105,6 @@ Resources:
   MyEventTarget:
     Type: AWS::Events::Target
     Properties:
-      Rule: !Ref MyEventRule
+      Rule: !Ref 
       TargetId: my-target
-      Arn: !GetAtt MyFunction.Arn
+      Arn: !GetAtt 
