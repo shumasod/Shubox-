@@ -1,4 +1,3 @@
-# Create an S3 bucket
 Resources:
   MyBucket:
     Type: AWS::S3::Bucket
@@ -6,15 +5,18 @@ Resources:
       BucketName: my-bucket
       AccessControl: PublicRead
 
-# Upload the index.html file to the S3 bucket
   IndexHtml:
-    Type: AWS::S3::BucketObject
+    Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref MyBucket
-      Key: index.html
-      Body: Hello, world!
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub 'arn:aws:s3:::${MyBucket}/*'
 
-# Create a CloudFront distribution
   MyDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -41,12 +43,9 @@ Resources:
         Origins:
           - Id: my-origin
             DomainName: !GetAtt MyBucket.RegionalDomainName
-            CustomOriginConfig:
-              HTTPPort: 80
-              HTTPSPort: 443
-              OriginProtocolPolicy: http-only
+            S3OriginConfig:
+              OriginAccessIdentity: origin-access-identity/cloudfront/E127EXAMPLE51Z
 
-# Create a CloudWatch event rule
   MyEventRule:
     Type: AWS::Events::Rule
     Properties:
@@ -57,13 +56,12 @@ Resources:
           - aws.s3
         detail-type:
           - 'Object Created'
-          - 'Object Updated'
+          - 'Object Removed'
         detail:
           bucket:
             name:
               - !Ref MyBucket
 
-# Create a Lambda function
   MyFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -76,10 +74,9 @@ Resources:
           import boto3
 
           def handler(event, context):
-              # Invalidate the CloudFront distribution cache
               client = boto3.client("cloudfront")
               client.create_invalidation(
-                  DistributionId="{MyDistribution.Id}",
+                  DistributionId="<Your-CloudFront-Distribution-ID>",
                   InvalidationBatch={
                       "Paths": {
                           "Quantity": 1,
@@ -89,7 +86,6 @@ Resources:
                   }
               )
 
-# Create an IAM role for the Lambda function
   LambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -104,11 +100,10 @@ Resources:
               - 'sts:AssumeRole'
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - arn:aws:iam::aws:policy/CloudFrontReadOnlyAccess
+        - arn:aws:iam::aws:policy/CloudFrontFullAccess
 
-# Associate the CloudWatch event rule with the Lambda function
   MyEventTarget:
-    Type: AWS::Events::EventTarget
+    Type: AWS::Events::Target
     Properties:
       Rule: !Ref MyEventRule
       TargetId: my-target
