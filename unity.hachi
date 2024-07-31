@@ -1,0 +1,65 @@
+using UnityEngine;
+using UnityEngine.UI;
+using System.Collections.Generic;
+
+public class HachikoGame : MonoBehaviour
+{
+    public Text locationText;
+    public Text turnsText;
+    public Button leftButton;
+    public Button rightButton;
+    public GameObject winPanel;
+    public GameObject losePanel;
+
+    private int playerPosition = 0;
+    private int hachikoPosition;
+    private int turns = 0;
+    private List<string> locations = new List<string>
+    {
+        "渋谷駅前", "センター街", "宮益坂", "ハチ公前広場", "道玄坂"
+    };
+
+    void Start()
+    {
+        hachikoPosition = Random.Range(0, locations.Count);
+        UpdateUI();
+        leftButton.onClick.AddListener(() => MovePlayer(-1));
+        rightButton.onClick.AddListener(() => MovePlayer(1));
+    }
+
+    void MovePlayer(int direction)
+    {
+        playerPosition = Mathf.Clamp(playerPosition + direction, 0, locations.Count - 1);
+        turns++;
+        CheckWinLoseCondition();
+        UpdateUI();
+    }
+
+    void CheckWinLoseCondition()
+    {
+        if (playerPosition == hachikoPosition)
+        {
+            winPanel.SetActive(true);
+            DisableButtons();
+        }
+        else if (turns >= 10)
+        {
+            losePanel.SetActive(true);
+            DisableButtons();
+        }
+    }
+
+    void UpdateUI()
+    {
+        locationText.text = "現在地: " + locations[playerPosition];
+        turnsText.text = "ターン: " + turns + "/10";
+        leftButton.interactable = (playerPosition > 0);
+        rightButton.interactable = (playerPosition < locations.Count - 1);
+    }
+
+    void DisableButtons()
+    {
+        leftButton.interactable = false;
+        rightButton.interactable = false;
+    }
+}
