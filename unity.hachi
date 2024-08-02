@@ -2,64 +2,132 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 
-public class HachikoGame : MonoBehaviour
+public class HachikoCyberSecurityGameAdvanced : MonoBehaviour
 {
-    public Text locationText;
-    public Text turnsText;
-    public Button leftButton;
-    public Button rightButton;
-    public GameObject winPanel;
-    public GameObject losePanel;
+    public Text statusText;
+    public Text scoreText;
+    public Text levelText;
+    public Button[] actionButtons;
+    public GameObject gameOverPanel;
+    public GameObject levelUpPanel;
 
-    private int playerPosition = 0;
-    private int hachikoPosition;
-    private int turns = 0;
-    private List<string> locations = new List<string>
-    {
-        "渋谷駅前", "センター街", "宮益坂", "ハチ公前広場", "道玄坂"
-    };
+    private int securityLevel = 50;
+    private int score = 0;
+    private int playerLevel = 1;
+    private int experiencePoints = 0;
+    private List<string> threats = new List<string> { "ウイルス", "フィッシング", "マルウェア", "DDoS攻撃", "ランサムウェア", "ゼロデイ攻撃", "中間者攻撃" };
+    private List<string> defenses = new List<string> { "アンチウイルス", "ファイアウォール", "暗号化", "バックアップ", "教育", "パッチ管理", "多要素認証" };
+    private Dictionary<string, int> defenseLevels = new Dictionary<string, int>();
 
     void Start()
     {
-        hachikoPosition = Random.Range(0, locations.Count);
-        UpdateUI();
-        leftButton.onClick.AddListener(() => MovePlayer(-1));
-        rightButton.onClick.AddListener(() => MovePlayer(1));
+        InitializeGame();
     }
 
-    void MovePlayer(int direction)
+    void InitializeGame()
     {
-        playerPosition = Mathf.Clamp(playerPosition + direction, 0, locations.Count - 1);
-        turns++;
-        CheckWinLoseCondition();
+        foreach (string defense in defenses)
+        {
+            defenseLevels[defense] = 1;
+        }
         UpdateUI();
+        for (int i = 0; i < actionButtons.Length; i++)
+        {
+            int index = i;
+            actionButtons[i].onClick.AddListener(() => OnDefenseAction(index));
+            UpdateButtonText(i);
+        }
+        InvokeRepeating("GenerateThreat", 2f, 5f);
     }
 
-    void CheckWinLoseCondition()
+    void GenerateThreat()
     {
-        if (playerPosition == hachikoPosition)
-        {
-            winPanel.SetActive(true);
-            DisableButtons();
-        }
-        else if (turns >= 10)
-        {
-            losePanel.SetActive(true);
-            DisableButtons();
-        }
+        if (securityLevel <= 0) return;
+
+        string threat = threats[Random.Range(0, threats.Count)];
+        int damage = Random.Range(5, 15) + (playerLevel - 1) * 2;
+        securityLevel -= damage;
+        statusText.text = $"脅威検出: {threat}がハチ公のデータを攻撃中！\nセキュリティレベル: {damage}ポイント減少";
+        UpdateUI();
+        CheckGameOver();
+    }
+
+    void OnDefenseAction(int defenseIndex)
+    {
+        if (securityLevel <= 0) return;
+
+        string defense = defenses[defenseIndex];
+        int defenseLevel = defenseLevels[defense];
+        int protection = Random.Range(5, 15) + (defenseLevel - 1) * 2;
+        securityLevel = Mathf.Min(securityLevel + protection, 100);
+        score += 10 * playerLevel;
+        experiencePoints += 5;
+        statusText.text = $"{defense} (Lv.{defenseLevel})を実施: セキュリティレベルが{protection}ポイント上昇";
+        UpdateUI();
+        CheckLevelUp();
     }
 
     void UpdateUI()
     {
-        locationText.text = "現在地: " + locations[playerPosition];
-        turnsText.text = "ターン: " + turns + "/10";
-        leftButton.interactable = (playerPosition > 0);
-        rightButton.interactable = (playerPosition < locations.Count - 1);
+        scoreText.text = $"スコア: {score}\nセキュリティレベル: {securityLevel}%";
+        levelText.text = $"プレイヤーレベル: {playerLevel}\n経験値: {experiencePoints}/100";
     }
 
-    void DisableButtons()
+    void UpdateButtonText(int index)
     {
-        leftButton.interactable = false;
-        rightButton.interactable = false;
+        string defense = defenses[index];
+        int level = defenseLevels[defense];
+        actionButtons[index].GetComponentInChildren<Text>().text = $"{defense} (Lv.{level})";
+    }
+
+    void CheckGameOver()
+    {
+        if (securityLevel <= 0)
+        {
+            statusText.text = "ゲームオーバー：ハチ公のデータが完全に侵害されました。";
+            gameOverPanel.SetActive(true);
+            CancelInvoke("GenerateThreat");
+        }
+    }
+
+    void CheckLevelUp()
+    {
+        if (experiencePoints >= 100)
+        {
+            playerLevel++;
+            experiencePoints -= 100;
+            levelUpPanel.SetActive(true);
+            statusText.text = $"レベルアップ！プレイヤーレベルが{playerLevel}になりました。";
+        }
+    }
+
+    public void UpgradeDefense(int defenseIndex)
+    {
+        string defense = defenses[defenseIndex];
+        defenseLevels[defense]++;
+        UpdateButtonText(defenseIndex);
+        levelUpPanel.SetActive(false);
+    }
+
+    public void RestartGame()
+    {
+        securityLevel = 50;
+        score = 0;
+        playerLevel = 1;
+        experiencePoints = 0;
+        foreach (string defense in defenses)
+        {
+            defenseLevels[defense] = 1;
+        }
+        statusText.text = "ゲーム開始：ハチ公のデータを守れ！";
+        gameOverPanel.SetActive(false);
+        levelUpPanel.SetActive(false);
+        UpdateUI();
+        for (int i = 0; i < actionButtons.Length; i++)
+        {
+            UpdateButtonText(i);
+        }
+        CancelInvoke("GenerateThreat");
+        InvokeRepeating("GenerateThreat", 2f, 5f);
     }
 }
