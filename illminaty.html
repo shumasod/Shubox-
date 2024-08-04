@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>詳細なイルミナティシンボル</title>
+    <title>イルミナティシンボル</title>
     <style>
         body {
             background: #000;
@@ -56,20 +56,28 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
-        .hands {
+        .rays {
             position: absolute;
             width: 100%;
             height: 100%;
+            top: 0;
+            left: 0;
         }
-        .hand {
-            width: 60px;
-            height: 100px;
-            background: #ffd700;
+        .ray {
             position: absolute;
-            bottom: 0;
+            width: 2px;
+            height: 150px;
+            background: rgba(255, 215, 0, 0.5);
+            top: 50%;
+            left: 50%;
+            transform-origin: bottom center;
         }
-        .hand:nth-child(1) { left: 10%; transform: rotate(30deg); }
-        .hand:nth-child(2) { right: 10%; transform: rotate(-30deg); }
+        .ray:nth-child(1) { transform: translateX(-50%) rotate(0deg); }
+        .ray:nth-child(2) { transform: translateX(-50%) rotate(30deg); }
+        .ray:nth-child(3) { transform: translateX(-50%) rotate(60deg); }
+        .ray:nth-child(4) { transform: translateX(-50%) rotate(90deg); }
+        .ray:nth-child(5) { transform: translateX(-50%) rotate(120deg); }
+        .ray:nth-child(6) { transform: translateX(-50%) rotate(150deg); }
     </style>
 </head>
 <body>
@@ -79,9 +87,13 @@
             <div class="pupil"></div>
         </div>
         <div class="glow"></div>
-        <div class="hands">
-            <div class="hand"></div>
-            <div class="hand"></div>
+        <div class="rays">
+            <div class="ray"></div>
+            <div class="ray"></div>
+            <div class="ray"></div>
+            <div class="ray"></div>
+            <div class="ray"></div>
+            <div class="ray"></div>
         </div>
     </div>
 </body>
