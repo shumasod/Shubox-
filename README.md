@@ -1,103 +1,99 @@
-```markdown
-# Laravel Sail 環境構築手順（WSL2、Ubuntu 23.04、Docker Desktop、Windows 11）
+こちらがよりかっこいいREADMEのバージョンです：
 
-このReadmeは、WSL2、Ubuntu、Docker、Windows環境でLaravel Sailを使用した開発環境を構築するための手順を説明します。
+```markdown
+# Laravel Sail 開発環境構築ガイド（Windows 11, WSL2, Ubuntu 23.04, Docker Desktop）
+
+このガイドでは、Windows 11上でWSL2、Ubuntu 23.04、Docker Desktopを使用してLaravel Sailの開発環境をセットアップする手順を詳述します。
 
 ## 前提条件
 
-- Windows WSL2が有効になっていること
-- Ubuntuがインストールされていること
-- Docker Desktopがインストールされていること
-- Visual Studio Codeまたはその他のテキストエディタ
+- **Windows 11**: WSL2が有効化されていること
+- **Ubuntu 23.04**: WSL2上にインストール済み
+- **Docker Desktop**: インストール済み
+- **テキストエディタ**: Visual Studio Code 推奨
 
-## 手順
+## セットアップ手順
 
-### 1. WSL2とUbuntuのインストール
+### 1. WSL2とUbuntuの設定
 
-#### 1.1. WSL2の有効化
+#### 1.1 WSL2の有効化
 
-1. スタートメニューを開き、「設定」を選択します。
-2. 「アプリ」 > 「オプション機能」 > 「関連設定」 > 「Wsl」を選択します。
-3. 「Windows Subsystem for Linuxの有効化」をクリックします。
-4. コンピュータを再起動します。
+1. **スタートメニュー**から「設定」を開く。
+2. 「アプリ」 > 「オプション機能」 > 「関連設定」 > 「Wsl」を選択。
+3. 「Windows Subsystem for Linuxの有効化」をクリックし、再起動。
 
-#### 1.2. Ubuntuのインストール
+#### 1.2 Ubuntuのインストール
 
-1. Microsoft Storeを開き、「Ubuntu」を検索します。
-2. 「Ubuntu」を選択し、「インストール」をクリックします。
-3. インストールが完了したら、Ubuntuを起動します。
-4. ユーザー名とパスワードを設定します。
+1. **Microsoft Store**で「Ubuntu」を検索。
+2. 「Ubuntu」を選び、「インストール」。
+3. インストール完了後、Ubuntuを起動し、ユーザー名とパスワードを設定。
 
 ### 2. Docker Desktopのインストール
 
-1. Docker Desktopの公式サイト（<https://www.docker.com/get-started>）からインストーラーをダウンロードします。
-2. ダウンロードしたインストーラーを実行します。
-3. インストーラーの指示に従って、Docker Desktopをインストールします。
+1. [Docker公式サイト](https://www.docker.com/get-started)からインストーラーをダウンロード。
+2. インストーラーを実行し、指示に従いインストール。
 
 ### 3. Laravel Sailのインストール
 
-#### 3.1. プロジェクトの作成
+#### 3.1 プロジェクトの作成
 
-1. 任意のディレクトリに移動します。
-2. 以下のコマンドを実行して、Laravelプロジェクトを作成します。
+1. 任意のディレクトリへ移動。
+2. 以下のコマンドでLaravelプロジェクトを作成。
 
-    ```sh
+    ```bash
     composer create-project laravel/laravel my-project
     ```
 
-3. 作成されたプロジェクトディレクトリに移動します。
+3. プロジェクトディレクトリへ移動。
 
-    ```sh
+    ```bash
     cd my-project
     ```
 
-#### 3.2. Laravel Sailのインストール
+#### 3.2 Laravel Sailのインストール
 
-以下のコマンドを実行して、Laravel Sailをインストールします。
+以下のコマンドでLaravel Sailをインストール。
 
-```sh
+```bash
 composer global require laravel/sail
 ```
 
 ### 4. コンテナの起動
 
-以下のコマンドを実行して、開発環境用のコンテナを起動します。
+開発環境を構築するため、次のコマンドを実行。
 
-```sh
+```bash
 ./vendor/bin/sail up
 ```
 
-### 5. ブラウザでの確認
+### 5. アプリケーションの確認
 
-ブラウザで `http://localhost:8080` を開き、Laravelアプリケーションが表示されることを確認します。
+ブラウザで `http://localhost:8080` を開き、Laravelアプリケーションが正常に表示されるか確認。
 
 ### 6. プロジェクトへのアクセス
 
-#### 6.1. WSL2からのアクセス
+#### 6.1 WSL2からアクセス
 
-以下のコマンドを実行して、WSL2上でプロジェクトフォルダにアクセスします。
+WSL2上でプロジェクトフォルダに移動するには、次のコマンドを使用。
 
-```sh
+```bash
 cd /mnt/c/Users/<ユーザー名>/my-project
 ```
 
-#### 6.2. Visual Studio Codeからのアクセス
+#### 6.2 Visual Studio Codeからアクセス
 
-1. Visual Studio Codeを開きます。
-2. 「ファイル」 > 「開くフォルダー」を選択します。
-3. 「WSL: Ubuntu」を選択します。
-4. `/mnt/c/Users/<ユーザー名>/my-project` を選択して、「開く」をクリックします。
+1. **Visual Studio Code**を起動。
+2. 「ファイル」 > 「フォルダーを開く」を選択。
+3. 「WSL: Ubuntu」を選択し、`/mnt/c/Users/<ユーザー名>/my-project` を開く。
 
-### 7. 終了
+### 7. コンテナの停止
 
-以下のコマンドを実行して、コンテナを停止します。
+作業終了後は、次のコマンドでコンテナを停止。
 
-```sh
+```bash
 ./vendor/bin/sail down
 ```
 
-### 8. その他
+### 8. 追加情報
 
-詳細については、Laravel Sailの公式ドキュメント（<https://laravel.com/docs/9.x/sail>）を参照してください。
-
-```
+詳しくは、[Laravel Sail 公式ドキュメント](https://laravel.com/docs/9.x/sail)を参照してください。
