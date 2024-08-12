@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: ''
 Description: S3 static website with CloudFront and automatic cache invalidation
 
 Resources:
