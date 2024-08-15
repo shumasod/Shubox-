@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUSCLE CODE - プロテインエンジニアリング</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 1em;
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2em;
+        }
+        .hero {
+            background-image: url('/api/placeholder/1200/600');
+            background-size: cover;
+            background-position: center;
+            color: white;
+            text-align: center;
+            padding: 4em 2em;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #ff6600;
+            color: white;
+            padding: 1em 2em;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 5px;
+            margin-top: 1em;
+        }
+        .features {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-top: 2em;
+        }
+        .feature {
+            flex-basis: 30%;
+            background-color: white;
+            padding: 1em;
+            margin-bottom: 1em;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        @media (max-width: 768px) {
+            .feature {
+                flex-basis: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>MUSCLE CODE</h1>
+        <p>プロテインエンジニアリング</p>
+    </header>
+
+    <div class="hero">
+        <h2>筋肉と頭脳を鍛えろ！</h2>
+        <p>エンジニアのための究極のトレーニングプログラム</p>
+        <a href="#" class="cta-button">今すぐ申し込む</a>
+    </div>
+
+    <div class="container">
+        <h2>MUSCLE CODEの特徴</h2>
+        <div class="features">
+            <div class="feature">
+                <h3>プロテイン付きコーディング講座</h3>
+                <p>最高品質のプロテインを飲みながら、最新のプログラミング技術を学びます。</p>
+            </div>
+            <div class="feature">
+                <h3>マッチョトレーナーによるコードレビュー</h3>
+                <p>筋肉隆々のエキスパートがあなたのコードを徹底的にレビューします。</p>
+            </div>
+            <div class="feature">
+                <h3>筋トレ付きハッカソン</h3>
+                <p>24時間のコーディングマラソンと筋トレを同時に行い、体と頭脳の限界に挑戦します。</p>
+            </div>
+        </div>
+
+        <h2>変化を実感した受講生の声</h2>
+        <blockquote>
+            「MUSCLE CODEのおかげで、バグを潰す度にベンチプレスを1回行うようになりました。今では筋肉もコーディングスキルも大幅に向上しています！」 - 山田太郎さん
+        </blockquote>
+
+        <h2>今すぐ始めよう！</h2>
+        <p>毎月先着100名様限定！今なら入会金50%オフ</p>
+        <a href="#" class="cta-button">無料カウンセリングに申し込む</a>
+    </div>
+</body>
+</html>
