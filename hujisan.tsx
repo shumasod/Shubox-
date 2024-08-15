@@ -32,19 +32,23 @@ const MountFujiDisplay = () => {
   return (
     <div className={`relative h-screen overflow-hidden transition-all duration-3000 ease-in-out bg-gradient-to-b from-${skyColors[timeOfDay][0]} to-${skyColors[timeOfDay][1]}`}>
       {/* 富士山 */}
-      <div className="absolute bottom-0 left-0 right-0 h-2/3 bg-[#F9F9F9] clip-fuji"></div>
-      <div className="absolute bottom-0 left-0 right-0 h-2/3 bg-[#E6E6E6] clip-fuji-shadow"></div>
-      
+      <div className="absolute bottom-0 left-0 right-0 h-2/3 flex justify-center items-end">
+        <svg width="100%" height="100%" viewBox="0 0 800 600" preserveAspectRatio="xMidYMax slice">
+          <polygon points="400,50 650,600 150,600" fill="#F9F9F9" />
+          <polygon points="400,150 600,600 200,600" fill="#E6E6E6" />
+        </svg>
+      </div>
+
       {/* 雲 */}
       <div className="absolute bottom-1/4 left-1/4 w-32 h-16 bg-white rounded-full opacity-60 animate-float"></div>
       <div className="absolute bottom-1/3 right-1/4 w-48 h-20 bg-white rounded-full opacity-70 animate-float-delay"></div>
-      
+
       {/* 太陽または月 */}
       <div className={`absolute ${timeOfDay === 'night' ? 'top-10 right-10' : 'top-10 left-10'} w-20 h-20 rounded-full ${timeOfDay === 'night' ? 'bg-gray-200' : 'bg-yellow-400'} animate-pulse`}></div>
-      
+
       {/* 鳥居 */}
       <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 w-32 h-40 bg-[#b22234] clip-torii"></div>
-      
+
       {/* メッセージ */}
       <div className="relative z-10 flex justify-center items-center h-full">
         {showMessage && (
@@ -55,14 +59,8 @@ const MountFujiDisplay = () => {
           </div>
         )}
       </div>
-      
+
       <style jsx>{`
-        .clip-fuji {
-          clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-        }
-        .clip-fuji-shadow {
-          clip-path: polygon(40% 20%, 60% 20%, 100% 100%, 0% 100%);
-        }
         .clip-torii {
           clip-path: polygon(10% 10%, 90% 10%, 90% 0%, 100% 0%, 100% 20%, 90% 20%, 90% 100%, 75% 100%, 75% 20%, 25% 20%, 25% 100%, 10% 100%, 10% 20%, 0% 20%, 0% 0%, 10% 0%);
         }

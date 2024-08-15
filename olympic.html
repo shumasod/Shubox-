@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パリオリンピック2024</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #1a202c;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            text-align: center;
+        }
+        .banner {
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+            background: linear-gradient(45deg, #000046, #1CB5E0);
+            position: relative;
+            overflow: hidden;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .eiffel-tower {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 200px;
+            background-color: rgba(255,255,255,0.1);
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        }
+        .olympic-rings {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 1.2em;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="banner">
+            <div class="eiffel-tower"></div>
+            <svg class="olympic-rings" width="200" height="80" viewBox="0 0 200 80">
+                <circle cx="30" cy="30" r="25" stroke="#0081C8" stroke-width="5" fill="none"/>
+                <circle cx="90" cy="30" r="25" stroke="#000000" stroke-width="5" fill="none"/>
+                <circle cx="150" cy="30" r="25" stroke="#EE334E" stroke-width="5" fill="none"/>
+                <circle cx="60" cy="60" r="25" stroke="#FCB131" stroke-width="5" fill="none"/>
+                <circle cx="120" cy="60" r="25" stroke="#00A651" stroke-width="5" fill="none"/>
+            </svg>
+        </div>
+        <h1>パリオリンピック 2024</h1>
+        <p>世界最大のスポーツの祭典</p>
+    </div>
+</body>
+</html>
