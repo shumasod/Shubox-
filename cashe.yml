@@ -27,7 +27,7 @@ Resources:
             Principal:
               Service: cloudfront.amazonaws.com
             Action: s3:GetObject
-            Resource: !Sub '${MyBucket.Arn}/*'
+            Resource: !Sub '${n}/*'
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub '
