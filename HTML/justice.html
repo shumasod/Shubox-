@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正義の象徴</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #202020;
+        }
+
+        .justice {
+            width: 100px;
+            height: 100px;
+            background-color: #76ff03;
+            border-radius: 50%;
+            opacity: 0;
+            transform: scale(0);
+            animation: symbolize 5s ease-in-out infinite;
+        }
+
+        @keyframes symbolize {
+            0%, 100% {
+                opacity: 0;
+                transform: scale(0);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.5);
+                background-color: #00e676;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="justice"></div>
+</body>
+</html>

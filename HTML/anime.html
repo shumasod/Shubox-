@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>背景とテキストの同期</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            font-size: 2rem;
+            color: white;
+            text-align: center;
+            background-color: #2e2e2e;
+            animation: bgChange 10s infinite;
+        }
+
+        @keyframes bgChange {
+            0% { background-color: #2e2e2e; }
+            25% { background-color: #ff5722; }
+            50% { background-color: #ffeb3b; color: #000; }
+            75% { background-color: #76ff03; }
+            100% { background-color: #2e2e2e; }
+        }
+
+        .text {
+            opacity: 0;
+            animation: textFade 10s infinite;
+        }
+
+        @keyframes textFade {
+            0%, 100% { opacity: 0; }
+            25% { opacity: 1; }
+            75% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="text">正義は私たちの手に</div>
+</body>
+</html>
