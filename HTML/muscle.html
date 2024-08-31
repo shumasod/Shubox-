@@ -1,107 +1,55 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MUSCLE CODE - プロテインエンジニアリング</title>
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f0f0;
-        }
-        header {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 1em;
-        }
-        h1 {
-            margin: 0;
-            font-size: 2.5em;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2em;
-        }
-        .hero {
-            background-image: url('/api/placeholder/1200/600');
-            background-size: cover;
-            background-position: center;
-            color: white;
-            text-align: center;
-            padding: 4em 2em;
-        }
-        .cta-button {
-            display: inline-block;
-            background-color: #ff6600;
-            color: white;
-            padding: 1em 2em;
-            text-decoration: none;
-            font-weight: bold;
-            border-radius: 5px;
-            margin-top: 1em;
-        }
-        .features {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            margin-top: 2em;
-        }
-        .feature {
-            flex-basis: 30%;
-            background-color: white;
-            padding: 1em;
-            margin-bottom: 1em;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        @media (max-width: 768px) {
-            .feature {
-                flex-basis: 100%;
-            }
-        }
-    </style>
+    <script src="https://unpkg.com/@regexui/regex-ui@latest"></script>
+    <script>
+        RegexUI.mount();
+    </script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-    <header>
-        <h1>MUSCLE CODE</h1>
-        <p>プロテインエンジニアリング</p>
+
+<body class="font-roboto bg-gray-100">
+    <header class="bg-gray-800 text-white text-center py-4">
+        <h1 class="text-4xl font-bold">MUSCLE CODE</h1>
+        <p class="text-xl">プロテインエンジニアリング</p>
     </header>
 
-    <div class="hero">
-        <h2>筋肉と頭脳を鍛えろ！</h2>
-        <p>エンジニアのための究極のトレーニングプログラム</p>
-        <a href="#" class="cta-button">今すぐ申し込む</a>
+    <div class="hero bg-cover bg-center text-white text-center py-16" style="background-image: url('/api/placeholder/1200/600');">
+        <h2 class="text-3xl font-bold">筋肉と頭脳を鍛えろ！</h2>
+        <p class="text-lg mt-4">エンジニアのための究極のトレーニングプログラム</p>
+        <a href="#" class="cta-button inline-block bg-orange-500 text-white py-3 px-6 rounded-lg mt-6 font-bold">今すぐ申し込む</a>
     </div>
 
-    <div class="container">
-        <h2>MUSCLE CODEの特徴</h2>
-        <div class="features">
-            <div class="feature">
-                <h3>プロテイン付きコーディング講座</h3>
+    <div class="container mx-auto py-8 px-4">
+        <h2 class="text-2xl font-bold mb-6">MUSCLE CODEの特徴</h2>
+        <div class="features flex flex-wrap justify-around">
+            <div class="feature bg-white p-6 mb-6 rounded-lg shadow-lg flex-1 max-w-xs mx-2">
+                <h3 class="text-xl font-semibold mb-4">プロテイン付きコーディング講座</h3>
                 <p>最高品質のプロテインを飲みながら、最新のプログラミング技術を学びます。</p>
             </div>
-            <div class="feature">
-                <h3>マッチョトレーナーによるコードレビュー</h3>
+            <div class="feature bg-white p-6 mb-6 rounded-lg shadow-lg flex-1 max-w-xs mx-2">
+                <h3 class="text-xl font-semibold mb-4">マッチョトレーナーによるコードレビュー</h3>
                 <p>筋肉隆々のエキスパートがあなたのコードを徹底的にレビューします。</p>
             </div>
-            <div class="feature">
-                <h3>筋トレ付きハッカソン</h3>
+            <div class="feature bg-white p-6 mb-6 rounded-lg shadow-lg flex-1 max-w-xs mx-2">
+                <h3 class="text-xl font-semibold mb-4">筋トレ付きハッカソン</h3>
                 <p>24時間のコーディングマラソンと筋トレを同時に行い、体と頭脳の限界に挑戦します。</p>
             </div>
         </div>
 
-        <h2>変化を実感した受講生の声</h2>
-        <blockquote>
+        <h2 class="text-2xl font-bold mt-12 mb-6">変化を実感した受講生の声</h2>
+        <blockquote class="border-l-4 border-orange-500 pl-4 italic">
             「MUSCLE CODEのおかげで、バグを潰す度にベンチプレスを1回行うようになりました。今では筋肉もコーディングスキルも大幅に向上しています！」 - 山田太郎さん
         </blockquote>
 
-        <h2>今すぐ始めよう！</h2>
-        <p>毎月先着100名様限定！今なら入会金50%オフ</p>
-        <a href="#" class="cta-button">無料カウンセリングに申し込む</a>
+        <h2 class="text-2xl font-bold mt-12 mb-6">今すぐ始めよう！</h2>
+        <p class="mb-4">毎月先着100名様限定！今なら入会金50%オフ</p>
+        <a href="#" class="cta-button inline-block bg-orange-500 text-white py-3 px-6 rounded-lg font-bold">無料カウンセリングに申し込む</a>
     </div>
 </body>
+
 </html>

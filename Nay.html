@@ -3,80 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ナルト・ナウシカ風の忍者</title>
+    <title>風の忍者 - Enhanced</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/material-ui/4.11.3/umd/material-ui.production.min.js"></script>
     <style>
-        body {
-            background: linear-gradient(135deg, #1a472a, #0a1f12);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-        }
-        .scene {
-            width: 400px;
-            height: 500px;
-            position: relative;
-            overflow: hidden;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-        .ninja {
-            width: 300px;
-            height: 450px;
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            animation: float 3s ease-in-out infinite;
-        }
         @keyframes float {
-            0%, 100% { transform: translateX(-50%) translateY(0px); }
-            50% { transform: translateX(-50%) translateY(-20px); }
-        }
-        .ninja-body {
-            width: 200px;
-            height: 300px;
-            background: linear-gradient(45deg, #ff6600, #ff9900);
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            clip-path: polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%);
-        }
-        .ninja-head {
-            width: 100px;
-            height: 120px;
-            background: linear-gradient(45deg, #ff6600, #ff9900);
-            border-radius: 50% 50% 40% 40% / 60% 60% 40% 40%;
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-        .eye {
-            width: 70px;
-            height: 30px;
-            background: #4a4a4a;
-            position: absolute;
-            top: 45px;
-            left: 50%;
-            transform: translateX(-50%);
-            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
-        .pupil {
-            width: 25px;
-            height: 25px;
-            background: radial-gradient(circle, #00ffff 30%, #0080ff 70%);
-            border-radius: 50%;
-            position: relative;
-            animation: glowing 2s infinite alternate, sharingan 5s infinite linear;
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
         }
         @keyframes glowing {
             0% { box-shadow: 0 0 5px #00ffff; }
@@ -86,57 +22,13 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .hands {
-            position: absolute;
-            width: 100%;
-            bottom: 150px;
-        }
-        .hand {
-            width: 50px;
-            height: 80px;
-            background: linear-gradient(45deg, #ff6600, #ff9900);
-            position: absolute;
-            border-radius: 20px;
-        }
-        .hand-left {
-            left: 70px;
-            transform: rotate(30deg);
-            animation: hand-sign-left 2s infinite;
-        }
-        .hand-right {
-            right: 70px;
-            transform: rotate(-30deg);
-            animation: hand-sign-right 2s infinite;
-        }
-        @keyframes hand-sign-left {
-            0%, 100% { transform: rotate(30deg); }
-            50% { transform: rotate(60deg); }
-        }
-        @keyframes hand-sign-right {
-            0%, 100% { transform: rotate(-30deg); }
-            50% { transform: rotate(-60deg); }
-        }
-        .background {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: url('/api/placeholder/400/500') center/cover no-repeat;
-            opacity: 0.3;
-            z-index: -1;
-            animation: wind 20s linear infinite;
+        @keyframes hand-sign {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(30deg); }
         }
         @keyframes wind {
             0% { background-position: 0 0; }
             100% { background-position: 100% 100%; }
-        }
-        .chakra {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle, rgba(0,255,255,0.2) 0%, rgba(0,128,255,0) 70%);
-            animation: pulse 2s infinite alternate;
         }
         @keyframes pulse {
             0% { opacity: 0.5; transform: scale(0.8); }
@@ -144,22 +36,51 @@
         }
     </style>
 </head>
-<body>
-    <div class="scene">
-        <div class="background"></div>
-        <div class="chakra"></div>
-        <div class="ninja">
-            <div class="ninja-head">
-                <div class="eye">
-                    <div class="pupil"></div>
-                </div>
-            </div>
-            <div class="ninja-body"></div>
-            <div class="hands">
-                <div class="hand hand-left"></div>
-                <div class="hand hand-right"></div>
-            </div>
-        </div>
-    </div>
+<body class="bg-gradient-to-br from-green-900 to-green-700 min-h-screen flex items-center justify-center">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { Button, Slider, Typography, Box } = MaterialUI;
+
+        function NinjaScene() {
+            const [speed, setSpeed] = React.useState(1);
+
+            return (
+                <Box className="bg-gray-800 rounded-lg shadow-xl p-6 max-w-md">
+                    <Typography variant="h4" className="text-white mb-4">風の忍者</Typography>
+                    <div className="scene relative w-80 h-96 overflow-hidden rounded-lg mb-4" style={{animation: `float ${3 / speed}s ease-in-out infinite`}}>
+                        <div className="background absolute inset-0 opacity-30" style={{background: "url('/api/placeholder/400/500') center/cover no-repeat", animation: `wind ${20 / speed}s linear infinite`}}></div>
+                        <div className="chakra absolute inset-0" style={{background: "radial-gradient(circle, rgba(0,255,255,0.2) 0%, rgba(0,128,255,0) 70%)", animation: `pulse ${2 / speed}s infinite alternate`}}></div>
+                        <div className="ninja absolute bottom-0 left-1/2 transform -translate-x-1/2 w-48 h-72">
+                            <div className="ninja-head absolute top-0 left-1/2 transform -translate-x-1/2 w-20 h-24 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-full"></div>
+                            <div className="eye absolute top-10 left-1/2 transform -translate-x-1/2 w-14 h-6 bg-gray-700 flex justify-center items-center overflow-hidden" style={{clipPath: "polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%)"}}>
+                                <div className="pupil w-5 h-5 bg-blue-400 rounded-full" style={{animation: `glowing ${2 / speed}s infinite alternate, sharingan ${5 / speed}s infinite linear`}}></div>
+                            </div>
+                            <div className="ninja-body absolute bottom-0 left-1/2 transform -translate-x-1/2 w-40 h-60 bg-gradient-to-br from-orange-500 to-yellow-500" style={{clipPath: "polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%)"}}></div>
+                            <div className="hand hand-left absolute bottom-24 left-8 w-10 h-16 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-lg" style={{animation: `hand-sign ${2 / speed}s infinite alternate`}}></div>
+                            <div className="hand hand-right absolute bottom-24 right-8 w-10 h-16 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-lg" style={{animation: `hand-sign ${2 / speed}s infinite alternate-reverse`}}></div>
+                        </div>
+                    </div>
+                    <Typography id="speed-slider" gutterBottom className="text-white">
+                        アニメーション速度
+                    </Typography>
+                    <Slider
+                        defaultValue={1}
+                        step={0.1}
+                        marks
+                        min={0.5}
+                        max={2}
+                        valueLabelDisplay="auto"
+                        onChange={(_, newValue) => setSpeed(newValue)}
+                    />
+                    <Button variant="contained" color="primary" className="mt-4">
+                        忍術を使う
+                    </Button>
+                </Box>
+            );
+        }
+
+        ReactDOM.render(<NinjaScene />, document.getElementById('root'));
+    </script>
 </body>
 </html>
