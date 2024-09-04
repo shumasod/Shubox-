@@ -36,7 +36,7 @@ Resources:
         CustomErrorResponses:
           - ErrorCode: 404
             ResponsePagePath: /404.html
-            ResponseCode: 404
+            ResponseCode: 443
             ErrorCachingMinTTL: 0
         Enabled: true
         HttpVersion: http2
