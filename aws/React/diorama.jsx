@@ -1,51 +1,65 @@
 import React, { useState } from 'react';
-import { Layers, Image, Grid, Settings, Sun, Share2, Save, HelpCircle } from 'lucide-react';
+import { Box, Layers, Image, Settings, Sun, Share2, Save, HelpCircle, Move, RotateCcw, Scale } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Slider } from '@/components/ui/slider';
 
 const DioramaApp = () => {
   const [activeTab, setActiveTab] = useState('canvas');
+  const [activeObject, setActiveObject] = useState(null);
 
   const renderCanvas = () => (
-    <div className="bg-gray-200 w-full h-96 flex items-center justify-center">
+    <div className="bg-gray-200 w-full h-96 flex items-center justify-center relative">
       <p className="text-gray-600">3D キャンバス領域（Three.js を使用）</p>
-    </div>
-  );
-
-  const renderLayersPanel = () => (
-    <div className="bg-white p-4 border rounded">
-      <h3 className="font-bold mb-2">レイヤー</h3>
-      <ul>
-        <li>地形</li>
-        <li>建物</li>
-        <li>植物</li>
-        <li>装飾品</li>
-      </ul>
+      {activeObject && (
+        <div className="absolute bottom-4 left-4 bg-white p-2 rounded shadow">
+          <p>選択中: {activeObject}</p>
+        </div>
+      )}
     </div>
   );
 
   const renderAssetsLibrary = () => (
     <div className="bg-white p-4 border rounded">
-      <h3 className="font-bold mb-2">アセット</h3>
+      <h3 className="font-bold mb-2">アセット（ドラッグ＆ドロップでキャンバスに配置）</h3>
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-gray-100 p-2 text-center">建物1</div>
-        <div className="bg-gray-100 p-2 text-center">木1</div>
-        <div className="bg-gray-100 p-2 text-center">車1</div>
-        <div className="bg-gray-100 p-2 text-center">地形1</div>
-        <div className="bg-gray-100 p-2 text-center">人物1</div>
-        <div className="bg-gray-100 p-2 text-center">道路1</div>
+        <div className="bg-gray-100 p-2 text-center cursor-move" draggable onDragStart={() => setActiveObject('建物1')}>建物1</div>
+        <div className="bg-gray-100 p-2 text-center cursor-move" draggable onDragStart={() => setActiveObject('木1')}>木1</div>
+        <div className="bg-gray-100 p-2 text-center cursor-move" draggable onDragStart={() => setActiveObject('車1')}>車1</div>
+        <div className="bg-gray-100 p-2 text-center cursor-move" draggable onDragStart={() => setActiveObject('地形1')}>地形1</div>
+        <div className="bg-gray-100 p-2 text-center cursor-move" draggable onDragStart={() => setActiveObject('人物1')}>人物1</div>
+        <div className="bg-gray-100 p-2 text-center cursor-move" draggable onDragStart={() => setActiveObject('道路1')}>道路1</div>
       </div>
     </div>
   );
 
-  const renderSettingsPanel = () => (
-    <div className="bg-white p-4 border rounded">
-      <h3 className="font-bold mb-2">設定</h3>
-      <div className="space-y-2">
-        <div>解像度: 1920x1080</div>
-        <div>品質: 高</div>
-        <div>自動保存: オン</div>
+  const renderObjectControls = () => (
+    <div className="bg-white p-4 border rounded mt-4">
+      <h3 className="font-bold mb-2">オブジェクト操作</h3>
+      <div className="space-y-4">
+        <div>
+          <label className="block mb-2">位置 <Move className="inline h-4 w-4" /></label>
+          <div className="flex space-x-2">
+            <Slider defaultValue={[0]} max={100} step={1} />
+            <Slider defaultValue={[0]} max={100} step={1} />
+            <Slider defaultValue={[0]} max={100} step={1} />
+          </div>
+        </div>
+        <div>
+          <label className="block mb-2">回転 <RotateCcw className="inline h-4 w-4" /></label>
+          <div className="flex space-x-2">
+            <Slider defaultValue={[0]} max={360} step={1} />
+            <Slider defaultValue={[0]} max={360} step={1} />
+            <Slider defaultValue={[0]} max={360} step={1} />
+          </div>
+        </div>
+        <div>
+          <label className="block mb-2">スケール <Scale className="inline h-4 w-4" /></label>
+          <div className="flex space-x-2">
+            <Slider defaultValue={[1]} max={2} step={0.1} />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -53,13 +67,14 @@ const DioramaApp = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'canvas':
-        return renderCanvas();
-      case 'layers':
-        return renderLayersPanel();
+        return (
+          <>
+            {renderCanvas()}
+            {renderObjectControls()}
+          </>
+        );
       case 'assets':
         return renderAssetsLibrary();
-      case 'settings':
-        return renderSettingsPanel();
       default:
         return null;
     }
@@ -69,20 +84,16 @@ const DioramaApp = () => {
     <div className="max-w-4xl mx-auto p-4">
       <Card>
         <CardHeader>
-          <CardTitle>ジオラマ作成アプリ</CardTitle>
+          <CardTitle>3D ノーコード ジオラマ作成アプリ</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="canvas" className="w-full">
             <TabsList>
-              <TabsTrigger value="canvas"><Grid className="mr-2 h-4 w-4" /> キャンバス</TabsTrigger>
-              <TabsTrigger value="layers"><Layers className="mr-2 h-4 w-4" /> レイヤー</TabsTrigger>
+              <TabsTrigger value="canvas"><Box className="mr-2 h-4 w-4" /> 3D キャンバス</TabsTrigger>
               <TabsTrigger value="assets"><Image className="mr-2 h-4 w-4" /> アセット</TabsTrigger>
-              <TabsTrigger value="settings"><Settings className="mr-2 h-4 w-4" /> 設定</TabsTrigger>
             </TabsList>
-            <TabsContent value="canvas">{renderCanvas()}</TabsContent>
-            <TabsContent value="layers">{renderLayersPanel()}</TabsContent>
-            <TabsContent value="assets">{renderAssetsLibrary()}</TabsContent>
-            <TabsContent value="settings">{renderSettingsPanel()}</TabsContent>
+            <TabsContent value="canvas">{renderContent()}</TabsContent>
+            <TabsContent value="assets">{renderContent()}</TabsContent>
           </Tabs>
           <div className="mt-4 flex justify-between">
             <Button variant="outline"><Sun className="mr-2 h-4 w-4" /> ライティング</Button>
