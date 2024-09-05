@@ -1,44 +1,5 @@
-// database/migrations/2023_09_03_000000_create_scores_table.php
 <?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-class CreateScoresTable extends Migration
-{
-    public function up()
-    {
-        Schema::create('scores', function (Blueprint $table) {
-            $table->id();
-            $table->string('player_name');
-            $table->integer('score');
-            $table->integer('rounds');
-            $table->timestamps();
-        });
-    }
-
-    public function down()
-    {
-        Schema::dropIfExists('scores');
-    }
-}
-
-// app/Models/Score.php
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Model;
-
-class Score extends Model
-{
-    protected $fillable = ['player_name', 'score', 'rounds'];
-}
-
 // app/Http/Controllers/GameController.php
-<?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Score;
@@ -81,10 +42,10 @@ class GameController extends Controller
 
         $result = $this->resolveSpells($playerSpell, $dumbledoreSpell, $gameState);
 
-        $gameState['player_health'] = max(0, min(100, $gameState['player_health'] + $result['player_damage']));
-        $gameState['dumbledore_health'] = max(0, min(100, $gameState['dumbledore_health'] + $result['dumbledore_damage']));
+        $gameState['player_health'] = max(0, min(100, $gameState['player_health'] - $result['player_damage']));
+        $gameState['dumbledore_health'] = max(0, min(100, $gameState['dumbledore_health'] - $result['dumbledore_damage']));
         $gameState['round']++;
-        $gameState['score'] += abs($result['dumbledore_damage']);
+        $gameState['score'] += $result['dumbledore_damage'];
 
         // レベルアップのロジック
         $gameState['player_exp'] += 10;
@@ -113,8 +74,8 @@ class GameController extends Controller
         $playerSpellInfo = $this->spells[$playerSpell];
         $dumbledoreSpellInfo = $this->spells[$dumbledoreSpell];
 
-        $playerDamage = -$this->calculateDamage($playerSpellInfo, $gameState['player_level'], $gameState['dumbledore_effects']);
-        $dumbledoreDamage = -$this->calculateDamage($dumbledoreSpellInfo, 10, $gameState['player_effects']);
+        $playerDamage = $this->calculateDamage($playerSpellInfo, $gameState['player_level'], $gameState['dumbledore_effects']);
+        $dumbledoreDamage = $this->calculateDamage($dumbledoreSpellInfo, 10, $gameState['player_effects']);
 
         // 特殊効果の適用
         $this->applyEffect($playerSpellInfo['effect'], 'player', $gameState);
@@ -198,6 +159,7 @@ class GameController extends Controller
 }
 
 // resources/views/game/index.blade.php
+?>
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -231,7 +193,9 @@ class GameController extends Controller
 </body>
 </html>
 
+<?php
 // resources/views/game/play.blade.php
+?>
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -267,8 +231,8 @@ class GameController extends Controller
     <h3>ラウンド: {{ $gameState['round'] }} | スコア: {{ $gameState['score'] }}</h3>
 
     @if($gameState['round'] > 0)
-        <p>あなたの呪文: {{ $playerSpell }} (ダメージ: {{ -$result['dumbledore_damage'] }})</p>
-        <p>ダンブルドアの呪文: {{ $dumbledoreSpell }} (ダメージ: {{ -$result['player_damage'] }})</p>
+        <p>あなたの呪文: {{ $playerSpell }} (ダメージ: {{ $result['dumbledore_damage'] }})</p>
+        <p>ダンブルドアの呪文: {{ $dumbledoreSpell }} (ダメージ: {{ $result['player_damage'] }})</p>
     @endif
 
     @if($gameState['player_health'] <= 0)
