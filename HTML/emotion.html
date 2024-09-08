@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>感情の波</title>
+    <title>かわいいおじいさんの感情表現</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&display=swap');
+
         body {
             margin: 0;
             padding: 0;
@@ -12,35 +14,131 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #1a1a1a;
+            background-color: #fef6e4;
             overflow: hidden;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
         }
 
-        .emotion-wave {
+        .container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+        }
+
+        .oldman {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: #f8e1c6;
+            border-radius: 50%;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: wobble 2s ease-in-out infinite;
+        }
+
+        .eye {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-color: #ffffff;
+            border-radius: 50%;
+            top: 80px;
+        }
+
+        .eye::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #4a4a4a;
+            border-radius: 50%;
+            top: 10px;
+            left: 10px;
+            animation: blink 3s ease-in-out infinite;
+        }
+
+        .eye.left { left: 60px; }
+        .eye.right { right: 60px; }
+
+        .cheek {
+            position: absolute;
+            width: 30px;
+            height: 20px;
+            background-color: #f8a5c2;
+            border-radius: 50%;
+            opacity: 0.7;
+            top: 130px;
+        }
+
+        .cheek.left { left: 50px; }
+        .cheek.right { right: 50px; }
+
+        .mouth {
+            position: absolute;
+            width: 80px;
+            height: 40px;
+            border: 10px solid #4a4a4a;
+            border-bottom-left-radius: 40px;
+            border-bottom-right-radius: 40px;
+            border-top: none;
+            bottom: 70px;
+            animation: mouthMove 2s ease-in-out infinite;
+        }
+
+        .mustache {
+            position: absolute;
+            width: 120px;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            bottom: 110px;
+        }
+
+        .emotion-text {
+            position: absolute;
             font-size: 2rem;
-            color: white;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
+            font-weight: 700;
+            color: #f582ae;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
             opacity: 0;
-            transform: translateY(-100px);
-            animation: wave 4s ease-in-out infinite;
+            transform: translateY(20px);
+            animation: textBounce 2s ease-in-out infinite;
         }
 
-        @keyframes wave {
-            0%, 100% {
-                background-color: #1a1a1a;
-                transform: translateY(-100px);
-                opacity: 0;
-            }
-            50% {
-                background-color: #ff3d00;
-                transform: translateY(0);
-                opacity: 1;
-            }
+        @keyframes wobble {
+            0%, 100% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+        }
+
+        @keyframes blink {
+            0%, 100% { transform: scale(1); }
+            95% { transform: scale(0.1, 0); }
+        }
+
+        @keyframes mouthMove {
+            0%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(0.8); }
+        }
+
+        @keyframes textBounce {
+            0%, 100% { opacity: 0; transform: translateY(20px); }
+            50% { opacity: 1; transform: translateY(-10px); }
         }
     </style>
 </head>
 <body>
-    <div class="emotion-wave">怒りが沸き上がる</div>
+    <div class="container">
+        <div class="oldman">
+            <div class="eye left"></div>
+            <div class="eye right"></div>
+            <div class="cheek left"></div>
+            <div class="cheek right"></div>
+            <div class="mustache"></div>
+            <div class="mouth"></div>
+        </div>
+        <div class="emotion-text">むむっ！</div>
+    </div>
 </body>
 </html>
