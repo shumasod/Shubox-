@@ -2,19 +2,19 @@ import React, { useState, useEffect } from 'react';
 
 const BOARD_SIZE = 9;
 const PIECES = {
-  ou: '王', gyoku: '玉', kin: '金', gin: '銀', kei: '桂', kyo: '香', kaku: '角', hisha: '飛', fu: '歩'
+  ou: '玉', gyoku: '玉', kin: '金', gin: '銀', kei: '桂', kyo: '香', kaku: '角', hisha: '飛', fu: '歩'
 };
 
 const initialBoard = [
-  ['L', 'N', 'S', 'G', 'K', 'G', 'S', 'N', 'L'],
-  [null, 'R', null, null, null, null, null, 'B', null],
-  ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+  ['香', '桂', '銀', '金', '玉', '金', '銀', '桂', '香'],
+  [null, '飛', null, null, null, null, null, '角', null],
+  ['歩', '歩', '歩', '歩', '歩', '歩', '歩', '歩', '歩'],
   [null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null],
   [null, null, null, null, null, null, null, null, null],
-  ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
-  [null, 'b', null, null, null, null, null, 'r', null],
-  ['l', 'n', 's', 'g', 'k', 'g', 's', 'n', 'l']
+  ['歩', '歩', '歩', '歩', '歩', '歩', '歩', '歩', '歩'],
+  [null, '角', null, null, null, null, null, '飛', null],
+  ['香', '桂', '銀', '金', '玉', '金', '銀', '桂', '香']
 ];
 
 const ShogiGame = () => {
@@ -36,7 +36,7 @@ const ShogiGame = () => {
 
   const selectPiece = (row, col) => {
     const piece = board[row][col];
-    if (piece && isCurrentPlayerPiece(piece)) {
+    if (piece && isCurrentPlayerPiece(piece, row)) {
       setSelectedPiece({ row, col, piece });
     }
   };
@@ -54,42 +54,60 @@ const ShogiGame = () => {
     }
   };
 
-  const isCurrentPlayerPiece = (piece) => {
-    return currentPlayer === 'lower' ? piece.toLowerCase() === piece : piece.toUpperCase() === piece;
+  const isCurrentPlayerPiece = (piece, row) => {
+    return currentPlayer === 'lower' ? row >= BOARD_SIZE / 2 : row < BOARD_SIZE / 2;
   };
 
   const isValidMove = (row, col) => {
     // This is a simplified check. In a real game, you'd need to implement the specific movement rules for each piece.
-    return board[row][col] === null || !isCurrentPlayerPiece(board[row][col]);
+    return board[row][col] === null || !isCurrentPlayerPiece(board[row][col], row);
   };
 
-  const renderPiece = (piece) => {
+  const renderPiece = (piece, row) => {
     if (!piece) return null;
-    const pieceName = PIECES[piece.toLowerCase()] || piece;
-    return <span className={`text-2xl ${piece.toLowerCase() === piece ? 'text-black' : 'text-red-500'}`}>{pieceName}</span>;
+    const isLowerPlayer = row >= BOARD_SIZE / 2;
+    return (
+      <div className={`w-full h-full flex items-center justify-center 
+                      ${isLowerPlayer ? '' : 'rotate-180'}`}>
+        <span className="text-2xl font-bold" style={{color: '#5D4037'}}>{piece}</span>
+      </div>
+    );
+  };
+
+  const renderCoordinate = (index, isVertical) => {
+    const coords = isVertical ? '一二三四五六七八九' : '９８７６５４３２１';
+    return (
+      <div className={`absolute ${isVertical ? '-left-6' : '-top-6'} w-6 h-6 flex items-center justify-center`}>
+        <span className="text-sm" style={{color: '#5D4037'}}>{coords[index]}</span>
+      </div>
+    );
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <h1 className="text-2xl font-bold mb-4">Shogi Game</h1>
-      <div className="grid grid-cols-9 gap-0">
-        {board.map((row, rowIndex) =>
-          row.map((cell, colIndex) => (
-            <div
-              key={`${rowIndex}-${colIndex}`}
-              className={`w-16 h-16 border border-black flex items-center justify-center cursor-pointer ${
-                selectedPiece && selectedPiece.row === rowIndex && selectedPiece.col === colIndex
-                  ? 'bg-yellow-200'
-                  : 'bg-yellow-100'
-              }`}
-              onClick={() => handleCellClick(rowIndex, colIndex)}
-            >
-              {renderPiece(cell)}
-            </div>
-          ))
-        )}
+    <div className="flex flex-col items-center p-8" style={{backgroundColor: '#FFF3E0'}}>
+      <h1 className="text-3xl font-bold mb-8" style={{color: '#5D4037'}}>将棋</h1>
+      <div className="relative">
+        <div className="grid grid-cols-9 gap-0" style={{width: '540px', height: '540px'}}>
+          {board.map((row, rowIndex) =>
+            row.map((cell, colIndex) => (
+              <div
+                key={`${rowIndex}-${colIndex}`}
+                className={`w-16 h-16 border border-gray-700 flex items-center justify-center cursor-pointer relative
+                           ${selectedPiece && selectedPiece.row === rowIndex && selectedPiece.col === colIndex
+                             ? 'bg-yellow-200'
+                             : 'bg-amber-100'}`}
+                style={{backgroundColor: '#FFE0B2', boxShadow: 'inset 0 0 3px rgba(0,0,0,0.2)'}}
+                onClick={() => handleCellClick(rowIndex, colIndex)}
+              >
+                {renderPiece(cell, rowIndex)}
+                {colIndex === 0 && renderCoordinate(rowIndex, true)}
+                {rowIndex === 0 && renderCoordinate(colIndex, false)}
+              </div>
+            ))
+          )}
+        </div>
       </div>
-      <p className="mt-4">Current player: {currentPlayer}</p>
+      <p className="mt-4 text-lg" style={{color: '#5D4037'}}>手番: {currentPlayer === 'lower' ? '先手' : '後手'}</p>
     </div>
   );
 };
