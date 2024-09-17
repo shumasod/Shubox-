@@ -2,61 +2,52 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User; // Userモデルのインポート
-use Illuminate\Http\Request; // Requestクラスのインポート
-use Illuminate\Support\Facades\Validator; // Validatorファサードのインポート
-use Illuminate\Http\JsonResponse; // JsonResponseクラスのインポート
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Http\JsonResponse;
 
 class UserController extends Controller
 {
     /**
      * Create a new user account.
      *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @param Request $request
+     * @return JsonResponse
+     * @throws ValidationException
      */
     public function createAccount(Request $request): JsonResponse
     {
-        // リクエストのバリデーション
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'string', 'min:8'],
         ]);
 
-        if ($validator->fails()) {
-            // バリデーションエラーの場合
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        // ユーザーアカウント作成
         $user = User::create([
-            'name' => $request->input('name'),
-            'email' => $request->input('email'),
-            'password' => bcrypt($request->input('password')), // パスワードをハッシュ化
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
         ]);
 
-        return response()->json(['message' => 'User created successfully', 'user' => $user], 201);
+        return response()->json([
+            'message' => 'User created successfully',
+            'user' => $user
+        ], 201);
     }
 
     /**
      * Delete a user account.
      *
      * @param int $userId
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function deleteAccount(int $userId): JsonResponse
     {
-        $user = User::find($userId);
-
-        if (!$user) {
-            // ユーザーが見つからない場合
-            return response()->json(['message' => 'User not found'], 404);
-        }
-
-        // ユーザーアカウント削除
+        $user = User::findOrFail($userId);
         $user->delete();
 
-        return response()->json(['message' => 'User deleted successfully'], 200);
+        return response()->json(['message' => 'User deleted successfully']);
     }
 }
