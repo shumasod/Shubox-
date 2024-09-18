@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3Dイルミナティシンボル</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // シーン、カメラ、レンダラーの設定
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // ピラミッドの作成
+        const pyramidGeometry = new THREE.ConeGeometry(1, 1, 4);
+        const pyramidMaterial = new THREE.MeshPhongMaterial({
+            color: 0xFFD700,
+            shininess: 100,
+            specular: 0xFFFFFF
+        });
+        const pyramid = new THREE.Mesh(pyramidGeometry, pyramidMaterial);
+        scene.add(pyramid);
+
+        // 目の作成
+        const eyeGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+        const eyeMaterial = new THREE.MeshPhongMaterial({
+            color: 0xFFFFFF,
+            shininess: 100,
+            specular: 0xFFFFFF
+        });
+        const eye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        eye.position.set(0, 0.2, 0.5);
+        scene.add(eye);
+
+        // 瞳孔の作成
+        const pupilGeometry = new THREE.SphereGeometry(0.1, 32, 32);
+        const pupilMaterial = new THREE.MeshPhongMaterial({
+            color: 0x8B0000,
+            shininess: 100,
+            specular: 0xFFFFFF
+        });
+        const pupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+        pupil.position.set(0, 0.2, 0.6);
+        scene.add(pupil);
+
+        // 光源の追加
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(0, 2, 2);
+        scene.add(pointLight);
+
+        // カメラの位置設定
+        camera.position.z = 5;
+
+        // アニメーション関数
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // ピラミッドの回転
+            pyramid.rotation.y += 0.01;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // ウィンドウリサイズ対応
+        window.addEventListener('resize', onWindowResize, false);
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>

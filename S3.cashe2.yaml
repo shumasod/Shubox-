@@ -5,7 +5,7 @@ Resources:
       BucketName: my-bucket
       AccessControl: PublicRead
 
-  IndexHtml:
+  IndexHtmlPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref MyBucket
@@ -36,15 +36,15 @@ Resources:
         CustomErrorResponses:
           - ErrorCode: 404
             ResponsePagePath: /404.html
-            ResponseCode: 404
+            ResponseCode: 443
             ErrorCachingMinTTL: 0
         Enabled: true
         HttpVersion: http2
         Origins:
           - Id: my-origin
-            DomainName: !GetAtt
+            DomainName: !GetAtt MyBucket.DomainName
             S3OriginConfig:
-              OriginAccessIdentity: origin-access-identity/cloudfront/E127EXAMPLE51Z
+              OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${AWS::Region}/E127EXAMPLE51Z
 
   MyEventRule:
     Type: AWS::Events::Rule
@@ -60,7 +60,7 @@ Resources:
         detail:
           bucket:
             name:
-              - !Ref 
+              - !Ref MyBucket
 
   MyFunction:
     Type: AWS::Lambda::Function
@@ -68,7 +68,7 @@ Resources:
       FunctionName: my-function
       Runtime: python3.8
       Handler: index.handler
-      Role: !GetAtt 
+      Role: !GetAtt LambdaRole.Arn
       Code:
         ZipFile: |
           import boto3
@@ -105,6 +105,6 @@ Resources:
   MyEventTarget:
     Type: AWS::Events::Target
     Properties:
-      Rule: !Ref 
+      Rule: !Ref MyEventRule
       TargetId: my-target
-      Arn: !GetAtt 
+      Arn: !GetAtt MyFunction.Arn

@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: ''
 Description: S3 static website with CloudFront and automatic cache invalidation
 
 Resources:
@@ -27,7 +27,7 @@ Resources:
             Principal:
               Service: cloudfront.amazonaws.com
             Action: s3:GetObject
-            Resource: !Sub '${MyBucket.Arn}/*'
+            Resource: !Sub '${n}/*'
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub '

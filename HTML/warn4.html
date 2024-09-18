@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>警告：訓練ページ</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Creepster&family=Nosifer&display=swap');
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Creepster', cursive;
+            background-color: #000;
+            color: #ff0000;
+            overflow: hidden;
+        }
+        .horror-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('/api/placeholder/1920/1080');
+            background-size: cover;
+            filter: grayscale(100%) contrast(120%) brightness(40%);
+            animation: flicker 0.5s infinite alternate;
+            z-index: -1;
+        }
+        @keyframes flicker {
+            0% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+        .warning-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) skew(-5deg, -5deg);
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 3px solid #800000;
+            padding: 30px;
+            box-shadow: 0 0 20px #ff0000;
+        }
+        h1 {
+            font-family: 'Nosifer', cursive;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #ff0000;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        p {
+            font-size: 24px;
+            margin: 15px 0;
+            text-shadow: 2px 2px 4px #000000;
+        }
+        .warning-icon {
+            font-size: 72px;
+            margin-bottom: 20px;
+            animation: rotate 5s linear infinite;
+        }
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="horror-bg"></div>
+    <div class="warning-container">
+        <div class="warning-icon">💀</div>
+        <h1>警告</h1>
+        <p><strong>これは訓練です</strong></p>
+        <p>このページは訓練目的で作成されています。</p>
+        <p>実際の警告ではありません。</p>
+    </div>
+    <script>
+        document.addEventListener('mousemove', function(e) {
+            const container = document.querySelector('.warning-container');
+            const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
+            const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
+            container.style.transform = `translate(-50%, -50%) rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+        });
+    </script>
+</body>
+</html>

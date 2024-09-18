@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ナレーションとテキスト</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            font-size: 1.5rem;
+            overflow: hidden;
+        }
+
+        .narration {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 1.5s ease;
+        }
+
+        .narration.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div id="narration1" class="narration">「私は声を上げた...でも誰も聞いてくれなかった。」</div>
+    <div id="narration2" class="narration">「でも今、この声を届けなければならない。」</div>
+
+    <script>
+        setTimeout(() => {
+            document.getElementById('narration1').classList.add('show');
+        }, 1000);
+
+        setTimeout(() => {
+            document.getElementById('narration2').classList.add('show');
+        }, 4000);
+    </script>
+</body>
+</html>
