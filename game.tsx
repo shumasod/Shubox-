@@ -42,6 +42,7 @@ type Location = {
   enemies: Enemy[];
 }
 
+
 // Constants
 const INITIAL_CHARACTER: Character = {
   name: '',
