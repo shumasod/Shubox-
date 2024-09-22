@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Sword, Shield, Heart, Star } from 'lucide-react';
+Updated game.tsx with import fixes
 
+import React, { useState, useEffect } from 'react';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./components/ui/alert-dialog"
+import { Button } from "./components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./components/ui/card"
+import { Progress } from "./components/ui/progress"
+import { Sword, Shield, Heart, Star } from 'lucide-react';
 // Types
 type Character = {
   name: string;
