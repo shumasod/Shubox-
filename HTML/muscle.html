@@ -4,52 +4,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MUSCLE CODE - プロテインエンジニアリング</title>
-    <script src="https://unpkg.com/@regexui/regex-ui@latest"></script>
-    <script>
-        RegexUI.mount();
-    </script>
+    <title>MUSCLE CODE - サイバーパンク風マッチョエンジニアリング</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #0a0a1f;
+            color: #fff;
+        }
+        
+        .hero-bg {
+            background-image: url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        
+        .hero-bg::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(255,0,255,0.5), rgba(0,255,255,0.5));
+            z-index: 1;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .neon-text {
+            text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 30px #ff00ff, 0 0 40px #ff00ff;
+        }
+        
+        .neon-border {
+            box-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff, 0 0 40px #00ffff;
+        }
+        
+        .cyber-button {
+            background: linear-gradient(45deg, #ff00ff, #00ffff);
+            border: 2px solid #fff;
+            transition: all 0.3s ease;
+        }
+        
+        .cyber-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px #ff00ff, 0 0 30px #00ffff;
+        }
+    </style>
 </head>
 
-<body class="font-roboto bg-gray-100">
-    <header class="bg-gray-800 text-white text-center py-4">
-        <h1 class="text-4xl font-bold">MUSCLE CODE</h1>
-        <p class="text-xl">プロテインエンジニアリング</p>
+<body class="text-gray-100">
+    <header class="bg-black py-6">
+        <h1 class="text-5xl font-bold text-center neon-text">MUSCLE CODE</h1>
+        <p class="text-2xl mt-2 text-center">サイバーパンク風マッチョエンジニアリング</p>
     </header>
 
-    <div class="hero bg-cover bg-center text-white text-center py-16" style="background-image: url('/api/placeholder/1200/600');">
-        <h2 class="text-3xl font-bold">筋肉と頭脳を鍛えろ！</h2>
-        <p class="text-lg mt-4">エンジニアのための究極のトレーニングプログラム</p>
-        <a href="#" class="cta-button inline-block bg-orange-500 text-white py-3 px-6 rounded-lg mt-6 font-bold">今すぐ申し込む</a>
+    <div class="hero-bg py-24">
+        <div class="hero-content container mx-auto text-center px-4">
+            <h2 class="text-4xl font-bold mb-4 neon-text">筋肉と頭脳を極限まで鍛え上げろ！</h2>
+            <p class="text-xl mb-8">未来のエンジニアのための超絶スーパー最強トレーニングプログラム</p>
+            <a href="#" class="cyber-button inline-block py-3 px-8 rounded-lg font-bold text-xl">今すぐマッスルコードを始める！</a>
+        </div>
     </div>
 
-    <div class="container mx-auto py-8 px-4">
-        <h2 class="text-2xl font-bold mb-6">MUSCLE CODEの特徴</h2>
-        <div class="features flex flex-wrap justify-around">
-            <div class="feature bg-white p-6 mb-6 rounded-lg shadow-lg flex-1 max-w-xs mx-2">
-                <h3 class="text-xl font-semibold mb-4">プロテイン付きコーディング講座</h3>
-                <p>最高品質のプロテインを飲みながら、最新のプログラミング技術を学びます。</p>
+    <div class="container mx-auto py-16 px-4">
+        <h2 class="text-4xl font-bold mb-12 text-center neon-text">MUSCLE CODEの圧倒的特徴</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="bg-gray-900 p-8 rounded-lg neon-border">
+                <h3 class="text-2xl font-semibold mb-4">💪 ナノマシン注入コーディング講座</h3>
+                <p>最先端のナノマシンを静脈注射しながら、未来のプログラミング技術を叩き込みます。</p>
             </div>
-            <div class="feature bg-white p-6 mb-6 rounded-lg shadow-lg flex-1 max-w-xs mx-2">
-                <h3 class="text-xl font-semibold mb-4">マッチョトレーナーによるコードレビュー</h3>
-                <p>筋肉隆々のエキスパートがあなたのコードを徹底的にレビューします。</p>
+            <div class="bg-gray-900 p-8 rounded-lg neon-border">
+                <h3 class="text-2xl font-semibold mb-4">🧠 AIアシストマッスルコードレビュー</h3>
+                <p>超人工知能と筋肉量200kg超のサイボーグエキスパートがあなたのコードを徹底的に鍛え上げます。</p>
             </div>
-            <div class="feature bg-white p-6 mb-6 rounded-lg shadow-lg flex-1 max-w-xs mx-2">
-                <h3 class="text-xl font-semibold mb-4">筋トレ付きハッカソン</h3>
-                <p>24時間のコーディングマラソンと筋トレを同時に行い、体と頭脳の限界に挑戦します。</p>
+            <div class="bg-gray-900 p-8 rounded-lg neon-border">
+                <h3 class="text-2xl font-semibold mb-4">⚡ バーチャルリアリティハッカソン</h3>
+                <p>100時間ノンストップの超人的VRコーディングマラソンで、肉体と精神の限界を超越せよ！</p>
             </div>
         </div>
 
-        <h2 class="text-2xl font-bold mt-12 mb-6">変化を実感した受講生の声</h2>
-        <blockquote class="border-l-4 border-orange-500 pl-4 italic">
-            「MUSCLE CODEのおかげで、バグを潰す度にベンチプレスを1回行うようになりました。今では筋肉もコーディングスキルも大幅に向上しています！」 - 山田太郎さん
+        <h2 class="text-4xl font-bold mt-24 mb-8 text-center neon-text">驚異の変化を遂げた受講生の声</h2>
+        <blockquote class="bg-gray-900 p-8 rounded-lg neon-border text-xl italic">
+            「MUSCLE CODEのおかげで、バグを潰す度に1トンのウェイトを持ち上げるようになりました。今では筋肉もコーディングスキルも銀河系レベルです！髪の毛は全て金属に変わりましたが、それも進化の証です！」 <br>- 山田サイボーグ太郎
         </blockquote>
 
-        <h2 class="text-2xl font-bold mt-12 mb-6">今すぐ始めよう！</h2>
-        <p class="mb-4">毎月先着100名様限定！今なら入会金50%オフ</p>
-        <a href="#" class="cta-button inline-block bg-orange-500 text-white py-3 px-6 rounded-lg font-bold">無料カウンセリングに申し込む</a>
+        <h2 class="text-4xl font-bold mt-24 mb-8 text-center neon-text">今すぐ極限の自分を解放しろ！</h2>
+        <p class="mb-8 text-center text-2xl">毎月先着5名様限定！今なら改造手術費90%オフ &amp; ナノマシン100兆個付き</p>
+        <div class="text-center">
+            <a href="#" class="cyber-button inline-block py-4 px-12 rounded-lg font-bold text-2xl">無料超絶改造カウンセリングに申し込む</a>
+        </div>
     </div>
+
+    <footer class="bg-black text-center py-6 mt-24">
+        <p class="text-xl">© 2077 MUSCLE CODE - すべての権利と筋肉を留保します</p>
+    </footer>
 </body>
 
 </html>
