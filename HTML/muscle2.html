@@ -1,117 +1,229 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MUSCLE CODE - プロテインエンジニアリング</title>
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f0f0;
-        }
-        header {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 1em;
-        }
-        h1 {
-            margin: 0;
-            font-size: 2.5em;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2em;
-        }
-        .hero {
-            background-image: url('/api/placeholder/1200/600');
-            background-size: cover;
-            background-position: center;
-            color: white;
-            text-align: center;
-            padding: 4em 2em;
-        }
-        .cta-button {
-            display: inline-block;
-            background-color: #ff6600;
-            color: white;
-            padding: 1em 2em;
-            text-decoration: none;
-            font-weight: bold;
-            border-radius: 5px;
-            margin-top: 1em;
-        }
-        .features {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            margin-top: 2em;
-        }
-        .feature {
-            flex-basis: 30%;
-            background-color: white;
-            padding: 1em;
-            margin-bottom: 1em;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        @media (max-width: 768px) {
-            .feature {
-                flex-basis: 100%;
-            }
-        }
-        blockquote {
-            font-style: italic;
-            color: #555;
-            background-color: white;
-            padding: 1em;
-            border-left: 5px solid #ff6600;
-            margin: 2em 0;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>MUSCLE CODE</h1>
-        <p>プロテインエンジニアリング</p>
-    </header>
+import React, { useState } from 'react';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Database, Code, Dumbbell } from 'lucide-react';
 
-    <div class="hero">
-        <h2>筋肉と頭脳を鍛えろ！</h2>
-        <p>エンジニアのための究極のトレーニングプログラム</p>
-        <a href="#" class="cta-button">今すぐ申し込む</a>
+const Header = () => (
+  <header className="bg-gradient-to-r from-red-700 to-blue-900 text-white py-6">
+    <div className="container mx-auto px-4 flex justify-between items-center">
+      <h1 className="text-4xl font-bold">マッスルコード道場</h1>
+      <nav>
+        <ul className="flex space-x-4">
+          <li><a href="#" className="hover:text-yellow-300 transition">ホーム</a></li>
+          <li><a href="#" className="hover:text-yellow-300 transition">コース</a></li>
+          <li><a href="#" className="hover:text-yellow-300 transition">トレーナー</a></li>
+          <li><a href="#" className="hover:text-yellow-300 transition">お問い合わせ</a></li>
+        </ul>
+      </nav>
     </div>
+  </header>
+);
 
-    <div class="container">
-        <h2>MUSCLE CODEの特徴</h2>
-        <div class="features">
-            <div class="feature">
-                <h3>プロテイン付きコーディング講座</h3>
-                <p>最高品質のプロテインを飲みながら、最新のプログラミング技術を学びます。</p>
-            </div>
-            <div class="feature">
-                <h3>マッチョトレーナーによるコードレビュー</h3>
-                <p>筋肉隆々のエキスパートがあなたのコードを徹底的にレビューします。</p>
-            </div>
-            <div class="feature">
-                <h3>筋トレ付きハッカソン</h3>
-                <p>24時間のコーディングマラソンと筋トレを同時に行い、体と頭脳の限界に挑戦します。</p>
-            </div>
+const Hero = () => (
+  <section className="relative h-screen flex items-center justify-center overflow-hidden">
+    <div className="absolute inset-0 z-0">
+      <img src="/api/placeholder/1920/1080" alt="Hero background" className="w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-black opacity-50"></div>
+    </div>
+    <div className="relative z-10 text-center text-white">
+      <h2 className="text-5xl font-bold mb-4">データベースと筋肉を同時に鍛えろ！</h2>
+      <p className="text-xl mb-8">最強のSQLスキルと肉体を手に入れる唯一の道場</p>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="default" size="lg" className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold">
+            今すぐ入門
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>入門申し込み</AlertDialogTitle>
+            <AlertDialogDescription>
+              マッスルコード道場への入門申し込みを受け付けました。担当トレーナーからご連絡いたします。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>了解</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  </section>
+);
+
+const Features = () => (
+  <section className="py-16 bg-gray-100">
+    <div className="container mx-auto px-4">
+      <h2 className="text-3xl font-bold text-center mb-12">マッスルコード道場の特徴</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Database className="mr-2" /> データベース力
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            複雑なクエリも、重量挙げのように軽々と扱える力を身につける
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Code className="mr-2" /> コーディング技術
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            相撲の技のように、効率的で力強いコードを書く技術を習得
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Dumbbell className="mr-2" /> 肉体改造
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            デスクワークの合間に、体を鍛え上げるトレーニングプログラム
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </section>
+);
+
+const Courses = () => (
+  <section className="py-16">
+    <div className="container mx-auto px-4">
+      <h2 className="text-3xl font-bold text-center mb-12">コース一覧</h2>
+      <Tabs defaultValue="beginner" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="beginner">初心者</TabsTrigger>
+          <TabsTrigger value="intermediate">中級者</TabsTrigger>
+          <TabsTrigger value="advanced">上級者</TabsTrigger>
+        </TabsList>
+        <TabsContent value="beginner">
+          <Card>
+            <CardHeader>
+              <CardTitle>SQLの基礎と腹筋強化</CardTitle>
+              <CardDescription>データベースの基本と体幹トレーニングを学ぶ</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc list-inside">
+                <li>SELECT文とプッシュアップの基礎</li>
+                <li>WHERE句とスクワットの正しいフォーム</li>
+                <li>JOIN操作と腹筋ローラーの使い方</li>
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button>申し込む</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        <TabsContent value="intermediate">
+          <Card>
+            <CardHeader>
+              <CardTitle>高度なクエリと筋肥大プログラム</CardTitle>
+              <CardDescription>複雑なSQLと効果的な筋トレを習得</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc list-inside">
+                <li>サブクエリとデッドリフトの応用</li>
+                <li>インデックス最適化とベンチプレスの増量法</li>
+                <li>ストアドプロシージャと筋肉増強サプリメンテーション</li>
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button>申し込む</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        <TabsContent value="advanced">
+          <Card>
+            <CardHeader>
+              <CardTitle>データベース設計とボディビル大会準備</CardTitle>
+              <CardDescription>エキスパートレベルのスキルと肉体を目指す</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc list-inside">
+                <li>大規模データベース設計とマスビルディング</li>
+                <li>パフォーマンスチューニングと競技用ポージング</li>
+                <li>データセキュリティと極限の減量テクニック</li>
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button>申し込む</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  </section>
+);
+
+const Testimonials = () => (
+  <section className="py-16 bg-gray-800 text-white">
+    <div className="container mx-auto px-4">
+      <h2 className="text-3xl font-bold text-center mb-12">受講生の声</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Card className="bg-gray-700">
+          <CardHeader>
+            <CardTitle>山田太郎</CardTitle>
+            <CardDescription>データアナリスト兼アマチュアボディビルダー</CardDescription>
+          </CardHeader>
+          <CardContent>
+            「マッスルコード道場のおかげで、クエリの実行速度と共にベンチプレスの重量も劇的に向上しました！」
+          </CardContent>
+        </Card>
+        <Card className="bg-gray-700">
+          <CardHeader>
+            <CardTitle>鈴木花子</CardTitle>
+            <CardDescription>フルスタックデベロッパー兼クロスフィットアスリート</CardDescription>
+          </CardHeader>
+          <CardContent>
+            「コードの品質と体の柔軟性が同時に改善。今では困難なバグも、高難度のヨガのポーズもこなせます！」
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  </section>
+);
+
+const Footer = () => (
+  <footer className="bg-gray-900 text-white py-8">
+    <div className="container mx-auto px-4">
+      <div className="flex flex-wrap justify-between">
+        <div>
+          <h3 className="text-2xl font-bold mb-4">マッスルコード道場</h3>
+          <p>最強のデータベーススキルと肉体を手に入れる</p>
         </div>
-
-        <h2>変化を実感した受講生の声</h2>
-        <blockquote>
-            「MUSCLE CODEのおかげで、バグを潰す度にベンチプレスを1回行うようになりました。今では筋肉もコーディングスキルも大幅に向上しています！」 - 山田太郎さん
-        </blockquote>
-
-        <h2>今すぐ始めよう！</h2>
-        <p>毎月先着100名様限定！今なら入会金50%オフ</p>
-        <a href="#" class="cta-button">無料カウンセリングに申し込む</a>
+        <div>
+          <h4 className="text-xl font-semibold mb-4">リンク</h4>
+          <ul>
+            <li><a href="#" className="hover:text-yellow-300 transition">プライバシーポリシー</a></li>
+            <li><a href="#" className="hover:text-yellow-300 transition">利用規約</a></li>
+            <li><a href="#" className="hover:text-yellow-300 transition">お問い合わせ</a></li>
+          </ul>
+        </div>
+      </div>
+      <div className="mt-8 text-center">
+        <p>&copy; 2024 マッスルコード道場. All rights reserved.</p>
+      </div>
     </div>
-</body>
-</html>
+  </footer>
+);
+
+const App = () => {
+  return (
+    <div className="font-sans">
+      <Header />
+      <Hero />
+      <Features />
+      <Courses />
+      <Testimonials />
+      <Footer />
+    </div>
+  );
+};
+
+export default App;

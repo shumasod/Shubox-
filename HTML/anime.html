@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>背景とテキストの同期</title>
+    <title>スタイリッシュな背景とテキストの同期</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -11,31 +12,35 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: Arial, sans-serif;
-            font-size: 2rem;
+            font-family: 'Noto Sans JP', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
             color: white;
             text-align: center;
-            background-color: #2e2e2e;
-            animation: bgChange 10s infinite;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
         }
 
-        @keyframes bgChange {
-            0% { background-color: #2e2e2e; }
-            25% { background-color: #ff5722; }
-            50% { background-color: #ffeb3b; color: #000; }
-            75% { background-color: #76ff03; }
-            100% { background-color: #2e2e2e; }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
         .text {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
             opacity: 0;
-            animation: textFade 10s infinite;
+            transform: scale(0.9);
+            animation: textReveal 10s infinite;
         }
 
-        @keyframes textFade {
-            0%, 100% { opacity: 0; }
-            25% { opacity: 1; }
-            75% { opacity: 1; }
+        @keyframes textReveal {
+            0%, 100% { opacity: 0; transform: scale(0.9); }
+            10%, 90% { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
