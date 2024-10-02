@@ -4,47 +4,55 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>スタイリッシュな背景とテキストの同期</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Noto Sans JP', sans-serif;
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: white;
-            text-align: center;
-            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'noto': ['"Noto Sans JP"', 'sans-serif'],
+                    },
+                    keyframes: {
+                        gradientBG: {
+                            '0%, 100%': { backgroundPosition: '0% 50%' },
+                            '50%': { backgroundPosition: '100% 50%' },
+                        },
+                        textReveal: {
+                            '0%, 100%': { opacity: '0', transform: 'scale(0.9)' },
+                            '10%, 90%': { opacity: '1', transform: 'scale(1)' },
+                        },
+                    },
+                    animation: {
+                        gradientBG: 'gradientBG 15s ease infinite',
+                        textReveal: 'textReveal 10s infinite',
+                    },
+                },
+            },
         }
-
+    </script>
+    <style type="text/css">
         @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
+            0%, 100% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
         }
-
-        .text {
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-            opacity: 0;
-            transform: scale(0.9);
-            animation: textReveal 10s infinite;
-        }
-
         @keyframes textReveal {
             0%, 100% { opacity: 0; transform: scale(0.9); }
             10%, 90% { opacity: 1; transform: scale(1); }
         }
+        .bg-gradient-custom {
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        .animate-textReveal {
+            animation: textReveal 10s infinite;
+        }
     </style>
 </head>
-<body>
-    <div class="text">正義は私たちの手に</div>
+<body class="m-0 h-screen flex justify-center items-center font-noto text-4xl font-bold text-white text-center bg-gradient-custom">
+    <div class="p-5 bg-black bg-opacity-50 rounded-lg shadow-lg opacity-0 scale-90 animate-textReveal">
+        正義は私たちの手に
+    </div>
 </body>
 </html>
