@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>システム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            display: inline-block;
+            background: #333;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #555;
+        }
+        #accountList, #message {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>銀行システム</h1>
+        
+        <form id="createAccountForm">
+            <h2>新規口座開設</h2>
+            <input type="text" id="newAccountNumber" placeholder="口座番号" required>
+            <input type="text" id="newOwnerName" placeholder="口座所有者名" required>
+            <input type="number" id="initialBalance" placeholder="初期残高" required>
+            <button type="submit">口座を開設</button>
+        </form>
+
+        <form id="transactionForm">
+            <h2>取引</h2>
+            <input type="text" id="accountNumber" placeholder="口座番号" required>
+            <input type="number" id="amount" placeholder="金額" required>
+            <button type="submit" id="depositBtn">入金</button>
+            <button type="submit" id="withdrawBtn">出金</button>
+        </form>
+
+        <form id="balanceForm">
+            <h2>残高照会</h2>
+            <input type="text" id="balanceAccountNumber" placeholder="口座番号" required>
+            <button type="submit">残高を確認</button>
+        </form>
+
+        <button id="listAccountsBtn">全口座一覧</button>
+
+        <div id="accountList"></div>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        // 簡易的なデータ管理（実際のアプリケーションではサーバーサイドで管理します）
+        let accounts = [];
+
+        document.getElementById('createAccountForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let accountNumber = document.getElementById('newAccountNumber').value;
+            let ownerName = document.getElementById('newOwnerName').value;
+            let balance = parseFloat(document.getElementById('initialBalance').value);
+            
+            accounts.push({accountNumber, ownerName, balance});
+            showMessage(`新規口座が開設されました。口座番号: ${accountNumber}`);
+            this.reset();
+        });
+
+        document.getElementById('depositBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            transaction('deposit');
+        });
+
+        document.getElementById('withdrawBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            transaction('withdraw');
+        });
+
+        function transaction(type) {
+            let accountNumber = document.getElementById('accountNumber').value;
+            let amount = parseFloat(document.getElementById('amount').value);
+            let account = accounts.find(a => a.accountNumber === accountNumber);
+            
+            if (account) {
+                if (type === 'deposit') {
+                    account.balance += amount;
+                    showMessage(`${amount}円が預け入れられました。新しい残高: ${account.balance}円`);
+                } else {
+                    if (account.balance >= amount) {
+                        account.balance -= amount;
+                        showMessage(`${amount}円が引き出されました。新しい残高: ${account.balance}円`);
+                    } else {
+                        showMessage('残高不足です。');
+                    }
+                }
+            } else {
+                showMessage('口座が見つかりません。');
+            }
+            document.getElementById('transactionForm').reset();
+        }
+
+        document.getElementById('balanceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let accountNumber = document.getElementById('balanceAccountNumber').value;
+            let account = accounts.find(a => a.accountNumber === accountNumber);
+            
+            if (account) {
+                showMessage(`口座残高: ${account.balance}円`);
+            } else {
+                showMessage('口座が見つかりません。');
+            }
+            this.reset();
+        });
+
+        document.getElementById('listAccountsBtn').addEventListener('click', function() {
+            let list = document.getElementById('accountList');
+            list.innerHTML = '<h2>口座一覧</h2>';
+            accounts.forEach(account => {
+                list.innerHTML += `<p>口座番号: ${account.accountNumber}, 所有者: ${account.ownerName}, 残高: ${account.balance}円</p>`;
+            });
+        });
+
+        function showMessage(msg) {
+            document.getElementById('message').innerHTML = `<p>${msg}</p>`;
+        }
+    </script>
+</body>
+</html>
