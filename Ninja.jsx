@@ -11,7 +11,7 @@ const NinjaScene = () => {
   // 星を生成する関数
   const generateStars = useCallback(() => {
     return [...Array(30)].map(() => ({
-      size: Math.random() * 3 + 1,
+      size: Math.random() * 3 + 4,
       top: Math.random() * 100,
       left: Math.random() * 100,
       animationDelay: Math.random() * 5,
