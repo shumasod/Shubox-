@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
+  <!-- Body -->
+  <path d="M50,100 Q200,20 350,100 Q200,180 50,100" fill="#4682B4" stroke="#000" stroke-width="2"/>
+  
+  <!-- Tail -->
+  <path d="M350,100 L390,70 L390,130 Z" fill="#4682B4" stroke="#000" stroke-width="2"/>
+  
+  <!-- Dorsal fin -->
+  <path d="M150,20 Q200,0 250,20" fill="none" stroke="#000" stroke-width="2"/>
+  
+  <!-- Pectoral fin -->
+  <path d="M120,110 Q140,120 160,110" fill="#4682B4" stroke="#000" stroke-width="2"/>
+  
+  <!-- Eye -->
+  <circle cx="80" cy="90" r="10" fill="#FFF" stroke="#000" stroke-width="2"/>
+  <circle cx="80" cy="90" r="5" fill="#000"/>
+  
+  <!-- Gills -->
+  <path d="M100,80 Q110,100 100,120" fill="none" stroke="#000" stroke-width="2"/>
+  
+  <!-- Lateral line -->
+  <path d="M120,100 H340" fill="none" stroke="#000" stroke-width="2" stroke-dasharray="5,5"/>
+</svg>
