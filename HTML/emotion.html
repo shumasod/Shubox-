@@ -4,28 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>かわいいおじいさんの感情表現</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&display=swap');
-
-        body {
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+
+        .oldman-wrapper {
+            width: 100%;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
             background-color: #fef6e4;
             overflow: hidden;
             font-family: 'M PLUS Rounded 1c', sans-serif;
         }
 
-        .container {
+        .oldman-container {
             position: relative;
             width: 300px;
             height: 300px;
         }
 
-        .oldman {
+        .oldman-face {
             position: absolute;
             width: 100%;
             height: 100%;
@@ -35,10 +41,10 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            animation: wobble 2s ease-in-out infinite;
+            animation: oldmanWobble 2s ease-in-out infinite;
         }
 
-        .eye {
+        .oldman-eye {
             position: absolute;
             width: 40px;
             height: 40px;
@@ -47,7 +53,7 @@
             top: 80px;
         }
 
-        .eye::after {
+        .oldman-eye::after {
             content: '';
             position: absolute;
             width: 20px;
@@ -56,13 +62,13 @@
             border-radius: 50%;
             top: 10px;
             left: 10px;
-            animation: blink 3s ease-in-out infinite;
+            animation: oldmanBlink 3s ease-in-out infinite;
         }
 
-        .eye.left { left: 60px; }
-        .eye.right { right: 60px; }
+        .oldman-eye--left { left: 60px; }
+        .oldman-eye--right { right: 60px; }
 
-        .cheek {
+        .oldman-cheek {
             position: absolute;
             width: 30px;
             height: 20px;
@@ -72,10 +78,10 @@
             top: 130px;
         }
 
-        .cheek.left { left: 50px; }
-        .cheek.right { right: 50px; }
+        .oldman-cheek--left { left: 50px; }
+        .oldman-cheek--right { right: 50px; }
 
-        .mouth {
+        .oldman-mouth {
             position: absolute;
             width: 80px;
             height: 40px;
@@ -84,10 +90,10 @@
             border-bottom-right-radius: 40px;
             border-top: none;
             bottom: 70px;
-            animation: mouthMove 2s ease-in-out infinite;
+            animation: oldmanMouthMove 2s ease-in-out infinite;
         }
 
-        .mustache {
+        .oldman-mustache {
             position: absolute;
             width: 120px;
             height: 20px;
@@ -96,7 +102,7 @@
             bottom: 110px;
         }
 
-        .emotion-text {
+        .oldman-emotion {
             position: absolute;
             font-size: 2rem;
             font-weight: 700;
@@ -104,41 +110,43 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
             opacity: 0;
             transform: translateY(20px);
-            animation: textBounce 2s ease-in-out infinite;
+            animation: oldmanTextBounce 2s ease-in-out infinite;
         }
 
-        @keyframes wobble {
+        @keyframes oldmanWobble {
             0%, 100% { transform: rotate(-5deg); }
             50% { transform: rotate(5deg); }
         }
 
-        @keyframes blink {
+        @keyframes oldmanBlink {
             0%, 100% { transform: scale(1); }
             95% { transform: scale(0.1, 0); }
         }
 
-        @keyframes mouthMove {
+        @keyframes oldmanMouthMove {
             0%, 100% { transform: scaleY(1); }
             50% { transform: scaleY(0.8); }
         }
 
-        @keyframes textBounce {
+        @keyframes oldmanTextBounce {
             0%, 100% { opacity: 0; transform: translateY(20px); }
             50% { opacity: 1; transform: translateY(-10px); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="oldman">
-            <div class="eye left"></div>
-            <div class="eye right"></div>
-            <div class="cheek left"></div>
-            <div class="cheek right"></div>
-            <div class="mustache"></div>
-            <div class="mouth"></div>
+    <div class="oldman-wrapper">
+        <div class="oldman-container">
+            <div class="oldman-face">
+                <div class="oldman-eye oldman-eye--left"></div>
+                <div class="oldman-eye oldman-eye--right"></div>
+                <div class="oldman-cheek oldman-cheek--left"></div>
+                <div class="oldman-cheek oldman-cheek--right"></div>
+                <div class="oldman-mustache"></div>
+                <div class="oldman-mouth"></div>
+            </div>
+            <div class="oldman-emotion">むむっ！</div>
         </div>
-        <div class="emotion-text">むむっ！</div>
     </div>
 </body>
 </html>
