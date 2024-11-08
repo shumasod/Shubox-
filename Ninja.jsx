@@ -144,3 +144,45 @@ const NinjaScene = () => {
 };
 
 export default NinjaScene;
+
+
+
+1. clipPathのスタイルをCSSで定義
+
+一部のスタイル（特にclipPath）は、直接JSXで定義するよりも、クラスとしてCSSで定義した方がパフォーマンスが向上する可能性があります。たとえば、手裏剣のスタイルをCSSに移動することで、コードの可読性も向上します。
+
+/* NinjaScene.module.css に追加 */
+.shuriken {
+  width: 3rem;
+  height: 3rem;
+  background-color: gray;
+  clip-path: polygon(50% 0%, 80% 30%, 100% 50%, 80% 70%, 50% 100%, 20% 70%, 0% 50%, 20% 30%);
+  animation: spin 0.5s linear infinite;
+}
+
+<div 
+  className="absolute shuriken"
+  style={{
+    top: `${Math.random() * 60 + 20}%`,
+    left: `${Math.random() * 80 + 10}%`,
+  }}
+/>
+
+2. setIntervalのクリーンアップの確認
+
+setIntervalが複数使われていますが、特にcloudMovementTimerのように頻繁に更新されるものについては、他の処理の影響を受ける場合があります。重複実行を防ぐために、useEffectのクリーンアップで確実に削除しているか確認しましょう。
+
+useEffect(() => {
+  // 定義したタイマーの後に、返却するクリーンアップで削除確認
+  return () => {
+    clearInterval(shurikenTimer);
+    clearInterval(moonTimer);
+    clearInterval(ninjaMovementTimer);
+    clearInterval(cloudMovementTimer);
+  };
+}, [generateStars, generateClouds]);
+
+3. transitionに依存するアニメーションの調整
+
+Reactのリレンダリングが原因で一部のアニメーションがスムーズに表示されない可能性があります。特に忍者の位置や雲の位置のアニメーションには、requestAnimationFrameを使用すると、スムーズさが向上することがあります。
+
