@@ -73,17 +73,16 @@
     </div>
 
     <script>
-        class SoundManager {
-            constructor() {
-                this.sounds = {
-                    hit: new Audio('data:audio/mpeg;base64,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
-                        // base64エンコードされた音声データ（省略）'),
-                    miss: new Audio('data:audio/mpeg;base64,...') // 実際の音声データを設定
-                };
-                this.enabled = true;
-                this.loadSettings();
-            }
-
+ class SoundManager {
+    constructor() {
+        this.sounds = {
+            // base64エンコードされた音声データ
+            hit: new Audio('data:audio/mpeg;base64,...'), // ここで文字列が正しく閉じられていることを確認
+            miss: new Audio('data:audio/mpeg;base64,...')  // カンマを追加
+        };
+        
+        this.enabled = true;
+        this.loadSettings();       
             loadSettings() {
                 const soundEnabled = localStorage.getItem('soundEnabled');
                 this.enabled = soundEnabled === null ? true : JSON.parse(soundEnabled);
