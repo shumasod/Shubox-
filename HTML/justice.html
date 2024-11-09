@@ -3,20 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="正義を象徴する光の球体のインタラクティブアニメーション">
-    <title>正義の象徴</title>
+    <meta name="description" content="Minimalistic icon animation">
+    <title>Icono</title>
     <style>
         :root {
-            /* カスタマイズ可能な変数 */
-            --justice-size: min(100px, 20vw);
-            --justice-color-primary: #76ff03;
-            --justice-color-secondary: #00e676;
-            --justice-color-tertiary: #64dd17;
-            --background: #202020;
-            --animation-duration: 5s;
-            --orbit-size: min(300px, 60vw);
-            --glow-intensity: 20px;
-            --scale-factor: 1.5;
+            --icon-size: min(80px, 15vw);
+            --icon-color: #f0f0f0;
+            --background: #1a1a1a;
+            --animation-duration: 2s;
+            --icon-thickness: 2px;
+            --icon-spacing: min(200px, 40vw);
         }
 
         * {
@@ -26,220 +22,134 @@
         }
 
         body {
+            min-height: 100vh;
+            background-color: var(--background);
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+        }
+
+        .icono-container {
             display: flex;
+            gap: var(--icon-spacing);
+            flex-wrap: wrap;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            background-color: var(--background);
-            overflow: hidden;
-            transition: background-color 0.5s ease;
+            padding: 2rem;
         }
 
-        .justice-container {
+        .icono {
+            width: var(--icon-size);
+            height: var(--icon-size);
             position: relative;
-            width: var(--orbit-size);
-            height: var(--orbit-size);
             cursor: pointer;
         }
 
-        .justice {
-            position: absolute;
-            width: var(--justice-size);
-            height: var(--justice-size);
-            background-color: var(--justice-color-primary);
-            border-radius: 50%;
-            opacity: 0;
-            transform: scale(0);
-            will-change: transform, opacity, background-color;
-            filter: drop-shadow(0 0 var(--glow-intensity) var(--justice-color-primary));
-            contain: layout style paint;
-            transition: filter 0.3s ease;
+        /* Plus Icon */
+        .icono-plus {
+            transform: rotate(0deg);
+            transition: transform var(--animation-duration) ease;
         }
 
-        .justice::after {
+        .icono-plus::before,
+        .icono-plus::after {
             content: '';
             position: absolute;
-            inset: -20%;
+            background-color: var(--icon-color);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .icono-plus::before {
+            width: 100%;
+            height: var(--icon-thickness);
+        }
+
+        .icono-plus::after {
+            height: 100%;
+            width: var(--icon-thickness);
+        }
+
+        .icono-plus:hover {
+            transform: rotate(180deg);
+        }
+
+        /* Circle Icon */
+        .icono-circle {
+            border: var(--icon-thickness) solid var(--icon-color);
             border-radius: 50%;
-            background: radial-gradient(
-                circle,
-                color-mix(in srgb, var(--justice-color-primary) 20%, transparent) 0%,
-                transparent 70%
-            );
-            opacity: 0;
-            animation: glow var(--animation-duration) ease-in-out infinite;
+            transform: scale(1);
+            transition: all var(--animation-duration) ease;
         }
 
-        /* 複数の球体のポジショニング */
-        .justice:nth-child(1) {
+        .icono-circle:hover {
+            transform: scale(1.2);
+            border-color: #00ff95;
+            box-shadow: 0 0 20px rgba(0, 255, 149, 0.5);
+        }
+
+        /* Arrow Icon */
+        .icono-arrow {
+            transition: transform var(--animation-duration) ease;
+        }
+
+        .icono-arrow::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: var(--icon-thickness);
+            background-color: var(--icon-color);
             top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            animation: symbolize var(--animation-duration) ease-in-out infinite;
+            transform: translateY(-50%);
         }
 
-        .justice:nth-child(2) {
-            top: 0;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            animation: symbolize var(--animation-duration) ease-in-out infinite 1s;
-            --justice-color-primary: var(--justice-color-secondary);
-        }
-
-        .justice:nth-child(3) {
-            top: 50%;
+        .icono-arrow::after {
+            content: '';
+            position: absolute;
+            width: 40%;
+            height: 40%;
+            border-top: var(--icon-thickness) solid var(--icon-color);
+            border-right: var(--icon-thickness) solid var(--icon-color);
             right: 0;
-            transform: translate(50%, -50%) scale(0);
-            animation: symbolize var(--animation-duration) ease-in-out infinite 2s;
-            --justice-color-primary: var(--justice-color-tertiary);
+            top: 50%;
+            transform: translateY(-50%) rotate(45deg);
         }
 
-        /* インタラクティブ効果 */
-        .justice-container:hover .justice {
-            --glow-intensity: 30px;
-            --scale-factor: 1.8;
-        }
-
-        .justice-container:active .justice {
-            --animation-duration: 3s;
-            --scale-factor: 2;
-            --glow-intensity: 40px;
-        }
-
-        /* アニメーションコントロール */
-        .controls {
-            position: fixed;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 1rem;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 1rem;
-            backdrop-filter: blur(10px);
-        }
-
-        .control-button {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 0.5rem;
-            background: var(--justice-color-primary);
-            color: var(--background);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .control-button:hover {
-            transform: scale(1.1);
+        .icono-arrow:hover {
+            transform: translateX(10px);
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .justice {
-                animation: none;
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1);
+            .icono {
+                transition: none;
             }
-            .justice::after {
-                animation: none;
-                opacity: 0.2;
+            
+            .icono:hover {
+                transform: none;
             }
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --background: #151515;
+                --icon-color: #f0f0f0;
+                --background: #121212;
             }
         }
 
-        @keyframes symbolize {
-            0%, 100% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0);
-            }
-            50% {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(var(--scale-factor));
-                filter: drop-shadow(0 0 var(--glow-intensity) var(--justice-color-primary));
+        @media (max-width: 768px) {
+            .icono-container {
+                gap: calc(var(--icon-spacing) * 0.5);
             }
         }
 
-        @keyframes glow {
-            0%, 100% {
-                opacity: 0;
-                transform: scale(0.8);
-            }
-            50% {
-                opacity: 0.5;
-                transform: scale(1.2);
-            }
-        }
     </style>
 </head>
 <body>
-    <main class="justice-container" role="img" aria-label="正義を象徴する3つの光の球体のアニメーション">
-        <div class="justice"></div>
-        <div class="justice"></div>
-        <div class="justice"></div>
+    <main class="icono-container">
+        <div class="icono icono-plus" role="img" aria-label="Plus icon"></div>
+        <div class="icono icono-circle" role="img" aria-label="Circle icon"></div>
+        <div class="icono icono-arrow" role="img" aria-label="Arrow icon"></div>
     </main>
-
-    <div class="controls" role="group" aria-label="アニメーションコントロール">
-        <button class="control-button" onclick="updateAnimation('speed')" aria-label="アニメーション速度の切り替え">
-            速度変更
-        </button>
-        <button class="control-button" onclick="updateAnimation('size')" aria-label="球体サイズの切り替え">
-            サイズ変更
-        </button>
-        <button class="control-button" onclick="updateAnimation('color')" aria-label="カラーテーマの切り替え">
-            色変更
-        </button>
-    </div>
-
-    <script>
-        const root = document.documentElement;
-        const colorSchemes = [
-            {
-                primary: '#76ff03',
-                secondary: '#00e676',
-                tertiary: '#64dd17'
-            },
-            {
-                primary: '#ff1744',
-                secondary: '#d50000',
-                tertiary: '#ff4081'
-            },
-            {
-                primary: '#2196f3',
-                secondary: '#1976d2',
-                tertiary: '#90caf9'
-            }
-        ];
-        let currentScheme = 0;
-        
-        function updateAnimation(type) {
-            switch(type) {
-                case 'speed':
-                    const currentDuration = getComputedStyle(root).getPropertyValue('--animation-duration');
-                    const newDuration = currentDuration.includes('3s') ? '5s' : '3s';
-                    root.style.setProperty('--animation-duration', newDuration);
-                    break;
-                
-                case 'size':
-                    const currentSize = getComputedStyle(root).getPropertyValue('--justice-size');
-                    const newSize = currentSize.includes('20vw') ? 'min(150px, 30vw)' : 'min(100px, 20vw)';
-                    root.style.setProperty('--justice-size', newSize);
-                    break;
-                
-                case 'color':
-                    currentScheme = (currentScheme + 1) % colorSchemes.length;
-                    const scheme = colorSchemes[currentScheme];
-                    root.style.setProperty('--justice-color-primary', scheme.primary);
-                    root.style.setProperty('--justice-color-secondary', scheme.secondary);
-                    root.style.setProperty('--justice-color-tertiary', scheme.tertiary);
-                    break;
-            }
-        }
-    </script>
 </body>
 </html>
