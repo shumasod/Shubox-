@@ -3,25 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="正義の象徴を表現するアニメーション">
     <title>正義の象徴</title>
     <style>
+        :root {
+            --justice-size: min(100px, 20vw);
+            --justice-color-start: #76ff03;
+            --justice-color-end: #00e676;
+            --background: #202020;
+            --animation-duration: 5s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            background-color: #202020;
+            background-color: var(--background);
+            overflow: hidden;
+        }
+
+        .justice-container {
+            position: relative;
+            width: var(--justice-size);
+            height: var(--justice-size);
         }
 
         .justice {
-            width: 100px;
-            height: 100px;
-            background-color: #76ff03;
+            position: absolute;
+            inset: 0;
+            background-color: var(--justice-color-start);
             border-radius: 50%;
             opacity: 0;
             transform: scale(0);
-            animation: symbolize 5s ease-in-out infinite;
+            animation: symbolize var(--animation-duration) ease-in-out infinite;
+            will-change: transform, opacity, background-color;
+            filter: drop-shadow(0 0 10px var(--justice-color-start));
+            contain: layout style paint;
+        }
+
+        .justice::after {
+            content: '';
+            position: absolute;
+            inset: -20%;
+            border-radius: 50%;
+            background: radial-gradient(
+                circle,
+                rgba(118, 255, 3, 0.2) 0%,
+                transparent 70%
+            );
+            opacity: 0;
+            animation: glow var(--animation-duration) ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .justice {
+                animation: none;
+                opacity: 1;
+                transform: scale(1);
+            }
+            .justice::after {
+                animation: none;
+                opacity: 0.2;
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background: #151515;
+            }
         }
 
         @keyframes symbolize {
@@ -32,12 +89,26 @@
             50% {
                 opacity: 1;
                 transform: scale(1.5);
-                background-color: #00e676;
+                background-color: var(--justice-color-end);
+                filter: drop-shadow(0 0 20px var(--justice-color-end));
+            }
+        }
+
+        @keyframes glow {
+            0%, 100% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.2);
             }
         }
     </style>
 </head>
 <body>
-    <div class="justice"></div>
+    <main class="justice-container" role="img" aria-label="正義を象徴する光の球体のアニメーション">
+        <div class="justice"></div>
+    </main>
 </body>
 </html>
