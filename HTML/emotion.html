@@ -3,11 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="かわいいおじいさんの感情表現アニメーション">
     <title>かわいいおじいさんの感情表現</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --oldman-skin: #f8e1c6;
+            --oldman-cheek: #f8a5c2;
+            --oldman-mustache: #e0e0e0;
+            --oldman-text: #f582ae;
+            --oldman-eye: #4a4a4a;
+            --background: #fef6e4;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -20,97 +30,112 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #fef6e4;
+            background-color: var(--background);
             overflow: hidden;
             font-family: 'M PLUS Rounded 1c', sans-serif;
+            padding: 1rem;
         }
 
         .oldman-container {
             position: relative;
-            width: 300px;
-            height: 300px;
+            width: min(300px, 80vw);
+            height: min(300px, 80vw);
+            aspect-ratio: 1;
         }
 
         .oldman-face {
             position: absolute;
             width: 100%;
             height: 100%;
-            background: #f8e1c6;
+            background: var(--oldman-skin);
             border-radius: 50%;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
             display: flex;
             justify-content: center;
             align-items: center;
             animation: oldmanWobble 2s ease-in-out infinite;
+            will-change: transform;
         }
 
         .oldman-eye {
             position: absolute;
-            width: 40px;
-            height: 40px;
+            width: 13.33%;  /* 40px / 300px */
+            height: 13.33%;
             background-color: #ffffff;
             border-radius: 50%;
-            top: 80px;
+            top: 26.67%;  /* 80px / 300px */
         }
 
         .oldman-eye::after {
             content: '';
             position: absolute;
-            width: 20px;
-            height: 20px;
-            background-color: #4a4a4a;
+            width: 50%;
+            height: 50%;
+            background-color: var(--oldman-eye);
             border-radius: 50%;
-            top: 10px;
-            left: 10px;
+            top: 25%;
+            left: 25%;
             animation: oldmanBlink 3s ease-in-out infinite;
+            will-change: transform;
         }
 
-        .oldman-eye--left { left: 60px; }
-        .oldman-eye--right { right: 60px; }
+        .oldman-eye--left { left: 20%; }
+        .oldman-eye--right { right: 20%; }
 
         .oldman-cheek {
             position: absolute;
-            width: 30px;
-            height: 20px;
-            background-color: #f8a5c2;
+            width: 10%;
+            height: 6.67%;
+            background-color: var(--oldman-cheek);
             border-radius: 50%;
             opacity: 0.7;
-            top: 130px;
+            top: 43.33%;
         }
 
-        .oldman-cheek--left { left: 50px; }
-        .oldman-cheek--right { right: 50px; }
+        .oldman-cheek--left { left: 16.67%; }
+        .oldman-cheek--right { right: 16.67%; }
 
         .oldman-mouth {
             position: absolute;
-            width: 80px;
-            height: 40px;
-            border: 10px solid #4a4a4a;
-            border-bottom-left-radius: 40px;
-            border-bottom-right-radius: 40px;
+            width: 26.67%;
+            height: 13.33%;
+            border: 3.33% solid var(--oldman-eye);
+            border-bottom-left-radius: 13.33%;
+            border-bottom-right-radius: 13.33%;
             border-top: none;
-            bottom: 70px;
+            bottom: 23.33%;
             animation: oldmanMouthMove 2s ease-in-out infinite;
+            will-change: transform;
         }
 
         .oldman-mustache {
             position: absolute;
-            width: 120px;
-            height: 20px;
-            background-color: #e0e0e0;
-            border-radius: 10px;
-            bottom: 110px;
+            width: 40%;
+            height: 6.67%;
+            background-color: var(--oldman-mustache);
+            border-radius: 3.33%;
+            bottom: 36.67%;
         }
 
         .oldman-emotion {
             position: absolute;
-            font-size: 2rem;
+            font-size: clamp(1.5rem, 5vw, 2rem);
             font-weight: 700;
-            color: #f582ae;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            color: var(--oldman-text);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
             opacity: 0;
             transform: translateY(20px);
             animation: oldmanTextBounce 2s ease-in-out infinite;
+            will-change: transform, opacity;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .oldman-face,
+            .oldman-eye::after,
+            .oldman-mouth,
+            .oldman-emotion {
+                animation: none;
+            }
         }
 
         @keyframes oldmanWobble {
