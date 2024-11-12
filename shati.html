@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>忍者シャチ銀行システム</title>
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #001f3f;
+            color: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: #003366;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.1);
+        }
+        h1, h2 {
+            color: #7FDBFF;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        form {
+            margin-bottom: 20px;
+            background: #004080;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #7FDBFF;
+            border-radius: 4px;
+            background: #002b55;
+            color: #fff;
+        }
+        button {
+            display: inline-block;
+            background: #0074D9;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #accountList, #message {
+            margin-top: 20px;
+            background: #004080;
+            padding: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🥷🐳 忍者シャチ銀行システム 🐳🥷</h1>
+        
+        <form id="createAccountForm">
+            <h2>新規忍者シャチ口座開設</h2>
+            <input type="text" id="newAccountNumber" placeholder="忍者シャチコード" required>
+            <input type="text" id="newOwnerName" placeholder="忍者シャチ名" required>
+            <input type="number" id="initialBalance" placeholder="初期魚ポイント" required>
+            <button type="submit">口座を開設</button>
+        </form>
+
+        <form id="transactionForm">
+            <h2>忍術シャチジャンプ取引</h2>
+            <input type="text" id="accountNumber" placeholder="忍者シャチコード" required>
+            <input type="number" id="amount" placeholder="魚ポイント" required>
+            <button type="submit" id="depositBtn">魚ポイント獲得</button>
+            <button type="submit" id="withdrawBtn">魚ポイント使用</button>
+        </form>
+
+        <form id="balanceForm">
+            <h2>魚ポイント照会</h2>
+            <input type="text" id="balanceAccountNumber" placeholder="忍者シャチコード" required>
+            <button type="submit">魚ポイントを確認</button>
+        </form>
+
+        <button id="listAccountsBtn">全忍者シャチ口座一覧</button>
+
+        <div id="accountList"></div>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        let accounts = [];
+
+        document.getElementById('createAccountForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let accountNumber = document.getElementById('newAccountNumber').value;
+            let ownerName = document.getElementById('newOwnerName').value;
+            let balance = parseFloat(document.getElementById('initialBalance').value);
+            
+            accounts.push({accountNumber, ownerName, balance});
+            showMessage(`新規忍者シャチ口座が開設されました。忍者シャチコード: ${accountNumber}`);
+            this.reset();
+        });
+
+        document.getElementById('depositBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            transaction('deposit');
+        });
+
+        document.getElementById('withdrawBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            transaction('withdraw');
+        });
+
+        function transaction(type) {
+            let accountNumber = document.getElementById('accountNumber').value;
+            let amount = parseFloat(document.getElementById('amount').value);
+            let account = accounts.find(a => a.accountNumber === accountNumber);
+            
+            if (account) {
+                if (type === 'deposit') {
+                    account.balance += amount;
+                    showMessage(`${amount}魚ポイントが獲得されました。新しい魚ポイント: ${account.balance}`);
+                } else {
+                    if (account.balance >= amount) {
+                        account.balance -= amount;
+                        showMessage(`${amount}魚ポイントが使用されました。新しい魚ポイント: ${account.balance}`);
+                    } else {
+                        showMessage('魚ポイントが不足しています。もっと魚を捕まえてください！');
+                    }
+                }
+            } else {
+                showMessage('忍者シャチが見つかりません。深海に潜んでいるかもしれません。');
+            }
+            document.getElementById('transactionForm').reset();
+        }
+
+        document.getElementById('balanceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            let accountNumber = document.getElementById('balanceAccountNumber').value;
+            let account = accounts.find(a => a.accountNumber === accountNumber);
+            
+            if (account) {
+                showMessage(`忍者シャチの魚ポイント: ${account.balance}`);
+            } else {
+                showMessage('忍者シャチが見つかりません。海中忍術で姿を隠しているかもしれません。');
+            }
+            this.reset();
+        });
+
+        document.getElementById('listAccountsBtn').addEventListener('click', function() {
+            let list = document.getElementById('accountList');
+            list.innerHTML = '<h2>忍者シャチ口座一覧</h2>';
+            accounts.forEach(account => {
+                list.innerHTML += `<p>忍者シャチコード: ${account.accountNumber}, 忍者シャチ名: ${account.ownerName}, 魚ポイント: ${account.balance}</p>`;
+            });
+        });
+
+        function showMessage(msg) {
+            document.getElementById('message').innerHTML = `<p>🌊 ${msg} 🌊</p>`;
+        }
+    </script>
+</body>
+</html>
