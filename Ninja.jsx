@@ -8,7 +8,7 @@ const NinjaScene = () => {
   const [stars, setStars] = useState([]);
   const [clouds, setClouds] = useState([]);
 
-  // 星を生成する関数
+  // 星を生成する
   const generateStars = useCallback(() => {
     return [...Array(30)].map(() => ({
       size: Math.random() * 3 + 4,
