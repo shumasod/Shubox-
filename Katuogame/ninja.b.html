@@ -1,160 +1,332 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>システム</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .container {
-            max-width: 800px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        form {
-            margin-bottom: 20px;
-        }
-        input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        button {
-            display: inline-block;
-            background: #333;
-            color: #fff;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #555;
-        }
-        #accountList, #message {
-            margin-top: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>銀行システム</h1>
-        
-        <form id="createAccountForm">
-            <h2>新規口座開設</h2>
-            <input type="text" id="newAccountNumber" placeholder="口座番号" required>
-            <input type="text" id="newOwnerName" placeholder="口座所有者名" required>
-            <input type="number" id="initialBalance" placeholder="初期残高" required>
-            <button type="submit">口座を開設</button>
-        </form>
+import React, { useState, useCallback } from 'react';
+import { AlertCircle, Check, DollarSign, Users, Plus, RefreshCw, Search } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-        <form id="transactionForm">
-            <h2>取引</h2>
-            <input type="text" id="accountNumber" placeholder="口座番号" required>
-            <input type="number" id="amount" placeholder="金額" required>
-            <button type="submit" id="depositBtn">入金</button>
-            <button type="submit" id="withdrawBtn">出金</button>
-        </form>
+const BankingSystem = () => {
+  const [accounts, setAccounts] = useState([]);
+  const [notification, setNotification] = useState(null);
 
-        <form id="balanceForm">
-            <h2>残高照会</h2>
-            <input type="text" id="balanceAccountNumber" placeholder="口座番号" required>
-            <button type="submit">残高を確認</button>
-        </form>
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
-        <button id="listAccountsBtn">全口座一覧</button>
+  const AccountCreationForm = () => {
+    const [formData, setFormData] = useState({
+      accountNumber: '',
+      ownerName: '',
+      initialBalance: ''
+    });
 
-        <div id="accountList"></div>
-        <div id="message"></div>
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      if (accounts.some(acc => acc.accountNumber === formData.accountNumber)) {
+        showNotification('この口座番号は既に使用されています。', 'error');
+        return;
+      }
+      
+      setAccounts(prev => [...prev, {
+        ...formData,
+        balance: parseFloat(formData.initialBalance),
+        transactions: [],
+        createdAt: new Date()
+      }]);
+      
+      showNotification('口座が正常に作成されました。');
+      setFormData({ accountNumber: '', ownerName: '', initialBalance: '' });
+    };
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            新規口座開設
+          </CardTitle>
+          <CardDescription>新しい銀行口座を作成します</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <input
+                type="text"
+                placeholder="口座番号"
+                className="w-full p-2 border rounded"
+                value={formData.accountNumber}
+                onChange={e => setFormData(prev => ({ ...prev, accountNumber: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <input
+                type="text"
+                placeholder="口座所有者名"
+                className="w-full p-2 border rounded"
+                value={formData.ownerName}
+                onChange={e => setFormData(prev => ({ ...prev, ownerName: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <input
+                type="number"
+                placeholder="初期残高"
+                className="w-full p-2 border rounded"
+                value={formData.initialBalance}
+                onChange={e => setFormData(prev => ({ ...prev, initialBalance: e.target.value }))}
+                required
+                min="0"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full p-2 text-white bg-green-600 rounded hover:bg-green-700"
+            >
+              口座を開設
+            </button>
+          </form>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const TransactionForm = () => {
+    const [formData, setFormData] = useState({
+      accountNumber: '',
+      amount: ''
+    });
+
+    const handleTransaction = (type) => {
+      const account = accounts.find(acc => acc.accountNumber === formData.accountNumber);
+      if (!account) {
+        showNotification('口座が見つかりません。', 'error');
+        return;
+      }
+
+      const amount = parseFloat(formData.amount);
+      if (type === 'withdraw' && account.balance < amount) {
+        showNotification('残高が不足しています。', 'error');
+        return;
+      }
+
+      setAccounts(prev => prev.map(acc => {
+        if (acc.accountNumber === formData.accountNumber) {
+          const newBalance = type === 'deposit' ? 
+            acc.balance + amount : 
+            acc.balance - amount;
+          
+          return {
+            ...acc,
+            balance: newBalance,
+            transactions: [...acc.transactions, {
+              type,
+              amount,
+              date: new Date(),
+              balance: newBalance
+            }]
+          };
+        }
+        return acc;
+      }));
+
+      showNotification(`${amount}円の${type === 'deposit' ? '入金' : '出金'}が完了しました。`);
+      setFormData({ accountNumber: '', amount: '' });
+    };
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            取引
+          </CardTitle>
+          <CardDescription>入金・出金の取引を行います</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="口座番号"
+              className="w-full p-2 border rounded"
+              value={formData.accountNumber}
+              onChange={e => setFormData(prev => ({ ...prev, accountNumber: e.target.value }))}
+            />
+            <input
+              type="number"
+              placeholder="金額"
+              className="w-full p-2 border rounded"
+              value={formData.amount}
+              onChange={e => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+              min="0"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleTransaction('deposit')}
+                className="flex-1 p-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+              >
+                入金
+              </button>
+              <button
+                onClick={() => handleTransaction('withdraw')}
+                className="flex-1 p-2 text-white bg-red-600 rounded hover:bg-red-700"
+              >
+                出金
+              </button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const AccountList = () => {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            口座一覧
+          </CardTitle>
+          <CardDescription>全ての登録口座を表示します</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {accounts.length === 0 ? (
+              <p className="text-center text-gray-500">登録されている口座はありません</p>
+            ) : (
+              accounts.map(account => (
+                <div
+                  key={account.accountNumber}
+                  className="p-4 border rounded hover:bg-gray-50"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-bold">{account.ownerName}</h3>
+                      <p className="text-sm text-gray-600">口座番号: {account.accountNumber}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold">{account.balance.toLocaleString()}円</p>
+                      <p className="text-sm text-gray-600">
+                        取引回数: {account.transactions.length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const AccountDetails = () => {
+    const [searchAccount, setSearchAccount] = useState('');
+    const account = accounts.find(acc => acc.accountNumber === searchAccount);
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="w-5 h-5" />
+            口座詳細
+          </CardTitle>
+          <CardDescription>口座の詳細情報と取引履歴を確認できます</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="口座番号を入力"
+                className="flex-1 p-2 border rounded"
+                value={searchAccount}
+                onChange={e => setSearchAccount(e.target.value)}
+              />
+            </div>
+            
+            {account && (
+              <div className="space-y-4">
+                <div className="p-4 bg-gray-50 rounded">
+                  <h3 className="font-bold text-lg">{account.ownerName}</h3>
+                  <p>口座番号: {account.accountNumber}</p>
+                  <p>現在残高: {account.balance.toLocaleString()}円</p>
+                  <p>開設日: {new Date(account.createdAt).toLocaleDateString()}</p>
+                </div>
+                
+                <div>
+                  <h4 className="font-bold mb-2">取引履歴</h4>
+                  <div className="space-y-2">
+                    {account.transactions.map((transaction, index) => (
+                      <div key={index} className="p-2 border rounded">
+                        <div className="flex justify-between">
+                          <span className={transaction.type === 'deposit' ? 'text-green-600' : 'text-red-600'}>
+                            {transaction.type === 'deposit' ? '入金' : '出金'}: 
+                            {transaction.amount.toLocaleString()}円
+                          </span>
+                          <span className="text-gray-600">
+                            残高: {transaction.balance.toLocaleString()}円
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {new Date(transaction.date).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-4">
+      <h1 className="text-3xl font-bold text-center mb-8">銀行システム</h1>
+      
+      {notification && (
+        <Alert className={`mb-4 ${notification.type === 'error' ? 'bg-red-50' : 'bg-green-50'}`}>
+          <AlertCircle className={notification.type === 'error' ? 'text-red-600' : 'text-green-600'} />
+          <AlertTitle>
+            {notification.type === 'error' ? 'エラー' : '成功'}
+          </AlertTitle>
+          <AlertDescription>
+            {notification.message}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Tabs defaultValue="create" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="create">口座開設</TabsTrigger>
+          <TabsTrigger value="transaction">取引</TabsTrigger>
+          <TabsTrigger value="list">口座一覧</TabsTrigger>
+          <TabsTrigger value="details">口座詳細</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="create">
+          <AccountCreationForm />
+        </TabsContent>
+
+        <TabsContent value="transaction">
+          <TransactionForm />
+        </TabsContent>
+
+        <TabsContent value="list">
+          <AccountList />
+        </TabsContent>
+
+        <TabsContent value="details">
+          <AccountDetails />
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+};
 
-    <script>
-        // 簡易的なデータ管理（実際のアプリケーションではサーバーサイドで管理します）
-        let accounts = [];
-
-        document.getElementById('createAccountForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            let accountNumber = document.getElementById('newAccountNumber').value;
-            let ownerName = document.getElementById('newOwnerName').value;
-            let balance = parseFloat(document.getElementById('initialBalance').value);
-            
-            accounts.push({accountNumber, ownerName, balance});
-            showMessage(`新規口座が開設されました。口座番号: ${accountNumber}`);
-            this.reset();
-        });
-
-        document.getElementById('depositBtn').addEventListener('click', function(e) {
-            e.preventDefault();
-            transaction('deposit');
-        });
-
-        document.getElementById('withdrawBtn').addEventListener('click', function(e) {
-            e.preventDefault();
-            transaction('withdraw');
-        });
-
-        function transaction(type) {
-            let accountNumber = document.getElementById('accountNumber').value;
-            let amount = parseFloat(document.getElementById('amount').value);
-            let account = accounts.find(a => a.accountNumber === accountNumber);
-            
-            if (account) {
-                if (type === 'deposit') {
-                    account.balance += amount;
-                    showMessage(`${amount}円が預け入れられました。新しい残高: ${account.balance}円`);
-                } else {
-                    if (account.balance >= amount) {
-                        account.balance -= amount;
-                        showMessage(`${amount}円が引き出されました。新しい残高: ${account.balance}円`);
-                    } else {
-                        showMessage('残高不足です。');
-                    }
-                }
-            } else {
-                showMessage('口座が見つかりません。');
-            }
-            document.getElementById('transactionForm').reset();
-        }
-
-        document.getElementById('balanceForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            let accountNumber = document.getElementById('balanceAccountNumber').value;
-            let account = accounts.find(a => a.accountNumber === accountNumber);
-            
-            if (account) {
-                showMessage(`口座残高: ${account.balance}円`);
-            } else {
-                showMessage('口座が見つかりません。');
-            }
-            this.reset();
-        });
-
-        document.getElementById('listAccountsBtn').addEventListener('click', function() {
-            let list = document.getElementById('accountList');
-            list.innerHTML = '<h2>口座一覧</h2>';
-            accounts.forEach(account => {
-                list.innerHTML += `<p>口座番号: ${account.accountNumber}, 所有者: ${account.ownerName}, 残高: ${account.balance}円</p>`;
-            });
-        });
-
-        function showMessage(msg) {
-            document.getElementById('message').innerHTML = `<p>${msg}</p>`;
-        }
-    </script>
-</body>
-</html>
+export default BankingSystem;
