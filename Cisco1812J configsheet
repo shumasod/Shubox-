@@ -1,6 +1,4 @@
-Ciscoルータへのアクセス方法
-1. VTY接続
-2. コンソール接続
+
 
 # VLAN作成
 Router# configure terminal
