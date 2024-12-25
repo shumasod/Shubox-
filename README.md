@@ -1,4 +1,4 @@
-以下が2024年版に更新したLaravel Sail開発環境構築ガイドです：
+
 
 # Laravel Sail 開発環境構築ガイド 2024（Windows 11, WSL2, Ubuntu, Docker Desktop）
 
