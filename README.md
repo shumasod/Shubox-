@@ -1,6 +1,6 @@
 
 
-# Laravel Sail 開発環境構築ガイド 2024（Windows 11, WSL2, Ubuntu, Docker Desktop）
+# Laravel Sail 開発環境構築ガイド （Windows 11, WSL2, Ubuntu, Docker Desktop）
 
 ## 前提条件
 - **Windows 11**: 最新のアップデート適用済み（バージョン 22H2以降推奨）
