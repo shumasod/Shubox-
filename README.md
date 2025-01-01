@@ -5,8 +5,8 @@
 ## 前提条件
 - **Windows 11**: 最新のアップデート適用済み（バージョン 22H2以降推奨）
 - **WSL2**: Windows Subsystem for Linux 2
-- **Ubuntu**: 22.04 LTS または 23.10
-- **Docker Desktop**: 2024年最新版
+- **Ubuntu**: 22.04 LTS または 24.04
+- **Docker Desktop**: 
 - **PHP**: 8.2以上（Laravel 11対応）
 - **テキストエディタ**: Visual Studio Code推奨
 
