@@ -5,63 +5,109 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3Dイルミナティシンボル</title>
     <style>
-        body { margin: 0; }
-        canvas { display: block; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #000000, #1a1a1a);
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            pointer-events: none;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
+    <div id="info">3Dイルミナティシンボル - ドラッグで回転</div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         // シーン、カメラ、レンダラーの設定
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer();
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
 
-        // ピラミッドの作成
-        const pyramidGeometry = new THREE.ConeGeometry(1, 1, 4);
+        // ピラミッドの作成（より詳細な geometry）
+        const pyramidGeometry = new THREE.ConeGeometry(1.2, 1.5, 4);
         const pyramidMaterial = new THREE.MeshPhongMaterial({
             color: 0xFFD700,
             shininess: 100,
-            specular: 0xFFFFFF
+            specular: 0xFFFFFF,
+            flatShading: true
         });
         const pyramid = new THREE.Mesh(pyramidGeometry, pyramidMaterial);
+        pyramid.rotation.y = Math.PI / 4;
         scene.add(pyramid);
 
-        // 目の作成
-        const eyeGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+        // 目の作成（より洗練された外観）
+        const eyeGeometry = new THREE.SphereGeometry(0.25, 32, 32);
         const eyeMaterial = new THREE.MeshPhongMaterial({
             color: 0xFFFFFF,
-            shininess: 100,
+            shininess: 150,
             specular: 0xFFFFFF
         });
         const eye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        eye.position.set(0, 0.2, 0.5);
+        eye.position.set(0, 0.2, 0.6);
         scene.add(eye);
 
-        // 瞳孔の作成
-        const pupilGeometry = new THREE.SphereGeometry(0.1, 32, 32);
+        // 瞳孔の作成（より現実的な外観）
+        const pupilGeometry = new THREE.SphereGeometry(0.12, 32, 32);
         const pupilMaterial = new THREE.MeshPhongMaterial({
             color: 0x8B0000,
-            shininess: 100,
-            specular: 0xFFFFFF
+            shininess: 150,
+            specular: 0x333333
         });
         const pupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
-        pupil.position.set(0, 0.2, 0.6);
+        pupil.position.set(0, 0.2, 0.7);
         scene.add(pupil);
 
-        // 光源の追加
-        const ambientLight = new THREE.AmbientLight(0x404040);
+        // 光源の設定（より豊かな照明）
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
         scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(1, 1, 1);
         scene.add(directionalLight);
 
-        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        const pointLight = new THREE.PointLight(0xffd700, 1, 100);
         pointLight.position.set(0, 2, 2);
         scene.add(pointLight);
+
+        // マウスインタラクション用の変数
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetRotationX = 0;
+        let targetRotationY = 0;
+        let windowHalfX = window.innerWidth / 2;
+        let windowHalfY = window.innerHeight / 2;
+
+        // マウスイベントリスナー
+        document.addEventListener('mousemove', onDocumentMouseMove, false);
+        document.addEventListener('touchmove', onDocumentTouchMove, false);
+
+        function onDocumentMouseMove(event) {
+            mouseX = (event.clientX - windowHalfX) * 0.001;
+            mouseY = (event.clientY - windowHalfY) * 0.001;
+        }
+
+        function onDocumentTouchMove(event) {
+            if (event.touches.length === 1) {
+                event.preventDefault();
+                mouseX = (event.touches[0].pageX - windowHalfX) * 0.001;
+                mouseY = (event.touches[0].pageY - windowHalfY) * 0.001;
+            }
+        }
 
         // カメラの位置設定
         camera.position.z = 5;
@@ -70,8 +116,16 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            // ピラミッドの回転
-            pyramid.rotation.y += 0.01;
+            // なめらかな回転
+            targetRotationY += (mouseX - targetRotationY) * 0.05;
+            targetRotationX += (mouseY - targetRotationX) * 0.05;
+
+            pyramid.rotation.y += 0.005 + targetRotationY;
+            pyramid.rotation.x = targetRotationX;
+
+            // 目と瞳孔もピラミッドに追従
+            eye.rotation.y = pyramid.rotation.y;
+            pupil.rotation.y = pyramid.rotation.y;
 
             renderer.render(scene, camera);
         }
@@ -82,6 +136,8 @@
         window.addEventListener('resize', onWindowResize, false);
 
         function onWindowResize() {
+            windowHalfX = window.innerWidth / 2;
+            windowHalfY = window.innerHeight / 2;
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);

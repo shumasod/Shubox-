@@ -3,41 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>正義の象徴</title>
+    <meta name="description" content="Minimalistic icon animation">
+    <title>Icono</title>
     <style>
+        :root {
+            --icon-size: min(80px, 15vw);
+            --icon-color: #f0f0f0;
+            --background: #1a1a1a;
+            --animation-duration: 2s;
+            --icon-thickness: 2px;
+            --icon-spacing: min(200px, 40vw);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
+            min-height: 100vh;
+            background-color: var(--background);
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+        }
+
+        .icono-container {
             display: flex;
+            gap: var(--icon-spacing);
+            flex-wrap: wrap;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #202020;
+            padding: 2rem;
         }
 
-        .justice {
-            width: 100px;
-            height: 100px;
-            background-color: #76ff03;
+        .icono {
+            width: var(--icon-size);
+            height: var(--icon-size);
+            position: relative;
+            cursor: pointer;
+        }
+
+        /* Plus Icon */
+        .icono-plus {
+            transform: rotate(0deg);
+            transition: transform var(--animation-duration) ease;
+        }
+
+        .icono-plus::before,
+        .icono-plus::after {
+            content: '';
+            position: absolute;
+            background-color: var(--icon-color);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .icono-plus::before {
+            width: 100%;
+            height: var(--icon-thickness);
+        }
+
+        .icono-plus::after {
+            height: 100%;
+            width: var(--icon-thickness);
+        }
+
+        .icono-plus:hover {
+            transform: rotate(180deg);
+        }
+
+        /* Circle Icon */
+        .icono-circle {
+            border: var(--icon-thickness) solid var(--icon-color);
             border-radius: 50%;
-            opacity: 0;
-            transform: scale(0);
-            animation: symbolize 5s ease-in-out infinite;
+            transform: scale(1);
+            transition: all var(--animation-duration) ease;
         }
 
-        @keyframes symbolize {
-            0%, 100% {
-                opacity: 0;
-                transform: scale(0);
+        .icono-circle:hover {
+            transform: scale(1.2);
+            border-color: #00ff95;
+            box-shadow: 0 0 20px rgba(0, 255, 149, 0.5);
+        }
+
+        /* Arrow Icon */
+        .icono-arrow {
+            transition: transform var(--animation-duration) ease;
+        }
+
+        .icono-arrow::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: var(--icon-thickness);
+            background-color: var(--icon-color);
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .icono-arrow::after {
+            content: '';
+            position: absolute;
+            width: 40%;
+            height: 40%;
+            border-top: var(--icon-thickness) solid var(--icon-color);
+            border-right: var(--icon-thickness) solid var(--icon-color);
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%) rotate(45deg);
+        }
+
+        .icono-arrow:hover {
+            transform: translateX(10px);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .icono {
+                transition: none;
             }
-            50% {
-                opacity: 1;
-                transform: scale(1.5);
-                background-color: #00e676;
+            
+            .icono:hover {
+                transform: none;
             }
         }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --icon-color: #f0f0f0;
+                --background: #121212;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .icono-container {
+                gap: calc(var(--icon-spacing) * 0.5);
+            }
+        }
+
     </style>
 </head>
 <body>
-    <div class="justice"></div>
+    <main class="icono-container">
+        <div class="icono icono-plus" role="img" aria-label="Plus icon"></div>
+        <div class="icono icono-circle" role="img" aria-label="Circle icon"></div>
+        <div class="icono icono-arrow" role="img" aria-label="Arrow icon"></div>
+    </main>
 </body>
 </html>

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="カツオを追いかけてたたくゲーム">
+    <title>カツオたたきゲーム DX</title>
+    <style>
+        /* 既存のスタイルはそのまま */
+        
+        .difficulty-select {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .difficulty-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .difficulty-btn.easy { background: #4CAF50; color: white; }
+        .difficulty-btn.normal { background: #2196F3; color: white; }
+        .difficulty-btn.hard { background: #F44336; color: white; }
+        .difficulty-btn.selected { transform: scale(1.1); box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: particle 0.8s ease-out forwards;
+        }
+
+        @keyframes particle {
+            0% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .settings {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- 既存のHTML構造に追加 -->
+    <div class="settings">
+        <label>
+            <input type="checkbox" id="sound-toggle" checked>
+            音声ON/OFF
+        </label>
+    </div>
+
+    <div class="difficulty-select">
+        <button class="difficulty-btn easy" data-difficulty="easy">かんたん</button>
+        <button class="difficulty-btn normal selected" data-difficulty="normal">ふつう</button>
+        <button class="difficulty-btn hard" data-difficulty="hard">むずかしい</button>
+    </div>
+
+    <script>
+ class SoundManager {
+    constructor() {
+        this.sounds = {
+            // base64エンコードされた音声データ
+            hit: new Audio('data:audio/mpeg;base64,...'), // ここで文字列が正しく閉じられていることを確認
+            miss: new Audio('data:audio/mpeg;base64,...')  // カンマを追加
+        };
+        
+        this.enabled = true;
+        this.loadSettings();       
+            loadSettings() {
+                const soundEnabled = localStorage.getItem('soundEnabled');
+                this.enabled = soundEnabled === null ? true : JSON.parse(soundEnabled);
+                document.getElementById('sound-toggle').checked = this.enabled;
+            }
+
+            toggleSound(enabled) {
+                this.enabled = enabled;
+                localStorage.setItem('soundEnabled', enabled);
+            }
+
+            play(soundName) {
+                if (this.enabled && this.sounds[soundName]) {
+                    this.sounds[soundName].currentTime = 0;
+                    this.sounds[soundName].play().catch(() => {});
+                }
+            }
+        }
+
+        class ParticleSystem {
+            constructor() {
+                this.particles = [];
+            }
+
+            createHitEffect(x, y) {
+                const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'];
+                const particleCount = 12;
+
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    
+                    const size = Math.random() * 10 + 5;
+                    const angle = (Math.PI * 2 * i) / particleCount;
+                    const speed = Math.random() * 50 + 50;
+                    
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+                    particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    particle.style.left = `${x}px`;
+                    particle.style.top = `${y}px`;
+                    
+                    const velocityX = Math.cos(angle) * speed;
+                    const velocityY = Math.sin(angle) * speed;
+                    
+                    particle.style.transform = `translate(${velocityX}px, ${velocityY}px)`;
+                    
+                    document.body.appendChild(particle);
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(particle);
+                    }, 800);
+                }
+            }
+        }
+
+        class KatsuoGame {
+            constructor() {
+                this.difficulties = {
+                    easy: { time: 40, speed: 0.7, scale: 1.2 },
+                    normal: { time: 30, speed: 1, scale: 1 },
+                    hard: { time: 20, speed: 1.5, scale: 0.8 }
+                };
+                
+                this.currentDifficulty = 'normal';
+                this.score = 0;
+                this.timeLeft = this.difficulties[this.currentDifficulty].time;
+                this.isPlaying = false;
+                this.highScores = this.loadHighScores();
+
+                this.soundManager = new SoundManager();
+                this.particleSystem = new ParticleSystem();
+
+                this.setupElements();
+                this.setupEventListeners();
+                this.setupGame();
+            }
+
+            loadHighScores() {
+                const scores = localStorage.getItem('katsuoHighScores');
+                return scores ? JSON.parse(scores) : {
+                    easy: 0,
+                    normal: 0,
+                    hard: 0
+                };
+            }
+
+            saveHighScore() {
+                if (this.score > this.highScores[this.currentDifficulty]) {
+                    this.highScores[this.currentDifficulty] = this.score;
+                    localStorage.setItem('katsuoHighScores', JSON.stringify(this.highScores));
+                }
+            }
+
+            setupElements() {
+                // 既存のエレメント設定に加えて
+                this.difficultyButtons = document.querySelectorAll('.difficulty-btn');
+                this.setupDifficultySelection();
+            }
+
+            setupDifficultySelection() {
+                this.difficultyButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        if (this.isPlaying) return;
+                        
+                        this.difficultyButtons.forEach(btn => btn.classList.remove('selected'));
+                        button.classList.add('selected');
+                        
+                        this.currentDifficulty = button.dataset.difficulty;
+                        this.timeLeft = this.difficulties[this.currentDifficulty].time;
+                        this.updateTimer();
+                    });
+                });
+            }
+
+            updateScore() {
+                if (!this.isPlaying) return;
+                
+                this.score++;
+                this.elements.scoreDisplay.textContent = `スコア: ${this.score}`;
+                
+                const rect = this.elements.katsuo.getBoundingClientRect();
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+                
+                this.particleSystem.createHitEffect(x, y);
+                this.soundManager.play('hit');
+                
+                this.moveKatsuo();
+            }
+
+            moveKatsuo() {
+                // 既存の移動ロジックに速度係数を適用
+                const speed = this.difficulties[this.currentDifficulty].speed;
+                const scale = this.difficulties[this.currentDifficulty].scale;
+                
+                // 移動と大きさの調整
+                this.elements.katsuo.style.transition = `all ${0.5 / speed}s ease-out`;
+                this.elements.katsuo.style.transform = 
+                    `scaleX(${Math.random() < 0.5 ? -1 : 1}) scale(${scale})`;
+                
+                // 位置の計算と設定は既存のコードを使用
+            }
+
+            endGame() {
+                this.isPlaying = false;
+                this.saveHighScore();
+                
+                const difficulty = this.difficulties[this.currentDifficulty];
+                const message = `
+                    難易度: ${this.currentDifficulty}
+                    スコア: ${this.score}点
+                    ハイスコア: ${this.highScores[this.currentDifficulty]}点
+                `;
+                
+                this.elements.finalScore.textContent = message;
+                this.elements.gameOver.classList.add('active');
+            }
+        }
+
+        // サウンド設定のイベントリスナー
+        document.getElementById('sound-toggle').addEventListener('change', (e) => {
+            game.soundManager.toggleSound(e.target.checked);
+        });
+
+        // ゲーム開始
+        let game = new KatsuoGame();
+    </script>
+</body>
+</html>

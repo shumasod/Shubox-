@@ -1,14 +1,28 @@
 import React, { useState } from 'react';
-import { AlertCircle, Star } from 'lucide-react';
+import { AlertCircle, Star, Plus, Minus } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const TsukemenApp = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const basePrice = 1299;
+  const originalPrice = 1599;
 
   const handleOrder = () => {
     setOrderPlaced(true);
     setTimeout(() => setOrderPlaced(false), 3000);
   };
+
+  const incrementQuantity = () => {
+    setQuantity(prev => Math.min(prev + 1, 10));  // 最大10個まで
+  };
+
+  const decrementQuantity = () => {
+    setQuantity(prev => Math.max(prev - 1, 1));   // 最小1個
+  };
+
+  const totalPrice = basePrice * quantity;
+  const totalOriginalPrice = originalPrice * quantity;
 
   return (
     <div className="bg-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -30,16 +44,39 @@ const TsukemenApp = () => {
             <p className="text-gray-700 text-lg leading-relaxed mb-6">
               濃厚でピリ辛のつけダレと、コシのある麺が魅力のつけ麺。新鮮な野菜、チャーシュー、レモン、トーストしたパンがトッピングされています。つけダレに麺を絡めて、お好みの味を楽しんでください。
             </p>
+            
+            {/* 数量選択 */}
+            <div className="mb-6">
+              <p className="text-gray-700 mb-2">数量:</p>
+              <div className="flex items-center space-x-4">
+                <button 
+                  onClick={decrementQuantity}
+                  className="bg-gray-200 hover:bg-gray-300 rounded-full p-2 transition-colors duration-200"
+                  disabled={quantity <= 1}
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+                <span className="text-xl font-semibold w-8 text-center">{quantity}</span>
+                <button 
+                  onClick={incrementQuantity}
+                  className="bg-gray-200 hover:bg-gray-300 rounded-full p-2 transition-colors duration-200"
+                  disabled={quantity >= 10}
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
             <div className="flex items-center space-x-4 mb-6">
-              <span className="text-3xl font-bold text-red-600">¥1,299</span>
-              <span className="text-lg text-gray-500 line-through">¥1,599</span>
+              <span className="text-3xl font-bold text-red-600">¥{totalPrice.toLocaleString()}</span>
+              <span className="text-lg text-gray-500 line-through">¥{totalOriginalPrice.toLocaleString()}</span>
             </div>
           </div>
           <button
             onClick={handleOrder}
             className="w-full bg-red-600 text-white px-6 py-3 rounded-full text-lg font-semibold hover:bg-red-700 transition-colors duration-200"
           >
-            今すぐ注文
+            {quantity}個注文する
           </button>
         </div>
       </div>
@@ -48,7 +85,7 @@ const TsukemenApp = () => {
           <AlertCircle className="h-4 w-4 text-green-600" />
           <AlertTitle className="text-green-800">注文完了</AlertTitle>
           <AlertDescription className="text-green-700">
-            ご注文ありがとうございます。おいしいつけ麺をお楽しみください！
+            {quantity}個のつけ麺をご注文いただき、ありがとうございます。おいしいつけ麺をお楽しみください！
           </AlertDescription>
         </Alert>
       )}
