@@ -1,14 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Timer, ThumbsUp, Send, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import DOMPurify from 'dompurify';
+import { v4 as uuidv4 } from 'uuid';
+
+// 定数の定義
+const MAX_ANSWER_LENGTH = 200;
+const VOTE_COOLDOWN = 3000; // ミリ秒
+const POST_COOLDOWN = 5000; // ミリ秒
+const INITIAL_TIME = 180;
 
 const OgiriApp = () => {
   const [theme, setTheme] = useState("銀座のホステスと間違われてそうな野菜は？");
   const [answers, setAnswers] = useState([]);
   const [newAnswer, setNewAnswer] = useState("");
-  const [timeLeft, setTimeLeft] = useState(180); // 3分
+  const [timeLeft, setTimeLeft] = useState(INITIAL_TIME);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [lastVoteTime, setLastVoteTime] = useState({});
+  const [lastPostTime, setLastPostTime] = useState(0);
+  const [error, setError] = useState("");
+
+  // 入力値のサニタイズ
+  const sanitizeInput = (input) => {
+    return DOMPurify.sanitize(input.trim(), {
+      ALLOWED_TAGS: [], // タグを全て除去
+      ALLOWED_ATTR: [] // 属性を全て除去
+    });
+  };
+
+  // 入力値のバリデーション
+  const validateInput = (input) => {
+    if (!input) return "回答を入力してください";
+    if (input.length > MAX_ANSWER_LENGTH) return "回答が長すぎます";
+    // 制御文字のチェック
+    if (/[\x00-\x1F\x7F]/.test(input)) return "不正な文字が含まれています";
+    return "";
+  };
 
   // タイマー制御
   useEffect(() => {
@@ -21,44 +49,74 @@ const OgiriApp = () => {
     return () => clearInterval(timer);
   }, [isTimerRunning, timeLeft]);
 
-  // 回答を追加
-  const handleSubmit = (e) => {
+  // レート制限付きの回答追加
+  const handleSubmit = useCallback((e) => {
     e.preventDefault();
-    if (!newAnswer.trim()) return;
+    const now = Date.now();
     
+    // レート制限チェック
+    if (now - lastPostTime < POST_COOLDOWN) {
+      setError("投稿の間隔を空けてください");
+      return;
+    }
+
+    const sanitizedAnswer = sanitizeInput(newAnswer);
+    const validationError = validateInput(sanitizedAnswer);
+    
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     const answer = {
-      id: Date.now(),
-      text: newAnswer,
+      id: uuidv4(), // UUIDを使用して予測不可能なIDを生成
+      text: sanitizedAnswer,
       votes: 0,
       author: "匿名",
       timestamp: new Date().toLocaleTimeString()
     };
-    
-    setAnswers([...answers, answer]);
-    setNewAnswer("");
-  };
 
-  // 投票機能
-  const handleVote = (id) => {
-    setAnswers(answers.map(answer => 
+    setAnswers(prev => [...prev, answer]);
+    setNewAnswer("");
+    setLastPostTime(now);
+    setError("");
+  }, [newAnswer, lastPostTime]);
+
+  // レート制限付きの投票機能
+  const handleVote = useCallback((id) => {
+    const now = Date.now();
+    
+    // レート制限チェック
+    if (lastVoteTime[id] && now - lastVoteTime[id] < VOTE_COOLDOWN) {
+      setError("投票の間隔を空けてください");
+      return;
+    }
+
+    setAnswers(prev => prev.map(answer => 
       answer.id === id 
         ? { ...answer, votes: answer.votes + 1 }
         : answer
     ));
-  };
+    
+    setLastVoteTime(prev => ({
+      ...prev,
+      [id]: now
+    }));
+    setError("");
+  }, [lastVoteTime]);
 
   // タイマーリセット
-  const resetTimer = () => {
-    setTimeLeft(180);
+  const resetTimer = useCallback(() => {
+    setTimeLeft(INITIAL_TIME);
     setIsTimerRunning(false);
-  };
+  }, []);
 
   // 時間のフォーマット
-  const formatTime = (seconds) => {
+  const formatTime = useCallback((seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -71,6 +129,13 @@ const OgiriApp = () => {
           <p className="text-xl">{theme}</p>
         </CardContent>
       </Card>
+
+      {/* エラーメッセージ */}
+      {error && (
+        <Alert className="mb-4 bg-red-100">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       {/* タイマー */}
       <div className="flex items-center gap-4 mb-6">
@@ -99,15 +164,20 @@ const OgiriApp = () => {
             value={newAnswer}
             onChange={(e) => setNewAnswer(e.target.value)}
             placeholder="回答を入力..."
+            maxLength={MAX_ANSWER_LENGTH}
             className="flex-1 px-4 py-2 border rounded"
           />
           <button
             type="submit"
-            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            disabled={!newAnswer.trim()}
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-300"
           >
             <Send className="w-4 h-4" />
             投稿
           </button>
+        </div>
+        <div className="text-sm text-gray-500 mt-1">
+          残り {MAX_ANSWER_LENGTH - newAnswer.length} 文字
         </div>
       </form>
 
@@ -128,7 +198,7 @@ const OgiriApp = () => {
             <Card key={answer.id} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-4">
                 <div className="flex justify-between items-center">
-                  <p className="text-lg">{answer.text}</p>
+                  <p className="text-lg break-all">{answer.text}</p>
                   <div className="flex items-center gap-4">
                     <span className="text-sm text-gray-500">
                       {answer.votes} 票
@@ -136,6 +206,7 @@ const OgiriApp = () => {
                     <button
                       onClick={() => handleVote(answer.id)}
                       className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+                      disabled={lastVoteTime[answer.id] && Date.now() - lastVoteTime[answer.id] < VOTE_COOLDOWN}
                     >
                       <ThumbsUp className="w-4 h-4" />
                       投票
