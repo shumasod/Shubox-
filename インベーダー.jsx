@@ -1,21 +1,50 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-const SpaceInvaders = () => {
-  const [gameState, setGameState] = useState('start'); // 'start', 'playing', 'gameover'
+const VirusIcon = ({ className, style }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    className={className} 
+    style={style}
+    fill="currentColor"
+  >
+    <path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+    <circle cx="12" cy="12" r="3"/>
+    <circle cx="12" cy="6" r="1.5"/>
+    <circle cx="12" cy="18" r="1.5"/>
+    <circle cx="6" cy="12" r="1.5"/>
+    <circle cx="18" cy="12" r="1.5"/>
+  </svg>
+);
+
+const ShieldIcon = ({ className, style }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    className={className} 
+    style={style}
+    fill="currentColor"
+  >
+    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 18c-3.75-1-7-5.46-7-9V6.3l7-3.11 7 3.11V10c0 3.54-3.25 8-7 9z"/>
+  </svg>
+);
+
+const VirusShooter = () => {
+  const [gameState, setGameState] = useState('start');
   const [score, setScore] = useState(0);
   const [playerPosition, setPlayerPosition] = useState({ x: 50, y: 90 });
-  const [enemies, setEnemies] = useState([]);
+  const [viruses, setViruses] = useState([]);
   const [bullets, setBullets] = useState([]);
   const [highScore, setHighScore] = useState(0);
 
   // ゲーム初期化
   const initGame = useCallback(() => {
-    const initialEnemies = Array.from({ length: 15 }, (_, i) => ({
+    const initialViruses = Array.from({ length: 12 }, (_, i) => ({
       id: i,
-      x: (i % 5) * 20 + 10,
-      y: Math.floor(i / 5) * 10 + 10,
+      x: (i % 4) * 25 + 12,
+      y: Math.floor(i / 4) * 15 + 10,
+      color: ['text-red-500', 'text-green-500', 'text-purple-500'][Math.floor(i / 4)],
+      size: Math.random() * 4 + 16,
     }));
-    setEnemies(initialEnemies);
+    setViruses(initialViruses);
     setPlayerPosition({ x: 50, y: 90 });
     setBullets([]);
     setScore(0);
@@ -31,13 +60,13 @@ const SpaceInvaders = () => {
         case 'ArrowLeft':
           setPlayerPosition(prev => ({
             ...prev,
-            x: Math.max(0, prev.x - 3)
+            x: Math.max(0, prev.x - 4)
           }));
           break;
         case 'ArrowRight':
           setPlayerPosition(prev => ({
             ...prev,
-            x: Math.min(95, prev.x + 3)
+            x: Math.min(95, prev.x + 4)
           }));
           break;
         case ' ':
@@ -60,27 +89,28 @@ const SpaceInvaders = () => {
     const gameLoop = setInterval(() => {
       // 弾の移動
       setBullets(prev => prev
-        .map(bullet => ({ ...bullet, y: bullet.y - 1 }))
+        .map(bullet => ({ ...bullet, y: bullet.y - 1.5 }))
         .filter(bullet => bullet.y > 0)
       );
 
-      // 敵の移動
-      setEnemies(prev => prev.map(enemy => ({
-        ...enemy,
-        y: enemy.y + 0.05,
+      // ウイルスの移動
+      setViruses(prev => prev.map(virus => ({
+        ...virus,
+        x: virus.x + Math.sin(Date.now() / 1000 + virus.id) * 0.3,
+        y: virus.y + 0.05,
       })));
 
       // 衝突判定
       setBullets(prev => {
         const newBullets = [...prev];
-        setEnemies(prevEnemies => {
-          const newEnemies = prevEnemies.filter(enemy => {
+        setViruses(prevViruses => {
+          const newViruses = prevViruses.filter(virus => {
             return !newBullets.some(bullet => {
-              const hit = Math.abs(bullet.x - enemy.x) < 3 &&
-                         Math.abs(bullet.y - enemy.y) < 3;
+              const hit = Math.abs(bullet.x - virus.x) < 4 &&
+                         Math.abs(bullet.y - virus.y) < 4;
               if (hit) {
                 newBullets.splice(newBullets.indexOf(bullet), 1);
-                setScore(s => s + 100);
+                setScore(s => s + 150);
                 return true;
               }
               return false;
@@ -88,60 +118,69 @@ const SpaceInvaders = () => {
           });
 
           // ゲームオーバー判定
-          if (newEnemies.some(enemy => enemy.y > 85)) {
+          if (newViruses.some(virus => virus.y > 85)) {
             setGameState('gameover');
             setHighScore(prev => Math.max(prev, score));
           }
 
-          return newEnemies;
+          return newViruses;
         });
         return newBullets;
       });
 
-      // 敵が全滅した場合、新しい波を生成
-      if (enemies.length === 0) {
-        const newEnemies = Array.from({ length: 15 }, (_, i) => ({
+      // ウイルスが全滅した場合、新しい波を生成
+      if (viruses.length === 0) {
+        const newViruses = Array.from({ length: 12 }, (_, i) => ({
           id: i + Date.now(),
-          x: (i % 5) * 20 + 10,
-          y: Math.floor(i / 5) * 10 + 10,
+          x: (i % 4) * 25 + 12,
+          y: Math.floor(i / 4) * 15 + 10,
+          color: ['text-red-500', 'text-green-500', 'text-purple-500'][Math.floor(i / 4)],
+          size: Math.random() * 4 + 16,
         }));
-        setEnemies(newEnemies);
+        setViruses(newViruses);
       }
     }, 16);
 
     return () => clearInterval(gameLoop);
-  }, [gameState, enemies.length, score]);
+  }, [gameState, viruses.length, score]);
 
   return (
-    <div className="relative w-full max-w-lg mx-auto h-96 bg-black text-white overflow-hidden">
+    <div className="relative w-full max-w-lg mx-auto h-96 bg-gray-900 text-white overflow-hidden rounded-lg shadow-lg">
       {/* ゲーム画面 */}
       <div className="relative w-full h-full">
-        {/* プレイヤー */}
+        {/* プレイヤー (盾) */}
         <div 
-          className="absolute w-5 h-5 bg-blue-500"
+          className="absolute transform -translate-x-1/2"
           style={{
             left: `${playerPosition.x}%`,
             top: `${playerPosition.y}%`,
           }}
-        />
+        >
+          <ShieldIcon className="w-8 h-8 text-blue-400" />
+        </div>
 
-        {/* 敵 */}
-        {enemies.map(enemy => (
+        {/* ウイルス */}
+        {viruses.map(virus => (
           <div
-            key={enemy.id}
-            className="absolute w-4 h-4 bg-red-500"
+            key={virus.id}
+            className={`absolute transform -translate-x-1/2 -translate-y-1/2 ${virus.color}`}
             style={{
-              left: `${enemy.x}%`,
-              top: `${enemy.y}%`,
+              left: `${virus.x}%`,
+              top: `${virus.y}%`,
             }}
-          />
+          >
+            <VirusIcon 
+              className="animate-spin-slow" 
+              style={{ width: virus.size, height: virus.size }} 
+            />
+          </div>
         ))}
 
         {/* 弾 */}
         {bullets.map(bullet => (
           <div
             key={bullet.id}
-            className="absolute w-1 h-2 bg-yellow-400"
+            className="absolute w-1 h-3 bg-blue-300 rounded-full shadow-glow"
             style={{
               left: `${bullet.x}%`,
               top: `${bullet.y}%`,
@@ -150,18 +189,19 @@ const SpaceInvaders = () => {
         ))}
 
         {/* スコア表示 */}
-        <div className="absolute top-2 left-2 text-lg">
+        <div className="absolute top-4 left-4 text-xl font-semibold">
           Score: {score}
         </div>
 
         {/* ゲームオーバー画面 */}
         {gameState === 'gameover' && (
-          <div className="absolute inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center">
-            <h2 className="text-3xl mb-4">GAME OVER</h2>
-            <p className="mb-2">Score: {score}</p>
-            <p className="mb-4">High Score: {highScore}</p>
+          <div className="absolute inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex flex-col items-center justify-center">
+            <h2 className="text-4xl font-bold mb-6 text-red-500">GAME OVER</h2>
+            <p className="text-xl mb-2">Score: {score}</p>
+            <p className="text-xl mb-6">High Score: {highScore}</p>
             <button
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded"
+              className="px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold 
+                         transform transition hover:scale-105 active:scale-95"
               onClick={initGame}
             >
               Play Again
@@ -171,11 +211,16 @@ const SpaceInvaders = () => {
 
         {/* スタート画面 */}
         {gameState === 'start' && (
-          <div className="absolute inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center">
-            <h1 className="text-4xl mb-6">Space Invaders</h1>
-            <p className="mb-4">← →キーで移動、スペースキーで射撃</p>
+          <div className="absolute inset-0 bg-black bg-opacity-80 backdrop-blur-sm flex flex-col items-center justify-center">
+            <h1 className="text-4xl font-bold mb-8 text-blue-400">Virus Shooter</h1>
+            <div className="space-y-2 mb-8 text-center">
+              <p className="text-lg">ウイルスの侵入を阻止せよ！</p>
+              <p className="text-gray-400">← →キーで移動</p>
+              <p className="text-gray-400">スペースキーで攻撃</p>
+            </div>
             <button
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded"
+              className="px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-semibold 
+                         transform transition hover:scale-105 active:scale-95"
               onClick={initGame}
             >
               Start Game
@@ -187,4 +232,4 @@ const SpaceInvaders = () => {
   );
 };
 
-export default SpaceInvaders;
+export default VirusShooter;
