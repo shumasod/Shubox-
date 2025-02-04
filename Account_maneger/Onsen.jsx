@@ -31,7 +31,7 @@ const OnsenRyokanSystem = () => {
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
       <div style={{ background: 'linear-gradient(to right, #3b82f6, #8b5cf6)', color: 'white', padding: '20px', borderRadius: '8px 8px 0 0' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>るるぶ温泉旅館ガイド</h1>
+        <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>るる温泉旅館ガイド</h1>
         <p style={{ opacity: 0.8, margin: '10px 0 0' }}>魅力的な温泉旅館を探そう！</p>
       </div>
       
