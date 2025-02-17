@@ -22,15 +22,6 @@ const CatHead = ({ isHappy }) => (
   </div>
 );
 
-// ひげコンポーネント
-const Whiskers = () => (
-  <>
-    <div className="absolute left-2 top-12 w-8 h-px bg-black transform -rotate-12" />
-    <div className="absolute left-2 top-14 w-8 h-px bg-black" />
-    <div className="absolute right-2 top-12 w-8 h-px bg-black transform rotate-12" />
-    <div className="absolute right-2 top-14 w-8 h-px bg-black" />
-  </>
-);
 
 // 体部コンポーネント
 const CatBody = () => (

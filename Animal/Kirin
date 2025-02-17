@@ -1,0 +1,16 @@
+import React from 'react';
+
+const GiraffePage = () => {
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Here is a Giraffe!</h1>
+      <img 
+        src="/api/placeholder/400/300"
+        alt="Giraffe Image" 
+        className="rounded-lg shadow-md"
+      />
+    </div>
+  );
+};
+
+export default GiraffePage;
