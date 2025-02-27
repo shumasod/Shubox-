@@ -38,6 +38,7 @@ const StockTradingApp = () => {
       </header>
       
       {/* メインコンテンツ */}
+      
       <div className="flex flex-1 space-x-4 overflow-hidden">
         {/* 左側パネル: 銘柄リスト */}
         <div className="w-1/3 bg-gray-800 rounded-lg overflow-hidden">
