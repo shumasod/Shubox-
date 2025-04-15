@@ -1,4 +1,3 @@
-
 const axios = require('axios');
 const AWS = require('aws-sdk');
 
@@ -27,26 +26,21 @@ async function createBacklogIssue(projectId, summary, description, issueTypeId) 
     const apiKey = await getParameter('/backlog/api-key');
     const backlogBaseUrl = await getParameter('/backlog/base-url');
     
-    const url = `${backlogBaseUrl}/issues`;
+    // Backlog APIではAPIキーはクエリパラメータとして渡す
+    const url = `${backlogBaseUrl}/api/v2/issues?apiKey=${apiKey}`;
+    
     const data = {
       projectId,
       summary,
       description,
-      issueTypeId,
-      apiKey // APIキーをボディに含める（Backlog APIが対応している場合）
+      issueTypeId
     };
-
-    // あるいはヘッダーに含める方式:
-    // const headers = {
-    //   'Authorization': `Bearer ${apiKey}`
-    // };
-    // const response = await axios.post(url, data, { headers });
 
     const response = await axios.post(url, data);
     return response.data;
   } catch (error) {
     console.error('Error creating Backlog issue:', error);
-    throw new Error('Failed to create issue in tracking system');
+    throw error; // 元のエラーを伝播させて、詳細なエラー情報をログに残す
   }
 }
 
@@ -92,18 +86,22 @@ exports.handler = async (event, context) => {
     const newIssue = await createBacklogIssue(projectId, summary, description, issueTypeId);
 
     return {
-      statusCode: 200,
+      statusCode: 201, // 新規リソース作成には201を使用
       body: JSON.stringify({
         message: 'Issue created successfully',
-        issueId: newIssue.id
+        issueId: newIssue.id,
+        issue: newIssue
       })
     };
   } catch (error) {
     console.error('Lambda function error:', error);
     
+    // エラーの種類によってステータスコードを分岐
+    const statusCode = error.response?.status || 500;
+    
     // クライアントには詳細なエラー情報を返さない
     return {
-      statusCode: 500,
+      statusCode,
       body: JSON.stringify({
         message: 'An error occurred while processing your request'
       })
