@@ -1,8 +1,7 @@
-# Laravel Sail 開発環境構築ガイド （Windows 11, WSL2, Ubuntu, Docker Desktop）
+# Laravel Sail 開発環境構築ガイド （Windows 11, WSL, Ubuntu, Docker Desktop）
 
 ## 前提条件
-- **Windows 11**: 最新のアップデート適用済み（バージョン 22H2以降推奨）
-- **WSL2**: Windows Subsystem for Linux 2
+- **WSL**: Windows Subsystem for Linux 2
 - **Ubuntu**: 22.04 LTS または 24.04 LTS
 - **Docker Desktop**: 最新バージョン (4.27以降)
 - **PHP**: 8.2以上（Laravel 11対応）
