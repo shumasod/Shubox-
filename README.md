@@ -7,7 +7,7 @@
 - **PHP**: 8.2以上（Laravel 11対応）
 - **テキストエディタ**: Visual Studio Code推奨
 
-## 1. WSL2とUbuntuの設定
+## 1. Ubuntuの設定
 
 ### 1.1 WSL2のインストール
 PowerShellを管理者権限で実行:
