@@ -1,252 +1,201 @@
-# Laravel Sail 開発環境構築ガイド （Windows 11, WSL, Ubuntu, Docker Desktop）
+# クレジットカードキックバック管理システム
 
-## 前提条件
-- **WSL**: Windows Subsystem for Linux 2
-- **Ubuntu**: 22.04 LTS または 24.04 LTS
-- **Docker Desktop**: 最新バージョン (4.27以降)
-- **PHP**: 8.2以上（Laravel 11対応）
-- **テキストエディタ**: Visual Studio Code推奨
+このドキュメントでは、DynamoDBを使用したクレジットカードのキックバック（ポイント還元、キャッシュバック）データを管理するためのシステムについて解説します。
 
-## 1. Ubuntuの設定
+## 1. システム概要
 
-### 1.1 WSL2のインストール
-PowerShellを管理者権限で実行:
-```powershell
-wsl --install
+このシステムでは、クレジットカードの利用に応じて発生するキックバック（ポイント、マイル、キャッシュバックなど）を効率的に管理し、様々な視点からの検索や分析を可能にします。
+
+### 主な機能
+
+- ユーザー別のキックバック履歴管理
+- カテゴリ別（食料品、飲食、交通など）のキックバック集計
+- カード別のキックバック効率分析
+- 期間指定でのキックバック取得
+- 月別・年別のキックバック集計レポート
+
+## 2. データモデル設計
+
+### テーブル構造
+
 ```
 
-インストール完了後、コンピュータの再起動が必要です。
+## 3. 主要アクセスパターン
 
-### 1.2 Ubuntuのセットアップ
-1. Microsoft Storeから「Ubuntu 22.04.3 LTS」または「Ubuntu 24.04 LTS」をインストール
-2. Ubuntuを起動し、ユーザー名とパスワードを設定
-3. システムアップデート:
-```bash
-sudo apt update && sudo apt upgrade -y
+### 3.1 ユーザーの全キックバック履歴取得
+
+特定のユーザーに関連するすべてのキックバック履歴を時系列順に取得します。
+
+```javascript
+const params = {
+  TableName: 'CreditCardKickbacks',
+  KeyConditionExpression: 'PK = :userId',
+  ExpressionAttributeValues: {
+    ':userId': 'USER#user123'
+  },
+  ScanIndexForward: false // 降順（最新のデータから）
+};
 ```
 
-## 2. Docker Desktopのインストール
+### 3.2 期間指定でのキックバック履歴取得
 
-1. [Docker Desktop公式サイト](https://www.docker.com/products/docker-desktop/)から最新版をダウンロードしてインストール
-2. インストール後、Docker Desktopを起動し、以下の設定を確認:
-   - 「Settings」→「General」→「Use the WSL 2 based engine」にチェック
-   - 「Settings」→「Resources」→「WSL Integration」で「ubuntu-22.04」（または使用中のUbuntuバージョン）が有効になっていることを確認
-   - 「Settings」→「Resources」→「Advanced」でメモリを適切に割り当て（推奨: 8GB以上）
+特定ユーザーの指定期間内のキックバック履歴を取得します。
 
-## 3. PHPとComposerのインストール
-
-WSL2のUbuntuターミナルで実行:
-```bash
-# 必要なパッケージインストール
-sudo apt install software-properties-common -y
-
-# PHP 8.2レポジトリ追加
-sudo add-apt-repository ppa:ondrej/php -y
-sudo apt update
-
-# PHPとモジュールのインストール
-sudo apt install php8.2-cli php8.2-xml php8.2-curl php8.2-mbstring php8.2-zip php8.2-bcmath php8.2-gd php8.2-intl unzip -y
-
-# Composerインストール
-curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
-
-# バージョン確認
-php -v
-composer -V
+```javascript
+const params = {
+  TableName: 'CreditCardKickbacks',
+  KeyConditionExpression: 'PK = :userId AND SK BETWEEN :startDate AND :endDate',
+  ExpressionAttributeValues: {
+    ':userId': 'USER#user123',
+    ':startDate': 'TRANSACTION#2023-05-01',
+    ':endDate': 'TRANSACTION#2023-05-31#\uffff' // 5月中のすべてのトランザクション
+  }
+};
 ```
 
-## 4. Laravel Sailプロジェクトの作成
+### 3.3 カテゴリ別キックバック検索
 
-```bash
-# プロジェクトディレクトリへ移動（Windowsユーザーフォルダにアクセス）
-cd /mnt/c/Users/YourUsername/Projects
-# ※「YourUsername」は実際のWindowsユーザー名に変更してください
-# ※プロジェクトフォルダがない場合は作成: mkdir -p /mnt/c/Users/YourUsername/Projects
+特定のカテゴリ（例：食料品、飲食など）に関連するキックバックを検索します。
 
-# Laravel 11プロジェクト作成
-composer create-project laravel/laravel:^11.0 my-project
-
-# プロジェクトディレクトリに移動
-cd my-project
-
-# Sailインストール
-composer require laravel/sail --dev
-
-# Sail設定（インタラクティブなメニューが表示されます）
-php artisan sail:install
-# 推奨：mysql,redis,mailpitを選択
+```javascript
+const params = {
+  TableName: 'CreditCardKickbacks',
+  IndexName: 'CategoryIndex',
+  KeyConditionExpression: 'GSI1PK = :category AND GSI1SK BETWEEN :startDate AND :endDate',
+  ExpressionAttributeValues: {
+    ':category': 'CATEGORY#GROCERY',
+    ':startDate': '2023-05-01',
+    ':endDate': '2023-05-31'
+  }
+};
 ```
 
-## 5. 開発環境の構築と起動
+### 3.4 カード別キックバック効率分析
 
-```bash
-# Sailコマンドのエイリアス設定
-echo "alias sail='[ -f sail ] && sh sail || sh vendor/bin/sail'" >> ~/.bashrc
-source ~/.bashrc
+特定のクレジットカードで獲得したキックバックを分析します。
 
-# Dockerコンテナをバックグラウンドで起動
-sail up -d
-
-# 依存関係のインストール
-sail composer install
-sail npm install
-
-# アプリケーションキー生成
-sail artisan key:generate
-
-# マイグレーション実行
-sail artisan migrate
+```javascript
+const params = {
+  TableName: 'CreditCardKickbacks',
+  IndexName: 'CardIndex',
+  KeyConditionExpression: 'GSI2PK = :cardId AND GSI2SK BETWEEN :startDate AND :endDate',
+  ExpressionAttributeValues: {
+    ':cardId': 'CARD#card456',
+    ':startDate': '2023-05-01',
+    ':endDate': '2023-05-31'
+  }
+};
 ```
 
-## 6. プロジェクト設定
+## 4. 実装のポイント
 
-### 6.1 データベース設定
-`.env`ファイルを編集:
-```env
-DB_CONNECTION=mysql
-DB_HOST=mysql
-DB_PORT=3306
-DB_DATABASE=laravel
-DB_USERNAME=sail
-DB_PASSWORD=password
+### 4.1 キーの設計
+
+- **パーティションキー**: ユーザーIDをベースにして、ユーザーごとの検索効率を最適化
+- **ソートキー**: 日付とトランザクションIDの組み合わせにより、同一日の複数トランザクションを区別
+- **GSIのパーティションキー**: 検索頻度の高いカテゴリやカードIDをベースに設計
+
+### 4.2 データ一貫性のための工夫
+
+- **トランザクション処理**: 複雑な更新操作には、DynamoDBのトランザクション機能を使用
+- **バッチ処理**: 複数のキックバックデータを一括で効率的に追加
+
+### 4.3 コスト最適化
+
+- **TTL (Time To Live)**: 古いデータを自動的に削除するためにexpirationTime属性を設定
+- **ProjectionExpression**: 必要な属性のみを取得し、データ転送量を削減
+- **適切なインデックス設計**: 頻繁に使用するクエリパターンに合わせたGSIの設計
+
+## 5. システム拡張のポイント
+
+### 5.1 高度な分析機能
+
+- **DynamoDB Streams + Lambda**: データ変更をリアルタイムで検知し、分析処理を実行
+- **Amazon Athena**: S3にエクスポートしたデータに対してSQLクエリを実行
+- **Amazon QuickSight**: ビジュアル化されたダッシュボードの作成
+
+### 5.2 拡張機能の提案
+
+- **最適なカード推奨機能**: 利用パターンに基づいて、最もキックバック効率の良いカードを推奨
+- **予算管理連携**: 支出カテゴリと連動した予算管理システム
+- **キックバック予測**: 過去のデータに基づく将来のキックバック額の予測
+
+## 6. デプロイとセキュリティ
+
+### 6.1 AWSサービス連携
+
+- **AWS Lambda**: サーバーレスでのAPIエンドポイント提供
+- **Amazon API Gateway**: RESTful APIの提供
+- **AWS IAM**: 適切なアクセス権限管理
+- **AWS KMS**: センシティブデータの暗号化
+
+### 6.2 セキュリティ対策
+
+- **データ暗号化**: 保管データと転送中データの暗号化
+- **最小権限の原則**: 必要最小限のアクセス権限のみを付与
+- **監査ロギング**: AWS CloudTrailを使用した操作ログの記録
+
+## 7. パフォーマンス最適化
+
+### 7.1 読み取り/書き込みキャパシティ
+
+- **オンデマンドキャパシティモード**: 変動するトラフィックに対応
+- **プロビジョンドキャパシティモード**: 予測可能なトラフィックパターンに対応
+- **Auto Scaling**: 自動的にキャパシティをスケールアップ/ダウン
+
+### 7.2 クエリパフォーマンス
+
+- **パーティションキーの均等な分散**: ホットパーティションの回避
+- **効率的なインデックス使用**: 適切なGSIの活用
+- **ページネーション**: 大量の結果セットの効率的な処理
+
+## まとめ
+
+DynamoDBを使用したクレジットカードキックバック管理システムは、フレキシブルなデータモデルとスケーラブルなパフォーマンスを提供します。適切なキー設計と効率的なクエリパターンにより、ユーザー体験を向上させながらコストを最適化することが可能です。
+テーブル名: CreditCardKickbacks
 ```
 
-### 6.2 Viteの設定と起動
-```bash
-# 開発サーバー起動
-sail npm run dev
+#### メインインデックス
 
-# または本番用ビルド
-sail npm run build
-```
+- **PK (パーティションキー)**: `USER#{userId}`
+  - ユーザーIDに基づいて、特定ユーザーのキックバックデータをグループ化
+- **SK (ソートキー)**: `TRANSACTION#{date}#{transactionId}`
+  - 日付とトランザクションIDの組み合わせで、時系列順に並べ替え
 
-## 7. 開発環境へのアクセス
+#### グローバルセカンダリインデックス
 
-- アプリケーション: http://localhost
-- PHPMyAdmin (データベース管理): http://localhost:8080
-- Mailpit (メール確認): http://localhost:8025
+1. **CategoryIndex**
+   - **GSI1PK**: `CATEGORY#{category}`
+   - **GSI1SK**: `{date}` (ISO形式の日付)
+   - 用途: カテゴリ別のキックバック検索や集計
 
-## 8. 便利な開発ツール
+2. **CardIndex**
+   - **GSI2PK**: `CARD#{cardId}`
+   - **GSI2SK**: `{date}` (ISO形式の日付)
+   - 用途: カード別のキックバック効率分析
 
-```bash
-# テスト実行
-sail artisan test
+### アイテム例
 
-# コード整形（Laravel Pint）
-sail pint
-
-# 静的解析（PHPStan）
-sail composer require --dev phpstan/phpstan
-sail vendor/bin/phpstan analyze
-
-# アセットのコンパイル監視
-sail npm run watch
-
-# Laravelインスペクション
-sail artisan about
-
-# ルート一覧
-sail artisan route:list
-```
-
-## 9. Visual Studio Codeとの連携
-
-1. VS Codeのインストール
-2. 拡張機能のインストール:
-   - Remote - WSL
-   - PHP Intelephense
-   - Laravel Blade Snippets
-   - Tailwind CSS IntelliSense（Tailwind CSSを使用する場合）
-
-3. WSLから直接VS Codeを開く:
-```bash
-cd /mnt/c/Users/YourUsername/Projects/my-project
-code .
-```
-
-## 10. トラブルシューティング
-
-### WSL2のパフォーマンス最適化
-`.wslconfig`ファイルを作成 (`C:\Users\YourUsername\.wslconfig`):
-```ini
-[wsl2]
-memory=8GB
-processors=4
-swap=2GB
-localhostForwarding=true
-```
-
-### Docker連携の問題
-```bash
-# Dockerコンテナを完全に再起動
-sail down
-docker system prune -a
-sail up -d
-```
-
-### パーミッションの問題
-```bash
-# ストレージディレクトリの権限修正
-sail root-shell
-chown -R sail:sail /var/www/html/storage
-chmod -R 775 /var/www/html/storage
-exit
-```
-
-### npmのエラー
-```bash
-# node_modulesを削除して再インストール
-sail down
-rm -rf node_modules
-sail up -d
-sail npm install
-```
-
-## 11. 便利なSailコマンド
-
-```bash
-# コンテナ起動
-sail up -d
-
-# コンテナ停止
-sail down
-
-# コンテナ再起動
-sail restart
-
-# コンテナログ表示
-sail logs
-
-# コンポーザー関連
-sail composer require パッケージ名
-sail composer update
-
-# npm関連
-sail npm install パッケージ名
-sail npm update
-
-# Artisanコマンド
-sail artisan make:controller TestController
-sail artisan make:model Test
-sail artisan make:migration create_tests_table
-
-# コンテナシェルアクセス
-sail shell
-sail root-shell
-```
-
-## 12. Git連携のセットアップ
-
-```bash
-# Gitの初期設定
-git init
-git add .
-git commit -m "Initial commit"
-
-# GitHub連携
-git remote add origin https://github.com/yourusername/my-project.git
-git branch -M main
-git push -u origin main
-```
-
-詳細は[Laravel 11公式ドキュメント](https://laravel.com/docs/11.x/installation)と[Laravel Sail公式ドキュメント](https://laravel.com/docs/11.x/sail)を参照してください。
+```json
+{
+  "PK": "USER#user123",
+  "SK": "TRANSACTION#2023-05-01#txn001",
+  "GSI1PK": "CATEGORY#GROCERY",
+  "GSI1SK": "2023-05-01",
+  "GSI2PK": "CARD#card456",
+  "GSI2SK": "2023-05-01",
+  "userId": "user123",
+  "transactionId": "txn001",
+  "transactionDate": "2023-05-01",
+  "cardId": "card456",
+  "cardName": "プラチナカード",
+  "merchantName": "スーパーマーケットA",
+  "category": "GROCERY",
+  "transactionAmount": 5000,
+  "kickbackAmount": 50,
+  "kickbackType": "POINT",
+  "kickbackRate": 0.01,
+  "description": "食料品購入",
+  "createdAt": "2023-05-01T12:34:56Z",
+  "expirationTime": 1683115200
+}
