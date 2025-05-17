@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Camera, MapPin, Thermometer, BedDouble, Users, Star, Utensils, Train } from 'lucide-react';
 
+
 const OnsenRyokanSystem = () => {
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
