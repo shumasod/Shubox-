@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '../../common/Card';
 
-interface QueryEditorProps {
+interface QueryEditorProps 
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
