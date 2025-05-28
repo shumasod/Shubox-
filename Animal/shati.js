@@ -5,7 +5,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# データベース初期化
+
 def init_db():
     conn = sqlite3.connect('ninja_orca_bank.db')
     c = conn.cursor()
