@@ -1,39 +1,225 @@
-// AWSコストリアルタイムモニタリングダッシュボード
+// AWS Cost Explorer APIを使用したコストモニタリングダッシュボード
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-// AWSコストデータを取得する関数
-const fetchAWSCostData = async () => {
-  try {
-    // APIエンドポイントの設定 - 実際の環境に合わせて変更してください
-    const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://api.example.com';
-    
-    // 各データを並行して取得
-    const [monthlyCostResponse, dailyCostResponse, serviceCostResponse, alertsResponse] = await Promise.all([
-      fetch(`${API_BASE_URL}/api/costs/monthly`),
-      fetch(`${API_BASE_URL}/api/costs/daily`),
-      fetch(`${API_BASE_URL}/api/costs/by-service`),
-      fetch(`${API_BASE_URL}/api/alerts`)
-    ]);
-    
-    // レスポンスをJSONに変換
-    const monthlyCost = await monthlyCostResponse.json();
-    const dailyCost = await dailyCostResponse.json();
-    const serviceCost = await serviceCostResponse.json();
-    const alerts = await alertsResponse.json();
-    
-    // すべてのデータを1つのオブジェクトにまとめて返す
-    return {
-      monthlyCost,
-      dailyCost,
-      serviceCost,
-      alerts
-    };
-  } catch (error) {
-    console.error('Error fetching AWS cost data:', error);
-    throw error;
+// AWS Cost Explorer APIクライアントのセットアップ
+// 注意: 実際の環境では、AWS SDK for JavaScript v3を使用し、
+// 適切な認証情報を設定してください
+
+class CostExplorerService {
+  constructor() {
+    // 実際の環境では、AWS.config.update()またはAWS SDKのCredentialsProviderを使用
+    this.region = process.env.REACT_APP_AWS_REGION || 'us-east-1';
+    this.apiEndpoint = `https://ce.${this.region}.amazonaws.com`;
   }
-};
+
+  // Cost Explorer APIを呼び出すためのヘルパー関数
+  async callCostExplorerAPI(operation, params) {
+    try {
+      // 実際の環境では、AWS SDK v3のCostExplorerClientを使用
+      // この例では、プロキシサーバーまたはLambda関数経由でAPIを呼び出すことを想定
+      const response = await fetch('/api/cost-explorer/' + operation, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.REACT_APP_API_TOKEN}` // 実際の認証方式に応じて変更
+        },
+        body: JSON.stringify(params)
+      });
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`Error calling Cost Explorer API (${operation}):`, error);
+      throw error;
+    }
+  }
+
+  // 月次コストデータを取得
+  async getMonthlyCostData() {
+    const endDate = new Date();
+    const startDate = new Date(endDate.getFullYear() - 1, endDate.getMonth(), 1);
+    
+    const params = {
+      TimePeriod: {
+        Start: startDate.toISOString().split('T')[0],
+        End: endDate.toISOString().split('T')[0]
+      },
+      Granularity: 'MONTHLY',
+      Metrics: ['BlendedCost'],
+      GroupBy: [
+        {
+          Type: 'TAG',
+          Key: 'Environment' // 本番/開発環境の分類用
+        }
+      ]
+    };
+
+    const response = await this.callCostExplorerAPI('GetCostAndUsage', params);
+    return this.transformMonthlyCostData(response);
+  }
+
+  // 日次コストデータを取得 (過去30日間)
+  async getDailyCostData() {
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 30);
+
+    const params = {
+      TimePeriod: {
+        Start: startDate.toISOString().split('T')[0],
+        End: endDate.toISOString().split('T')[0]
+      },
+      Granularity: 'DAILY',
+      Metrics: ['BlendedCost'],
+      GroupBy: [
+        {
+          Type: 'TAG',
+          Key: 'Environment'
+        }
+      ]
+    };
+
+    const response = await this.callCostExplorerAPI('GetCostAndUsage', params);
+    return this.transformDailyCostData(response);
+  }
+
+  // サービス別コストデータを取得
+  async getServiceCostData() {
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 30);
+
+    const params = {
+      TimePeriod: {
+        Start: startDate.toISOString().split('T')[0],
+        End: endDate.toISOString().split('T')[0]
+      },
+      Granularity: 'MONTHLY',
+      Metrics: ['BlendedCost'],
+      GroupBy: [
+        {
+          Type: 'DIMENSION',
+          Key: 'SERVICE'
+        }
+      ]
+    };
+
+    const response = await this.callCostExplorerAPI('GetCostAndUsage', params);
+    return this.transformServiceCostData(response);
+  }
+
+  // コスト異常検知データを取得
+  async getCostAnomalies() {
+    const params = {
+      DateInterval: {
+        StartDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 過去7日
+        EndDate: new Date().toISOString().split('T')[0]
+      },
+      MaxResults: 10
+    };
+
+    try {
+      const response = await this.callCostExplorerAPI('GetAnomalies', params);
+      return this.transformAnomalyData(response);
+    } catch (error) {
+      console.warn('Cost anomaly detection not available or configured:', error);
+      return []; // フォールバック
+    }
+  }
+
+  // 月次データの変換
+  transformMonthlyCostData(response) {
+    return response.ResultsByTime?.map(result => {
+      const date = result.TimePeriod.Start;
+      let total = 0;
+      let prod = 0;
+      let dev = 0;
+
+      result.Groups?.forEach(group => {
+        const cost = parseFloat(group.Metrics.BlendedCost.Amount);
+        const environment = group.Keys[0];
+        
+        total += cost;
+        if (environment === 'production' || environment === 'prod') {
+          prod += cost;
+        } else if (environment === 'development' || environment === 'dev') {
+          dev += cost;
+        }
+      });
+
+      return {
+        date: new Date(date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short' }),
+        total: total,
+        prod: prod,
+        dev: dev
+      };
+    }) || [];
+  }
+
+  // 日次データの変換
+  transformDailyCostData(response) {
+    return response.ResultsByTime?.map(result => {
+      const date = result.TimePeriod.Start;
+      let total = 0;
+      let prod = 0;
+      let dev = 0;
+
+      result.Groups?.forEach(group => {
+        const cost = parseFloat(group.Metrics.BlendedCost.Amount);
+        const environment = group.Keys[0];
+        
+        total += cost;
+        if (environment === 'production' || environment === 'prod') {
+          prod += cost;
+        } else if (environment === 'development' || environment === 'dev') {
+          dev += cost;
+        }
+      });
+
+      return {
+        date: new Date(date).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
+        total: total,
+        prod: prod,
+        dev: dev
+      };
+    }) || [];
+  }
+
+  // サービス別データの変換
+  transformServiceCostData(response) {
+    const serviceCosts = [];
+    
+    response.ResultsByTime?.[0]?.Groups?.forEach(group => {
+      const serviceName = group.Keys[0];
+      const cost = parseFloat(group.Metrics.BlendedCost.Amount);
+      
+      if (cost > 0.01) { // $0.01以上のサービスのみ表示
+        serviceCosts.push({
+          service: serviceName.length > 15 ? serviceName.substring(0, 15) + '...' : serviceName,
+          cost: cost
+        });
+      }
+    });
+
+    // コスト順にソートして上位10件を返す
+    return serviceCosts.sort((a, b) => b.cost - a.cost).slice(0, 10);
+  }
+
+  // 異常検知データの変換
+  transformAnomalyData(response) {
+    return response.Anomalies?.map(anomaly => ({
+      id: anomaly.AnomalyId,
+      message: `${anomaly.RootCauses?.[0]?.Service || 'Unknown'}: $${anomaly.Impact.TotalImpact.toFixed(2)}の異常増加`,
+      severity: anomaly.Impact.TotalImpact > 100 ? 'high' : anomaly.Impact.TotalImpact > 50 ? 'medium' : 'low',
+      timestamp: new Date(anomaly.AnomalyStartDate).toLocaleString('ja-JP'),
+      impact: anomaly.Impact.TotalImpact
+    })) || [];
+  }
+}
 
 // アラートの重要度に基づく色を返す関数
 const getAlertColor = (severity) => {
@@ -62,19 +248,85 @@ const AWSDashboard = () => {
   const [refreshInterval, setRefreshInterval] = useState(5); // 分単位
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
+  // Cost Explorer サービスのインスタンス
+  const costExplorerService = new CostExplorerService();
+
   // データロード関数
   const loadData = async () => {
     try {
       setLoading(true);
-      const result = await fetchAWSCostData();
-      setData(result);
-      setLastUpdated(new Date());
       setError(null);
+
+      // Cost Explorer APIからデータを並行取得
+      const [monthlyCost, dailyCost, serviceCost, alerts] = await Promise.all([
+        costExplorerService.getMonthlyCostData(),
+        costExplorerService.getDailyCostData(),
+        costExplorerService.getServiceCostData(),
+        costExplorerService.getCostAnomalies()
+      ]);
+
+      setData({
+        monthlyCost,
+        dailyCost,
+        serviceCost,
+        alerts
+      });
+      
+      setLastUpdated(new Date());
     } catch (err) {
-      setError('データの取得に失敗しました: ' + (err.message || '不明なエラー'));
+      console.error('Data loading error:', err);
+      setError('AWS Cost Explorer APIからのデータ取得に失敗しました: ' + (err.message || '不明なエラー'));
+      
+      // フォールバックデータ（デモ用）
+      if (!data) {
+        setData(generateFallbackData());
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  // フォールバックデータ生成（デモ用）
+  const generateFallbackData = () => {
+    const months = ['1月', '2月', '3月', '4月', '5月', '6月'];
+    const monthlyCost = months.map((month, index) => ({
+      date: month,
+      total: 1000 + Math.random() * 500,
+      prod: 700 + Math.random() * 300,
+      dev: 300 + Math.random() * 200
+    }));
+
+    const dailyCost = Array.from({ length: 30 }, (_, index) => ({
+      date: `${index + 1}`,
+      total: 30 + Math.random() * 20,
+      prod: 20 + Math.random() * 15,
+      dev: 10 + Math.random() * 10
+    }));
+
+    const serviceCost = [
+      { service: 'EC2-Instance', cost: 450.23 },
+      { service: 'S3', cost: 123.45 },
+      { service: 'RDS', cost: 234.56 },
+      { service: 'Lambda', cost: 45.67 },
+      { service: 'CloudFront', cost: 67.89 }
+    ];
+
+    const alerts = [
+      {
+        id: '1',
+        message: 'EC2コストが予算の80%に到達',
+        severity: 'medium',
+        timestamp: new Date().toLocaleString('ja-JP')
+      },
+      {
+        id: '2',
+        message: 'S3使用量が急増',
+        severity: 'low',
+        timestamp: new Date(Date.now() - 3600000).toLocaleString('ja-JP')
+      }
+    ];
+
+    return { monthlyCost, dailyCost, serviceCost, alerts };
   };
 
   // 初回ロードと定期更新
@@ -100,18 +352,19 @@ const AWSDashboard = () => {
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-2">データを読み込み中...</p>
+          <p className="mt-2">AWS Cost Explorer APIからデータを取得中...</p>
         </div>
       </div>
     );
   }
 
-  // エラーの表示
-  if (error) {
+  // データが無い場合
+  if (!data) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center text-red-600">
-          <p>{error}</p>
+          <p>データの取得に失敗しました</p>
+          {error && <p className="text-sm mt-2">{error}</p>}
           <button 
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             onClick={loadData}
@@ -123,31 +376,31 @@ const AWSDashboard = () => {
     );
   }
 
-  // データが無い場合
-  if (!data) {
-    return null;
-  }
-
-  // 月次の累計コスト
-  const currentMonthCost = data.monthlyCost[data.monthlyCost.length - 1].total;
-  const prevMonthCost = data.monthlyCost[data.monthlyCost.length - 2].total;
+  // 月次の累計コスト計算
+  const currentMonthCost = data.monthlyCost.length > 0 ? data.monthlyCost[data.monthlyCost.length - 1].total : 0;
+  const prevMonthCost = data.monthlyCost.length > 1 ? data.monthlyCost[data.monthlyCost.length - 2].total : currentMonthCost;
   const monthlyDiff = currentMonthCost - prevMonthCost;
-  const monthlyDiffPercent = ((monthlyDiff / prevMonthCost) * 100).toFixed(1);
+  const monthlyDiffPercent = prevMonthCost > 0 ? ((monthlyDiff / prevMonthCost) * 100).toFixed(1) : '0.0';
 
-  // 日次の最新コスト
-  const latestDailyCost = data.dailyCost[data.dailyCost.length - 1].total;
-  const prevDailyCost = data.dailyCost[data.dailyCost.length - 2].total;
+  // 日次の最新コスト計算
+  const latestDailyCost = data.dailyCost.length > 0 ? data.dailyCost[data.dailyCost.length - 1].total : 0;
+  const prevDailyCost = data.dailyCost.length > 1 ? data.dailyCost[data.dailyCost.length - 2].total : latestDailyCost;
   const dailyDiff = latestDailyCost - prevDailyCost;
-  const dailyDiffPercent = ((dailyDiff / prevDailyCost) * 100).toFixed(1);
+  const dailyDiffPercent = prevDailyCost > 0 ? ((dailyDiff / prevDailyCost) * 100).toFixed(1) : '0.0';
 
   return (
     <div className="p-4 max-w-full bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">AWSコストリアルタイムモニタリング</h1>
+        <h1 className="text-2xl font-bold text-gray-800">AWS Cost Explorer ダッシュボード</h1>
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-500">
             最終更新: {lastUpdated.toLocaleString()}
           </span>
+          {error && (
+            <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-1 rounded">
+              ⚠️ フォールバックデータ使用中
+            </span>
+          )}
           <div className="flex items-center">
             <label htmlFor="refresh" className="mr-2 text-sm">更新間隔:</label>
             <select 
@@ -165,9 +418,10 @@ const AWSDashboard = () => {
           </div>
           <button 
             onClick={loadData}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+            disabled={loading}
+            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm disabled:opacity-50"
           >
-            今すぐ更新
+            {loading ? '更新中...' : '今すぐ更新'}
           </button>
         </div>
       </div>
@@ -204,10 +458,10 @@ const AWSDashboard = () => {
           <h3 className="text-sm font-medium text-gray-500">本番環境コスト</h3>
           <div className="mt-1 flex items-baseline">
             <div className="text-2xl font-semibold text-gray-900">
-              {formatCurrency(data.monthlyCost[data.monthlyCost.length - 1].prod)}
+              {formatCurrency(data.monthlyCost.length > 0 ? data.monthlyCost[data.monthlyCost.length - 1].prod : 0)}
             </div>
             <div className="ml-2 text-sm font-medium text-gray-500">
-              ({((data.monthlyCost[data.monthlyCost.length - 1].prod / currentMonthCost) * 100).toFixed(1)}%)
+              ({currentMonthCost > 0 ? ((data.monthlyCost[data.monthlyCost.length - 1]?.prod / currentMonthCost) * 100).toFixed(1) : 0}%)
             </div>
           </div>
           <div className="text-xs text-gray-500 mt-1">総コストに対する割合</div>
@@ -217,10 +471,10 @@ const AWSDashboard = () => {
           <h3 className="text-sm font-medium text-gray-500">開発環境コスト</h3>
           <div className="mt-1 flex items-baseline">
             <div className="text-2xl font-semibold text-gray-900">
-              {formatCurrency(data.monthlyCost[data.monthlyCost.length - 1].dev)}
+              {formatCurrency(data.monthlyCost.length > 0 ? data.monthlyCost[data.monthlyCost.length - 1].dev : 0)}
             </div>
             <div className="ml-2 text-sm font-medium text-gray-500">
-              ({((data.monthlyCost[data.monthlyCost.length - 1].dev / currentMonthCost) * 100).toFixed(1)}%)
+              ({currentMonthCost > 0 ? ((data.monthlyCost[data.monthlyCost.length - 1]?.dev / currentMonthCost) * 100).toFixed(1) : 0}%)
             </div>
           </div>
           <div className="text-xs text-gray-500 mt-1">総コストに対する割合</div>
@@ -231,7 +485,7 @@ const AWSDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* 月次トレンドグラフ */}
         <div className="bg-white p-4 rounded-lg shadow lg:col-span-2">
-          <h3 className="text-lg font-medium mb-4">月次コスト推移</h3>
+          <h3 className="text-lg font-medium mb-4">月次コスト推移 (Cost Explorer API)</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.monthlyCost} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
@@ -248,14 +502,14 @@ const AWSDashboard = () => {
           </div>
         </div>
         
-        {/* アラート */}
+        {/* アラート・異常検知 */}
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium">アラート</h3>
-            <button className="text-sm text-blue-500 hover:text-blue-700">すべて見る</button>
+            <h3 className="text-lg font-medium">コスト異常検知</h3>
+            <button className="text-sm text-blue-500 hover:text-blue-700">詳細を見る</button>
           </div>
           <div className="space-y-3 max-h-64 overflow-y-auto">
-            {data.alerts.map(alert => (
+            {data.alerts.length > 0 ? data.alerts.map(alert => (
               <div 
                 key={alert.id} 
                 className={`border-l-4 p-3 rounded-r ${getAlertColor(alert.severity)}`}
@@ -265,7 +519,11 @@ const AWSDashboard = () => {
                   <div className="text-xs text-gray-500">{alert.timestamp}</div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="text-gray-500 text-center py-4">
+                現在、異常は検出されていません
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -293,7 +551,7 @@ const AWSDashboard = () => {
         
         {/* サービス別コスト */}
         <div className="bg-white p-4 rounded-lg shadow">
-          <h3 className="text-lg font-medium mb-4">サービス別コスト</h3>
+          <h3 className="text-lg font-medium mb-4">サービス別コスト (Top 10)</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
