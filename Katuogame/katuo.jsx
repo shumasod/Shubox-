@@ -5,51 +5,86 @@ const JaraashiComponent = ({ position, color }) => {
   const [smoothPosition, setSmoothPosition] = useState(position);
 
   useEffect(() => {
-    const animate = () => {
-      setSmoothPosition(current => ({
-        x: current.x + (position.x - current.x) * 0.2,
-        y: current.y + (position.y - current.y) * 0.2
-      }));
-    };
-    requestAnimationFrame(animate);
-    prevPosition.current = position;
-  }, [position]);
+  let animationFrameId;
+  const updatePosition = () => {
+    if (gameState !== 'playing') return;
+    const dx = jaraashiPosition.x - catPosition.x;
+    const dy = jaraashiPosition.y - catPosition.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
 
-  return (
-    <svg
-      width="50"
-      height="50"
-      viewBox="0 0 50 50"
-      style={{
-        position: 'absolute',
-        left: `${smoothPosition.x}%`,
-        top: `${smoothPosition.y}%`,
-        transform: 'translate(-50%, -50%)',
-        transition: 'color 0.3s ease'
-      }}
-    >
-      <line 
-        x1="25" 
-        y1="0" 
-        x2="25" 
-        y2="50" 
-        stroke={color} 
-        strokeWidth="5"
-        strokeLinecap="round"
-      />
-      <path 
-        d="M15,10 Q25,0 35,10 Q25,20 15,10" 
-        fill={color}
-      />
-    </svg>
-  );
-};
+    // レア猫はじゃらしから逃げる
+    if (isRare && distance < 40) {
+      speedRef.current.x -= (dx / distance) * 1.0;
+      speedRef.current.y -= (dy / distance) * 1.0;
+    } else if (distance < 30) {
+      speedRef.current.x += (dx / distance) * 0.8;
+      speedRef.current.y += (dy / distance) * 0.8;
+    } else {
+      speedRef.current.x += (Math.random() - 0.5) * 0.4;
+      speedRef.current.y += (Math.random() - 0.5) * 0.4;
+    }
 
-const CatComponent = ({ id, position, isRare, onCatch, jaraashiPosition }) => {
-  const [catPosition, setCatPosition] = useState(position);
-  const [rotation, setRotation] = useState(0);
-  const moveRef = useRef(null);
-  const speedRef = useRef({ x: 0, y: 0 });
+    speedRef.current.x *= 0.95;
+    speedRef.current.y *= 0.95;
+
+    setCatPosition(prev => ({
+      x: Math.max(0, Math.min(100, prev.x + speedRef.current.x)),
+      y: Math.max(0, Math.min(100, prev.y + speedRef.current.y))
+    }));
+
+    setRotation(prev => {
+      const targetRotation = Math.atan2(speedRef.current.y, speedRef.current.x) * 180 / Math.PI;
+      const diff = targetRotation - prev;
+      return prev + (diff > 180 ? diff - 360 : diff < -180 ? diff + 360 : diff) * 0.1;
+    });
+
+    animationFrameId = requestAnimationFrame(updatePosition);
+  };
+
+  animationFrameId = requestAnimationFrame(updatePosition);
+  return () => cancelAnimationFrame(animationFrameId);
+}, [jaraashiPosition, catPosition, isRare, gameState]);
+
+// FeatherComponent useEffect
+useEffect(() => {
+  let animationId;
+  const animate = () => {
+    if (gameState !== 'playing') return;
+    const time = Date.now() / 1000;
+    setFeatherPosition({
+      x: position.x + Math.sin(time * 2) * 3,
+      y: position.y + Math.cos(time * 1.5) * 2
+    });
+    setRotation(Math.sin(time * 3) * 30);
+    animationId = requestAnimationFrame(animate);
+  };
+  animationId = requestAnimationFrame(animate);
+  return () => cancelAnimationFrame(animationId);
+}, [position, gameState]);
+
+// ScoreBoard: 追加でアクセシビリティ向上
+const ScoreBoard = ({ score, time }) => (
+  <div
+    role="region"
+    aria-label="scoreboard"
+    style={{ 
+      position: 'absolute', 
+      top: '10px', 
+      left: '10px', 
+      padding: '10px',
+      background: 'rgba(255, 255, 255, 0.9)',
+      borderRadius: '5px'
+    }}
+  >
+    <div style={{ fontSize: '18px' }}>スコア: {score}</div>
+    <div style={{ fontSize: '18px' }}>残り時間: {time}秒</div>
+  </div>
+);
+
+// CatJaraashiGame 変更箇所：gameState を useEffect で各アニメーション制御に渡す
+// 必要に応じて props に gameState を渡してください
+// 例：<CatComponent ... gameState={gameState} />
+//     <FeatherComponent ... gameState={gameState} />
 
   useEffect(() => {
     const updatePosition = () => {
