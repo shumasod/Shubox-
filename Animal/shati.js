@@ -1,89 +1,177 @@
-import sqlite3
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+# 忍者シャチ銀行システム 🥷🐋
 
-app = Flask(__name__)
-CORS(app)
+改善された忍者シャチ銀行システムのFlask APIです。
 
-# データベース初期化
-def init_db():
-    conn = sqlite3.connect('ninja_orca_bank.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS accounts
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  account_number TEXT UNIQUE,
-                  owner_name TEXT,
-                  balance REAL)''')
-    conn.commit()
-    conn.close()
+## 🚀 セットアップ
 
-init_db()
+### 1. 依存関係のインストール
 
-# 新規口座開設
-@app.route('/create_account', methods=['POST'])
-def create_account():
-    data = request.json
-    conn = sqlite3.connect('ninja_orca_bank.db')
-    c = conn.cursor()
-    try:
-        c.execute("INSERT INTO accounts (account_number, owner_name, balance) VALUES (?, ?, ?)",
-                  (data['accountNumber'], data['ownerName'], data['balance']))
-        conn.commit()
-        return jsonify({"message": "新規忍者シャチ口座が開設されました。"}), 201
-    except sqlite3.IntegrityError:
-        return jsonify({"error": "この忍者シャチコードは既に使用されています。"}), 400
-    finally:
-        conn.close()
+```bash
+pip install -r requirements.txt
+```
 
-# 取引（入金/出金）
-@app.route('/transaction', methods=['POST'])
-def transaction():
-    data = request.json
-    conn = sqlite3.connect('ninja_orca_bank.db')
-    c = conn.cursor()
-    try:
-        c.execute("SELECT balance FROM accounts WHERE account_number = ?", (data['accountNumber'],))
-        result = c.fetchone()
-        if result is None:
-            return jsonify({"error": "忍者シャチが見つかりません。深海に潜んでいるかもしれません。"}), 404
-        
-        current_balance = result[0]
-        new_balance = current_balance + data['amount'] if data['type'] == 'deposit' else current_balance - data['amount']
-        
-        if new_balance < 0:
-            return jsonify({"error": "魚ポイントが不足しています。もっと魚を捕まえてください！"}), 400
-        
-        c.execute("UPDATE accounts SET balance = ? WHERE account_number = ?", (new_balance, data['accountNumber']))
-        conn.commit()
-        return jsonify({"message": f"{abs(data['amount'])}魚ポイントが{'獲得' if data['type'] == 'deposit' else '使用'}されました。新しい魚ポイント: {new_balance}"}), 200
-    finally:
-        conn.close()
+### 2. 環境設定
 
-# 残高照会
-@app.route('/balance/<account_number>', methods=['GET'])
-def get_balance(account_number):
-    conn = sqlite3.connect('ninja_orca_bank.db')
-    c = conn.cursor()
-    try:
-        c.execute("SELECT balance FROM accounts WHERE account_number = ?", (account_number,))
-        result = c.fetchone()
-        if result is None:
-            return jsonify({"error": "忍者シャチが見つかりません。海中忍術で姿を隠しているかもしれません。"}), 404
-        return jsonify({"balance": result[0]}), 200
-    finally:
-        conn.close()
+`.env.example`を`.env`にコピーして設定を調整：
 
-# 全口座一覧
-@app.route('/accounts', methods=['GET'])
-def list_accounts():
-    conn = sqlite3.connect('ninja_orca_bank.db')
-    c = conn.cursor()
-    try:
-        c.execute("SELECT account_number, owner_name, balance FROM accounts")
-        accounts = [{"accountNumber": row[0], "ownerName": row[1], "balance": row[2]} for row in c.fetchall()]
-        return jsonify(accounts), 200
-    finally:
-        conn.close()
+```bash
+cp .env.example .env
+```
 
-if __name__ == '__main__':
-    app.run(debug=True)
+### 3. アプリケーション起動
+
+```bash
+python app.py
+```
+
+## 📚 API エンドポイント
+
+### ヘルスチェック
+```
+GET /health
+```
+
+### 新規口座開設
+```
+POST /create_account
+Content-Type: application/json
+
+{
+  "accountNumber": "NINJA001",
+  "ownerName": "忍者シャチ太郎",
+  "balance": 1000.0
+}
+```
+
+### 取引（入金/出金）
+```
+POST /transaction
+Content-Type: application/json
+
+// 入金
+{
+  "accountNumber": "NINJA001",
+  "type": "deposit",
+  "amount": 500.0
+}
+
+// 出金
+{
+  "accountNumber": "NINJA001",
+  "type": "withdraw",
+  "amount": 200.0
+}
+```
+
+### 残高照会
+```
+GET /balance/{account_number}
+```
+
+### 全口座一覧
+```
+GET /accounts
+```
+
+### 口座削除
+```
+DELETE /account/{account_number}
+```
+
+## 🧪 テスト用cURLコマンド
+
+### 口座開設
+```bash
+curl -X POST http://localhost:5000/create_account \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountNumber": "NINJA001",
+    "ownerName": "忍者シャチ太郎",
+    "balance": 1000.0
+  }'
+```
+
+### 入金
+```bash
+curl -X POST http://localhost:5000/transaction \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountNumber": "NINJA001",
+    "type": "deposit",
+    "amount": 500.0
+  }'
+```
+
+### 出金
+```bash
+curl -X POST http://localhost:5000/transaction \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accountNumber": "NINJA001",
+    "type": "withdraw",
+    "amount": 200.0
+  }'
+```
+
+### 残高照会
+```bash
+curl http://localhost:5000/balance/NINJA001
+```
+
+### 全口座一覧
+```bash
+curl http://localhost:5000/accounts
+```
+
+## 🔧 主な改善点
+
+### セキュリティ強化
+- 入力値検証の実装
+- エラーハンドリングの改善
+- ログ機能の追加
+
+### コード品質向上
+- コンテキストマネージャでDB接続管理
+- 設定の外部化
+- 適切な例外処理
+
+### 機能拡張
+- ヘルスチェックエンドポイント
+- 口座削除機能
+- より詳細なレスポンス情報
+
+### データベース改善
+- タイムスタンプフィールド追加
+- インデックス作成
+- トランザクション管理強化
+
+## 🛡️ セキュリティ注意事項
+
+本番環境では以下を必ず実施してください：
+
+1. **SECRET_KEY**を安全な値に変更
+2. **FLASK_DEBUG**をFalseに設定
+3. HTTPS通信の使用
+4. 認証・認可機能の実装
+5. レート制限の設定
+
+## 📊 ログ
+
+アプリケーションの動作ログが標準出力に出力されます：
+- 口座作成・削除
+- 取引処理
+- エラー情報
+
+## 🐛 トラブルシューティング
+
+### データベースエラー
+- データベースファイルの権限を確認
+- ディスク容量を確認
+
+### 接続エラー
+- ポートが使用中でないか確認
+- ファイアウォール設定を確認
+
+### 入力エラー
+- JSON形式が正しいか確認
+- 必須フィールドが含まれているか確認
