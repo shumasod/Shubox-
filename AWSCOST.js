@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from ‘react’;
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter, Area, AreaChart } from ‘recharts’;
+import React, { useState, useEffect } from ‘react’;
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from ‘recharts’;
 
-// AWS Cost Explorer APIを使用したコストモニタリングダッシュボード（AIOps対応）
+// AIOps分析エンジン
 class AIOpsAnalyzer {
 constructor() {
 this.models = {
@@ -28,28 +28,19 @@ if (index < window - 1) return { …item, movingAvg: item.total };
 // 季節性分析
 analyzeSeasonality(data) {
 const weeklyPattern = Array(7).fill(0);
-const monthlyPattern = Array(31).fill(0);
-const counts = { weekly: Array(7).fill(0), monthly: Array(31).fill(0) };
+const counts = Array(7).fill(0);
 
 ```
 data.forEach((item, index) => {
   const dayOfWeek = index % 7;
-  const dayOfMonth = (index % 31);
-  
   weeklyPattern[dayOfWeek] += item.total;
-  monthlyPattern[dayOfMonth] += item.total;
-  counts.weekly[dayOfWeek]++;
-  counts.monthly[dayOfMonth]++;
+  counts[dayOfWeek]++;
 });
 
 return {
   weekly: weeklyPattern.map((sum, i) => ({
     day: ['日', '月', '火', '水', '木', '金', '土'][i],
-    average: counts.weekly[i] > 0 ? sum / counts.weekly[i] : 0
-  })),
-  monthly: monthlyPattern.map((sum, i) => ({
-    day: i + 1,
-    average: counts.monthly[i] > 0 ? sum / counts.monthly[i] : 0
+    average: counts[i] > 0 ? sum / counts[i] : 0
   }))
 };
 ```
@@ -80,27 +71,12 @@ for (let i = 0; i < days; i++) {
   predictions.push({
     date: `予測${i + 1}日目`,
     predicted: Math.max(0, predictedY),
-    confidence: this.calculateConfidence(data, slope, intercept, futureX)
+    upper: Math.max(0, predictedY * 1.2),
+    lower: Math.max(0, predictedY * 0.8)
   });
 }
 
 return predictions;
-```
-
-}
-
-// 信頼区間の計算
-calculateConfidence(data, slope, intercept, x) {
-const predictions = data.map((_, i) => slope * i + intercept);
-const residuals = data.map((d, i) => d.total - predictions[i]);
-const mse = residuals.reduce((acc, r) => acc + r * r, 0) / data.length;
-const standardError = Math.sqrt(mse);
-
-```
-return {
-  upper: slope * x + intercept + 1.96 * standardError,
-  lower: Math.max(0, slope * x + intercept - 1.96 * standardError)
-};
 ```
 
 }
@@ -123,7 +99,8 @@ return data.map((item, index) => {
     ...item,
     zScore,
     isAnomaly,
-    severity: zScore > 3 ? 'high' : zScore > 2 ? 'medium' : 'low'
+    severity: zScore > 3 ? 'high' : zScore > 2 ? 'medium' : 'low',
+    index: index
   };
 }).filter(item => item.isAnomaly);
 ```
@@ -131,10 +108,9 @@ return data.map((item, index) => {
 }
 
 // コスト効率性分析
-analyzeCostEfficiency(serviceCosts, utilizationData = []) {
+analyzeCostEfficiency(serviceCosts) {
 return serviceCosts.map(service => {
-const utilization = utilizationData.find(u => u.service === service.service);
-const efficiency = utilization ? (utilization.usage / 100) * (service.cost / 100) : 0.5;
+const efficiency = Math.random() * 0.5 + 0.3; // デモ用ランダム値
 
 ```
   return {
@@ -181,220 +157,67 @@ return { score: score.toFixed(2), level };
 }
 }
 
+// Cost Explorer Service（デモデータ用）
 class CostExplorerService {
 constructor() {
-this.region = process.env.REACT_APP_AWS_REGION || ‘us-east-1’;
-this.apiEndpoint = `https://ce.${this.region}.amazonaws.com`;
 this.aiops = new AIOpsAnalyzer();
 }
 
-async callCostExplorerAPI(operation, params) {
-try {
-const response = await fetch(’/api/cost-explorer/’ + operation, {
-method: ‘POST’,
-headers: {
-‘Content-Type’: ‘application/json’,
-‘Authorization’: `Bearer ${process.env.REACT_APP_API_TOKEN}`
-},
-body: JSON.stringify(params)
-});
-
-```
-  if (!response.ok) {
-    throw new Error(`API call failed: ${response.status}`);
-  }
-
-  return await response.json();
-} catch (error) {
-  console.error(`Error calling Cost Explorer API (${operation}):`, error);
-  throw error;
-}
-```
-
-}
-
 async getMonthlyCostData() {
-const endDate = new Date();
-const startDate = new Date(endDate.getFullYear() - 1, endDate.getMonth(), 1);
-
-```
-const params = {
-  TimePeriod: {
-    Start: startDate.toISOString().split('T')[0],
-    End: endDate.toISOString().split('T')[0]
-  },
-  Granularity: 'MONTHLY',
-  Metrics: ['BlendedCost'],
-  GroupBy: [{ Type: 'TAG', Key: 'Environment' }]
-};
-
-const response = await this.callCostExplorerAPI('GetCostAndUsage', params);
-return this.transformMonthlyCostData(response);
-```
-
+// デモデータ
+const months = [‘1月’, ‘2月’, ‘3月’, ‘4月’, ‘5月’, ‘6月’];
+return months.map((month, index) => ({
+date: month,
+total: 1000 + Math.random() * 500,
+prod: 700 + Math.random() * 300,
+dev: 300 + Math.random() * 200
+}));
 }
 
 async getDailyCostData() {
-const endDate = new Date();
-const startDate = new Date(endDate);
-startDate.setDate(startDate.getDate() - 60); // より長期間のデータで精度向上
+// デモデータ
+const data = Array.from({ length: 60 }, (_, index) => ({
+date: `${index + 1}`,
+total: 30 + Math.random() * 20 + Math.sin(index / 7) * 10,
+prod: 20 + Math.random() * 15,
+dev: 10 + Math.random() * 10
+}));
 
 ```
-const params = {
-  TimePeriod: {
-    Start: startDate.toISOString().split('T')[0],
-    End: endDate.toISOString().split('T')[0]
-  },
-  Granularity: 'DAILY',
-  Metrics: ['BlendedCost'],
-  GroupBy: [{ Type: 'TAG', Key: 'Environment' }]
-};
-
-const response = await this.callCostExplorerAPI('GetCostAndUsage', params);
-return this.transformDailyCostData(response);
+return this.aiops.calculateMovingAverage(data);
 ```
 
 }
 
 async getServiceCostData() {
-const endDate = new Date();
-const startDate = new Date(endDate);
-startDate.setDate(startDate.getDate() - 30);
-
-```
-const params = {
-  TimePeriod: {
-    Start: startDate.toISOString().split('T')[0],
-    End: endDate.toISOString().split('T')[0]
-  },
-  Granularity: 'MONTHLY',
-  Metrics: ['BlendedCost'],
-  GroupBy: [{ Type: 'DIMENSION', Key: 'SERVICE' }]
-};
-
-const response = await this.callCostExplorerAPI('GetCostAndUsage', params);
-return this.transformServiceCostData(response);
-```
-
+return [
+{ service: ‘EC2-Instance’, cost: 450.23 },
+{ service: ‘S3’, cost: 123.45 },
+{ service: ‘RDS’, cost: 234.56 },
+{ service: ‘Lambda’, cost: 45.67 },
+{ service: ‘CloudFront’, cost: 67.89 },
+{ service: ‘ElastiCache’, cost: 89.12 },
+{ service: ‘ELB’, cost: 34.56 }
+];
 }
 
 async getCostAnomalies() {
-const params = {
-DateInterval: {
-StartDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split(‘T’)[0],
-EndDate: new Date().toISOString().split(‘T’)[0]
+return [
+{
+id: ‘1’,
+message: ‘EC2コストが予算の80%に到達’,
+severity: ‘warning’,
+timestamp: new Date().toLocaleString(‘ja-JP’),
+impact: 75.5
 },
-MaxResults: 10
-};
-
-```
-try {
-  const response = await this.callCostExplorerAPI('GetAnomalies', params);
-  return this.transformAnomalyData(response);
-} catch (error) {
-  console.warn('Cost anomaly detection not available or configured:', error);
-  return [];
+{
+id: ‘2’,
+message: ‘S3使用量が急増’,
+severity: ‘caution’,
+timestamp: new Date(Date.now() - 3600000).toLocaleString(‘ja-JP’),
+impact: 25.3
 }
-```
-
-}
-
-transformMonthlyCostData(response) {
-return response.ResultsByTime?.map(result => {
-const date = result.TimePeriod.Start;
-let total = 0;
-let prod = 0;
-let dev = 0;
-
-```
-  result.Groups?.forEach(group => {
-    const cost = parseFloat(group.Metrics.BlendedCost.Amount);
-    const environment = group.Keys[0];
-    
-    total += cost;
-    if (environment === 'production' || environment === 'prod') {
-      prod += cost;
-    } else if (environment === 'development' || environment === 'dev') {
-      dev += cost;
-    }
-  });
-
-  return {
-    date: new Date(date).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short' }),
-    total: total,
-    prod: prod,
-    dev: dev
-  };
-}) || [];
-```
-
-}
-
-transformDailyCostData(response) {
-const transformed = response.ResultsByTime?.map(result => {
-const date = result.TimePeriod.Start;
-let total = 0;
-let prod = 0;
-let dev = 0;
-
-```
-  result.Groups?.forEach(group => {
-    const cost = parseFloat(group.Metrics.BlendedCost.Amount);
-    const environment = group.Keys[0];
-    
-    total += cost;
-    if (environment === 'production' || environment === 'prod') {
-      prod += cost;
-    } else if (environment === 'development' || environment === 'dev') {
-      dev += cost;
-    }
-  });
-
-  return {
-    date: new Date(date).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
-    total: total,
-    prod: prod,
-    dev: dev,
-    timestamp: new Date(date)
-  };
-}) || [];
-
-// AIOps分析を追加
-const withMovingAvg = this.aiops.calculateMovingAverage(transformed);
-return withMovingAvg;
-```
-
-}
-
-transformServiceCostData(response) {
-const serviceCosts = [];
-
-```
-response.ResultsByTime?.[0]?.Groups?.forEach(group => {
-  const serviceName = group.Keys[0];
-  const cost = parseFloat(group.Metrics.BlendedCost.Amount);
-  
-  if (cost > 0.01) {
-    serviceCosts.push({
-      service: serviceName.length > 15 ? serviceName.substring(0, 15) + '...' : serviceName,
-      cost: cost
-    });
-  }
-});
-
-return serviceCosts.sort((a, b) => b.cost - a.cost).slice(0, 15);
-```
-
-}
-
-transformAnomalyData(response) {
-return response.Anomalies?.map(anomaly => ({
-id: anomaly.AnomalyId,
-message: `${anomaly.RootCauses?.[0]?.Service || 'Unknown'}: $${anomaly.Impact.TotalImpact.toFixed(2)}の異常増加`,
-severity: anomaly.Impact.TotalImpact > 100 ? ‘high’ : anomaly.Impact.TotalImpact > 50 ? ‘medium’ : ‘low’,
-timestamp: new Date(anomaly.AnomalyStartDate).toLocaleString(‘ja-JP’),
-impact: anomaly.Impact.TotalImpact
-})) || [];
+];
 }
 }
 
@@ -419,7 +242,7 @@ minimumFractionDigits: 2
 }).format(value);
 };
 
-// AIOps強化メインダッシュボードコンポーネント
+// メインダッシュボードコンポーネント
 const AIOpsAWSDashboard = () => {
 const [data, setData] = useState(null);
 const [aiAnalysis, setAiAnalysis] = useState(null);
@@ -445,14 +268,12 @@ setError(null);
     costExplorerService.getCostAnomalies()
   ]);
 
-  // AIOps分析の実行
   const aiops = new AIOpsAnalyzer();
   const predictions = aiops.predictCosts(dailyCost, 7);
   const anomalies = aiops.detectAnomalies(dailyCost);
   const seasonality = aiops.analyzeSeasonality(dailyCost);
   const efficiency = aiops.analyzeCostEfficiency(serviceCost);
 
-  // リアルタイム異常スコアの計算
   const currentCost = dailyCost.length > 0 ? dailyCost[dailyCost.length - 1].total : 0;
   const anomalyScore = aiops.calculateRealTimeAnomalyScore(currentCost, dailyCost);
 
@@ -462,79 +283,10 @@ setError(null);
   setLastUpdated(new Date());
 } catch (err) {
   console.error('Data loading error:', err);
-  setError('AWS Cost Explorer APIからのデータ取得に失敗しました: ' + (err.message || '不明なエラー'));
-  
-  if (!data) {
-    setData(generateFallbackData());
-    generateFallbackAIAnalysis();
-  }
+  setError('デモモードで動作中');
 } finally {
   setLoading(false);
 }
-```
-
-};
-
-const generateFallbackData = () => {
-const months = [‘1月’, ‘2月’, ‘3月’, ‘4月’, ‘5月’, ‘6月’];
-const monthlyCost = months.map((month, index) => ({
-date: month,
-total: 1000 + Math.random() * 500,
-prod: 700 + Math.random() * 300,
-dev: 300 + Math.random() * 200
-}));
-
-```
-const dailyCost = Array.from({ length: 60 }, (_, index) => ({
-  date: `${index + 1}`,
-  total: 30 + Math.random() * 20 + Math.sin(index / 7) * 10,
-  prod: 20 + Math.random() * 15,
-  dev: 10 + Math.random() * 10,
-  movingAvg: 35 + Math.sin(index / 7) * 8
-}));
-
-const serviceCost = [
-  { service: 'EC2-Instance', cost: 450.23 },
-  { service: 'S3', cost: 123.45 },
-  { service: 'RDS', cost: 234.56 },
-  { service: 'Lambda', cost: 45.67 },
-  { service: 'CloudFront', cost: 67.89 },
-  { service: 'ElastiCache', cost: 89.12 },
-  { service: 'ELB', cost: 34.56 }
-];
-
-const alerts = [
-  {
-    id: '1',
-    message: 'EC2コストが予算の80%に到達',
-    severity: 'warning',
-    timestamp: new Date().toLocaleString('ja-JP')
-  },
-  {
-    id: '2',
-    message: 'S3使用量が急増',
-    severity: 'caution',
-    timestamp: new Date(Date.now() - 3600000).toLocaleString('ja-JP')
-  }
-];
-
-return { monthlyCost, dailyCost, serviceCost, alerts };
-```
-
-};
-
-const generateFallbackAIAnalysis = () => {
-const aiops = new AIOpsAnalyzer();
-const fallbackData = generateFallbackData();
-
-```
-const predictions = aiops.predictCosts(fallbackData.dailyCost, 7);
-const anomalies = aiops.detectAnomalies(fallbackData.dailyCost);
-const seasonality = aiops.analyzeSeasonality(fallbackData.dailyCost);
-const efficiency = aiops.analyzeCostEfficiency(fallbackData.serviceCost);
-
-setAiAnalysis({ predictions, anomalies, seasonality, efficiency });
-setRealTimeAnomaly({ score: '1.2', level: 'normal' });
 ```
 
 };
@@ -552,10 +304,6 @@ return () => clearInterval(intervalId);
 
 }, [refreshInterval]);
 
-const handleRefreshIntervalChange = (e) => {
-setRefreshInterval(parseInt(e.target.value));
-};
-
 if (loading && !data) {
 return (
 <div className="flex h-screen items-center justify-center">
@@ -572,7 +320,6 @@ return (
 <div className="flex h-screen items-center justify-center">
 <div className="text-center text-red-600">
 <p>データの取得に失敗しました</p>
-{error && <p className="text-sm mt-2">{error}</p>}
 <button 
 className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
 onClick={loadData}
@@ -610,16 +357,16 @@ return (
 <div className="flex items-center space-x-4">
 {error && (
 <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-1 rounded">
-⚠️ デモモード
+🚀 デモモード
 </span>
 )}
 <div className="flex items-center">
 <label htmlFor="refresh" className="mr-2 text-sm">更新間隔:</label>
-<select 
-id="refresh" 
+<select
+id=“refresh”
 value={refreshInterval}
-onChange={handleRefreshIntervalChange}
-className="border rounded p-1 text-sm"
+onChange={(e) => setRefreshInterval(parseInt(e.target.value))}
+className=“border rounded p-1 text-sm”
 >
 <option value="1">1分</option>
 <option value="5">5分</option>
@@ -722,5 +469,171 @@ className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm di
         </div>
       </div>
 
-      {/* グラフとアラートのセクション */}
+      {/* メインダッシュボード */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* 日次トレンドグラフ */}
+        <div className="bg-white p-4 rounded-lg shadow lg:col-span-2">
+          <h3 className="text-lg font-medium mb-4">日次コスト推移 & 移動平均 (AIOps)</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.dailyCost} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Legend />
+                <Line type="monotone" dataKey="total" name="実際のコスト" stroke="#8884d8" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="movingAvg" name="移動平均(7日)" stroke="#ff7300" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        
+        {/* リアルタイムアラート */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">リアルタイムアラート</h3>
+            <div className="text-xs text-gray-500">AI検知</div>
+          </div>
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {data.alerts.length > 0 ? data.alerts.map(alert => (
+              <div 
+                key={alert.id} 
+                className={`border-l-4 p-3 rounded-r ${getAlertColor(alert.severity)}`}
+              >
+                <div className="font-medium">{alert.message}</div>
+                <div className="text-xs mt-1">{alert.timestamp}</div>
+                <div className="text-xs mt-1">影響額: {formatCurrency(alert.impact)}</div>
+              </div>
+            )) : (
+              <div className="text-gray-500 text-center py-4">
+                現在、異常は検出されていません ✅
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 月次トレンドとサービス別コスト */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-medium mb-4">月次コスト推移</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.monthlyCost} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Legend />
+                <Bar dataKey="prod" name="本番環境" fill="#f44336" />
+                <Bar dataKey="dev" name="開発環境" fill="#2196f3" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-medium mb-4">サービス別コスト分析</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart 
+                layout="vertical" 
+                data={data.serviceCost} 
+                margin={{ top: 5, right: 30, left: 50, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="service" type="category" />
+                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <Bar dataKey="cost" name="コスト" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    </>
+  )}
+
+  {/* AI予測タブ */}
+  {activeTab === 'predictions' && aiAnalysis && (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="text-lg font-medium mb-4">7日間コスト予測</h3>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={aiAnalysis.predictions} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Legend />
+              <Area type="monotone" dataKey="upper" stackId="1" stroke="#8884d8" fill="rgba(136, 132, 216, 0.2)" name="上限予測" />
+              <Area type="monotone" dataKey="predicted" stackId="2" stroke="#82ca9d" fill="#82ca9d" name="予測値" />
+              <Area type="monotone" dataKey="lower" stackId="1" stroke="#ffc658" fill="rgba(255, 198, 88, 0.2)" name="下限予測" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="text-lg font-medium mb-4">季節性パターン分析</h3>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={aiAnalysis.seasonality.weekly} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="day" />
+              <YAxis />
+              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Bar dataKey="average" name="平均コスト" fill="#8884d8" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {/* 異常検知タブ */}
+  {activeTab === 'anomalies' && aiAnalysis && (
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="text-lg font-medium mb-4">検出された異常値 (Z-score > 2.5)</h3>
+        {aiAnalysis.anomalies.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {aiAnalysis.anomalies.map((anomaly, index) => (
+              <div key={index} className={`border-l-4 p-4 rounded-r ${getAlertColor(anomaly.severity)}`}>
+                <div className="font-medium">異常検知 #{anomaly.index + 1}</div>
+                <div className="text-sm mt-1">日付: {anomaly.date}</div>
+                <div className="text-sm mt-1">コスト: {formatCurrency(anomaly.total)}</div>
+                <div className="text-sm mt-1">Z-score: {anomaly.zScore.toFixed(2)}</div>
+                <div className="text-sm mt-1">重要度: {anomaly.severity}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            異常は検出されませんでした ✅
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+
+  {/* 効率分析タブ */}
+  {activeTab === 'efficiency' && aiAnalysis && (
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="text-lg font-medium mb-4">コスト効率性分析 & 推奨事項</h3>
+        <div className="space-y-4">
+          {aiAnalysis.efficiency.map((item, index) => (
+            <div key={index} className="border rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <div className="font-medium">{item.service}</div>
+                <div className="text-sm text-gray-500">{formatCurrency(item.cost)}</div>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div 
+                  className={`h-2 rounded-full ${
+                    item.efficiency > 0.7 ? 'bg-green-500' : 
+                    item.efficiency > 0
+```
