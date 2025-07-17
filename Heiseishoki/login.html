@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>mixiログイン - Internet Explorer</title>
+  <style>
+    body {
+      background-color: #ece9d8;
+      font-family: "MS UI Gothic", sans-serif;
+      font-size: 12px;
+      color: #000;
+      margin: 0;
+      padding: 0;
+    }
+    .login-window {
+      width: 400px;
+      margin: 100px auto;
+      background: #f0f0f0;
+      border: 2px outset #c0c0c0;
+      box-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    .title-bar {
+      background: linear-gradient(to bottom, #0054e3, #0041c7);
+      color: #fff;
+      padding: 5px;
+      font-weight: bold;
+      font-size: 11px;
+    }
+    .login-form {
+      padding: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+    }
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 4px;
+      font-size: 11px;
+      border: 1px inset #c0c0c0;
+      margin-bottom: 10px;
+    }
+    .btn {
+      padding: 5px 10px;
+      font-size: 11px;
+      background: #e0e0e0;
+      border: 1px outset #c0c0c0;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #f8f8f8;
+    }
+    .footer-link {
+      font-size: 10px;
+      margin-top: 10px;
+      display: block;
+      text-align: right;
+    }
+    .footer-link a {
+      color: #0066cc;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-window">
+    <div class="title-bar">mixi ログイン - Internet Explorer</div>
+    <div class="login-form">
+      <form action="index.html">
+        <label for="username">ユーザー名</label>
+        <input type="text" id="username" name="username">
+
+        <label for="password">パスワード</label>
+        <input type="password" id="password" name="password">
+
+        <button class="btn" type="submit">ログイン</button>
+      </form>
+      <div class="footer-link">
+        <a href="#">パスワードを忘れた場合</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
