@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -6,47 +7,117 @@
     <title>スタイリッシュな背景とテキストの同期</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
     <style type="text/css">
-        body {
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Noto Sans JP', sans-serif;
-            font-size: 2rem;
-            font-weight: bold;
-            color: white;
-            text-align: center;
+        /* CSS変数でカスタマイズしやすくする */
+        :root {
+            --gradient-colors: #ee7752, #e73c7e, #23a6d5, #23d5ab;
+            --animation-duration: 15s;
+            --text-animation-duration: 10s;
+            --text-bg-opacity: 0.5;
         }
-        
+
+```
+    body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: clamp(1.5rem, 4vw, 2.5rem); /* レスポンシブ対応 */
+        font-weight: 700;
+        color: white;
+        text-align: center;
+        overflow: hidden; /* スクロールバーを非表示 */
+    }
+    
+    .bg-gradient-custom {
+        background: linear-gradient(-45deg, var(--gradient-colors));
+        background-size: 400% 400%;
+        animation: gradientBG var(--animation-duration) ease infinite;
+        /* フォールバック背景色を追加 */
+        background-color: #23a6d5;
+    }
+    
+    @keyframes gradientBG {
+        0%, 100% { 
+            background-position: 0% 50%; 
+        }
+        25% {
+            background-position: 100% 0%;
+        }
+        50% { 
+            background-position: 100% 50%; 
+        }
+        75% {
+            background-position: 0% 100%;
+        }
+    }
+    
+    .text-container {
+        padding: 2rem 3rem;
+        background-color: rgba(0, 0, 0, var(--text-bg-opacity));
+        border-radius: 1rem;
+        box-shadow: 
+            0 25px 50px -12px rgba(0, 0, 0, 0.25),
+            0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        animation: textReveal var(--text-animation-duration) infinite;
+        backdrop-filter: blur(10px); /* ガラス効果 */
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        max-width: 90vw; /* モバイル対応 */
+        position: relative;
+    }
+    
+    /* より滑らかなテキストアニメーション */
+    @keyframes textReveal {
+        0%, 100% { 
+            opacity: 0; 
+            transform: scale(0.8) translateY(20px);
+        }
+        5%, 95% { 
+            opacity: 1; 
+            transform: scale(1) translateY(0);
+        }
+    }
+    
+    /* アクセシビリティ: motion-reduce対応 */
+    @media (prefers-reduced-motion: reduce) {
         .bg-gradient-custom {
-            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
+            animation-duration: 60s;
         }
-        
-        @keyframes gradientBG {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-        
         .text-container {
-            padding: 1.25rem;
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 0.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            animation: textReveal 10s infinite;
+            animation: none;
+            opacity: 1;
+            transform: none;
         }
-        
-        @keyframes textReveal {
-            0%, 100% { opacity: 0; transform: scale(0.9); }
-            10%, 90% { opacity: 1; transform: scale(1); }
+    }
+    
+    /* モバイル対応の改善 */
+    @media (max-width: 768px) {
+        .text-container {
+            padding: 1.5rem 2rem;
+            font-size: clamp(1.2rem, 5vw, 2rem);
         }
-    </style>
+    }
+    
+    /* 高解像度ディスプレイ対応 */
+    @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+        .text-container {
+            border-width: 0.5px;
+        }
+    }
+    
+    /* Focus visible for accessibility */
+    .text-container:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.8);
+        outline-offset: 4px;
+    }
+</style>
+```
+
 </head>
 <body class="bg-gradient-custom">
-    <div class="text-container">
+    <main class="text-container" role="banner" tabindex="0" aria-label="メインメッセージ">
         正義は私たちの手に
-    </div>
+    </main>
 </body>
 </html>
