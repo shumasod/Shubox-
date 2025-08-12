@@ -1,0 +1,237 @@
+// 関数型プログラミングでアイスクリーム作成
+
+// === 基本的な材料とデータ構造 ===
+const Ingredients = {
+MILK: ‘milk’,
+CREAM: ‘cream’,
+SUGAR: ‘sugar’,
+VANILLA: ‘vanilla’,
+CHOCOLATE: ‘chocolate’,
+STRAWBERRY: ‘strawberry’,
+MATCHA: ‘matcha’,
+SALT: ‘salt’,
+EGGS: ‘eggs’
+};
+
+const Flavors = {
+VANILLA: ‘vanilla’,
+CHOCOLATE: ‘chocolate’,
+STRAWBERRY: ‘strawberry’,
+MATCHA: ‘matcha’
+};
+
+// === 純粋関数群 ===
+
+// 基本ベースを作成する純粋関数
+const createBase = (milk, cream, sugar) => ({
+ingredients: [milk, cream, sugar],
+texture: ‘liquid’,
+temperature: 20, // 室温
+sweetness: sugar * 0.1,
+richness: cream * 0.15
+});
+
+// フレーバーを追加する純粋関数
+const addFlavor = (base, flavor, amount = 1) => ({
+…base,
+ingredients: […base.ingredients, { flavor, amount }],
+flavor: flavor,
+intensity: amount
+});
+
+// 卵を追加してカスタードベースにする純粋関数
+const addEggs = (base, eggCount) => ({
+…base,
+ingredients: […base.ingredients, { ingredient: Ingredients.EGGS, count: eggCount }],
+type: ‘custard’,
+richness: base.richness + eggCount * 0.2
+});
+
+// 加熱処理する純粋関数
+const heat = (mixture, temperature) => ({
+…mixture,
+temperature: temperature,
+texture: temperature > 70 ? ‘custard’ : mixture.texture,
+cooked: temperature > 70
+});
+
+// 冷却する純粋関数
+const cool = (mixture, targetTemp) => ({
+…mixture,
+temperature: targetTemp,
+ready_for_churning: targetTemp <= 4
+});
+
+// チャーニング（攪拌）する純粋関数
+const churn = (cooledMixture, duration) => {
+if (!cooledMixture.ready_for_churning) {
+throw new Error(‘混合物が十分に冷えていません’);
+}
+
+return {
+…cooledMixture,
+texture: ‘creamy’,
+volume: cooledMixture.volume ? cooledMixture.volume * 1.5 : 100,
+air_incorporation: duration * 0.1,
+churned: true
+};
+};
+
+// 冷凍する純粋関数
+const freeze = (churned, hours) => ({
+…churned,
+temperature: -18,
+texture: hours >= 4 ? ‘firm’ : ‘soft-serve’,
+frozen: true,
+serving_ready: hours >= 4
+});
+
+// トッピングを追加する純粋関数
+const addToppings = (icecream, toppings) => ({
+…icecream,
+toppings: […(icecream.toppings || []), …toppings],
+presentation_ready: true
+});
+
+// === 高階関数とコンビネーター ===
+
+// パイプライン関数（関数合成）
+const pipe = (…functions) => (initialValue) =>
+functions.reduce((value, func) => func(value), initialValue);
+
+// 部分適用のためのヘルパー
+const curry = (func) => (…args) =>
+args.length >= func.length
+? func(…args)
+: (…nextArgs) => curry(func)(…args, …nextArgs);
+
+// === レシピ関数群 ===
+
+// バニラアイスクリームレシピ
+const makeVanillaIceCream = pipe(
+(ingredients) => createBase(ingredients.milk, ingredients.cream, ingredients.sugar),
+(base) => addFlavor(base, Flavors.VANILLA, 2),
+(flavored) => addEggs(flavored, 3),
+(custard) => heat(custard, 75),
+(heated) => cool(heated, 4),
+(cooled) => churn(cooled, 20),
+(churned) => freeze(churned, 6)
+);
+
+// チョコレートアイスクリームレシピ
+const makeChocolateIceCream = pipe(
+(ingredients) => createBase(ingredients.milk, ingredients.cream, ingredients.sugar),
+(base) => addFlavor(base, Flavors.CHOCOLATE, 3),
+(flavored) => addEggs(flavored, 4),
+(custard) => heat(custard, 75),
+(heated) => cool(heated, 4),
+(cooled) => churn(cooled, 25),
+(churned) => freeze(churned, 8)
+);
+
+// 抹茶アイスクリームレシピ
+const makeMatchaIceCream = pipe(
+(ingredients) => createBase(ingredients.milk, ingredients.cream, ingredients.sugar),
+(base) => addFlavor(base, Flavors.MATCHA, 2),
+(flavored) => addEggs(flavored, 2),
+(custard) => heat(custard, 70),
+(heated) => cool(heated, 4),
+(cooled) => churn(cooled, 18),
+(churned) => freeze(churned, 5)
+);
+
+// === ファクトリー関数 ===
+const IceCreamFactory = {
+create: (recipe, ingredients, toppings = []) => {
+const icecream = recipe(ingredients);
+return toppings.length > 0 ? addToppings(icecream, toppings) : icecream;
+}
+};
+
+// === 品質チェック関数 ===
+const qualityCheck = (icecream) => ({
+…icecream,
+quality_score: calculateQualityScore(icecream),
+quality_passed: icecream.serving_ready && icecream.frozen && icecream.texture === ‘firm’
+});
+
+const calculateQualityScore = (icecream) => {
+let score = 0;
+if (icecream.richness > 0.5) score += 25;
+if (icecream.sweetness > 0.3 && icecream.sweetness < 0.8) score += 25;
+if (icecream.texture === ‘firm’) score += 25;
+if (icecream.temperature <= -15) score += 25;
+return score;
+};
+
+// === 使用例 ===
+
+// 材料の準備
+const ingredients = {
+milk: 500,    // ml
+cream: 250,   // ml
+sugar: 100    // g
+};
+
+// バニラアイスクリームを作成
+console.log(‘🍦 バニラアイスクリーム作成中…’);
+const vanillaIceCream = IceCreamFactory.create(
+makeVanillaIceCream,
+ingredients,
+[‘チョコチップ’, ‘ナッツ’]
+);
+const vanillaQuality = qualityCheck(vanillaIceCream);
+
+console.log(‘✅ バニラアイスクリーム完成！’);
+console.log(‘フレーバー:’, vanillaQuality.flavor);
+console.log(‘食感:’, vanillaQuality.texture);
+console.log(‘品質スコア:’, vanillaQuality.quality_score + ‘/100’);
+console.log(‘トッピング:’, vanillaQuality.toppings);
+console.log(’’);
+
+// チョコレートアイスクリームを作成
+console.log(‘🍫 チョコレートアイスクリーム作成中…’);
+const chocolateIceCream = IceCreamFactory.create(
+makeChocolateIceCream,
+ingredients,
+[‘ホイップクリーム’]
+);
+const chocolateQuality = qualityCheck(chocolateIceCream);
+
+console.log(‘✅ チョコレートアイスクリーム完成！’);
+console.log(‘フレーバー:’, chocolateQuality.flavor);
+console.log(‘食感:’, chocolateQuality.texture);
+console.log(‘品質スコア:’, chocolateQuality.quality_score + ‘/100’);
+console.log(’’);
+
+// 抹茶アイスクリームを作成
+console.log(‘🍵 抹茶アイスクリーム作成中…’);
+const matchaIceCream = IceCreamFactory.create(
+makeMatchaIceCream,
+ingredients,
+[‘あんこ’, ‘白玉’]
+);
+const matchaQuality = qualityCheck(matchaIceCream);
+
+console.log(‘✅ 抹茶アイスクリーム完成！’);
+console.log(‘フレーバー:’, matchaQuality.flavor);
+console.log(‘食感:’, matchaQuality.texture);
+console.log(‘品質スコア:’, matchaQuality.quality_score + ‘/100’);
+console.log(‘トッピング:’, matchaQuality.toppings);
+
+// === 関数型プログラミングの利点を示すテスト ===
+console.log(’\n🧪 関数型プログラミングの利点デモ:’);
+
+// 1. 純粋関数 - 同じ入力は常に同じ出力
+const base1 = createBase(500, 250, 100);
+const base2 = createBase(500, 250, 100);
+console.log(‘純粋関数テスト - 同じ結果:’, JSON.stringify(base1) === JSON.stringify(base2));
+
+// 2. 不変性 - 元のオブジェクトは変更されない
+const originalBase = createBase(500, 250, 100);
+const flavoredBase = addFlavor(originalBase, Flavors.VANILLA);
+console.log(‘不変性テスト - 元のベースは変更されていない:’,
+!originalBase.hasOwnProperty(‘flavor’) && flavoredBase.hasOwnProperty(‘flavor’));
+
+// 3. 関数合成 - 複雑なプロセスを小さな関数の組み合わせで表現
+console.log(‘関数合成テスト - パイプラインでアイスクリーム作成完了’);

@@ -1,0 +1,229 @@
+// Prefix vs Hotfix - 関数型プログラミングで理解する
+
+// ===============================================
+// 1. PREFIX（前置操作）- データ構造への要素追加
+// ===============================================
+
+// 🔹 Prefixの概念：リストや配列の先頭に要素を追加する操作
+// 関数型プログラミングでは「cons」操作として知られる
+
+// 不変的なprefix操作
+const prefix = (element, list) => [element, …list];
+
+// より汎用的なprefix関数（カリー化）
+const curry = (func) => (…args) =>
+args.length >= func.length
+? func(…args)
+: (…nextArgs) => curry(func)(…args, …nextArgs);
+
+const prefixWith = curry((element, list) => [element, …list]);
+
+// 文字列へのprefix
+const prefixString = (prefix, str) => prefix + str;
+
+// ===============================================
+// 2. HOTFIX（緊急修正）- 既存システムの即座修正
+// ===============================================
+
+// 🔹 Hotfixの概念：本番環境で発見された問題の緊急修正
+// 関数型では「変換」として表現
+
+// システム状態を表すデータ構造
+const SystemState = {
+version: ‘1.0.0’,
+features: [‘login’, ‘dashboard’, ‘profile’],
+bugs: [],
+status: ‘stable’
+};
+
+// hotfix適用関数（純粋関数）
+const applyHotfix = (system, fix) => ({
+…system,
+version: incrementPatchVersion(system.version),
+bugs: system.bugs.filter(bug => !fix.resolves.includes(bug.id)),
+patches: […(system.patches || []), fix],
+lastModified: new Date().toISOString(),
+status: ‘patched’
+});
+
+// バージョン管理ヘルパー関数
+const incrementPatchVersion = (version) => {
+const [major, minor, patch] = version.split(’.’).map(Number);
+return `${major}.${minor}.${patch + 1}`;
+};
+
+// ===============================================
+// 3. 実践的な比較例
+// ===============================================
+
+console.log(’=== PREFIX OPERATIONS ===’);
+
+// リストへのprefix操作例
+const originalList = [2, 3, 4, 5];
+const prefixedList = prefix(1, originalList);
+
+console.log(‘元のリスト:’, originalList);
+console.log(‘Prefix後:’, prefixedList);
+console.log(‘元のリストは不変:’, originalList); // [2, 3, 4, 5]
+
+// 複数のprefix操作をチェーン
+const multiplePrefix = [1, 2, 3].reduce(
+(acc, item) => prefix(item, acc),
+[‘original’]
+);
+console.log(‘複数Prefix:’, multiplePrefix); // [3, 2, 1, ‘original’]
+
+// 文字列prefix
+const originalString = ‘fix-user-auth’;
+const prefixedString = prefixString(‘hotfix/’, originalString);
+console.log(‘文字列Prefix:’, prefixedString); // ‘hotfix/fix-user-auth’
+
+console.log(’\n=== HOTFIX OPERATIONS ===’);
+
+// システムにバグが発生
+const buggySystem = {
+…SystemState,
+bugs: [
+{ id: ‘BUG-001’, severity: ‘critical’, description: ‘ログインできない’ },
+{ id: ‘BUG-002’, severity: ‘minor’, description: ‘UIの表示崩れ’ }
+],
+status: ‘unstable’
+};
+
+console.log(‘バグのあるシステム:’, buggySystem);
+
+// hotfix定義
+const criticalHotfix = {
+id: ‘HOTFIX-001’,
+description: ‘ログイン機能の緊急修正’,
+resolves: [‘BUG-001’],
+changes: [‘auth.js’, ‘login.component.js’],
+risk: ‘low’,
+rollbackPlan: ‘previous-auth-backup’
+};
+
+// hotfix適用
+const fixedSystem = applyHotfix(buggySystem, criticalHotfix);
+console.log(‘Hotfix適用後:’, fixedSystem);
+
+// ===============================================
+// 4. 関数型の観点での違い
+// ===============================================
+
+console.log(’\n=== 関数型プログラミングの観点での違い ===’);
+
+// PREFIX: データ構造変換（構造的操作）
+const prefixExample = {
+operation: ‘structural_transformation’,
+purpose: ‘データの先頭に要素を追加’,
+immutability: true,
+predictable: true,
+reversible: true, // tail操作で元に戻せる
+complexity: ‘O(1) - 通常定数時間’
+};
+
+// HOTFIX: システム状態変換（機能的修正）
+const hotfixExample = {
+operation: ‘system_state_transformation’,
+purpose: ‘緊急問題の解決’,
+immutability: true, // 関数型では新しい状態を作成
+predictable: true, // 純粋関数なので予測可能
+reversible: true, // rollback関数で元に戻せる
+complexity: ‘depends_on_fix - 修正内容による’
+};
+
+console.log(‘Prefix特性:’, prefixExample);
+console.log(‘Hotfix特性:’, hotfixExample);
+
+// ===============================================
+// 5. 高階関数での抽象化
+// ===============================================
+
+// prefix操作を抽象化
+const createPrefixTransformer = (prefixValue) => (collection) =>
+prefix(prefixValue, collection);
+
+// hotfix操作を抽象化
+const createHotfixApplier = (fix) => (system) =>
+applyHotfix(system, fix);
+
+// 使用例
+console.log(’\n=== 高階関数による抽象化 ===’);
+
+const addUrgentPrefix = createPrefixTransformer(‘URGENT:’);
+const applyAuthFix = createHotfixApplier(criticalHotfix);
+
+const taskList = [‘review code’, ‘deploy’, ‘test’];
+const urgentTasks = addUrgentPrefix(taskList);
+console.log(‘緊急タスク:’, urgentTasks);
+
+const anotherBuggySystem = { …buggySystem };
+const fixedSystemAgain = applyAuthFix(anotherBuggySystem);
+console.log(‘別システムへのHotfix適用:’, fixedSystemAgain.version);
+
+// ===============================================
+// 6. 関数合成での組み合わせ
+// ===============================================
+
+const pipe = (…functions) => (initialValue) =>
+functions.reduce((value, func) => func(value), initialValue);
+
+// prefixとhotfixを組み合わせたワークフロー
+const emergencyWorkflow = pipe(
+// まずシステムにhotfixを適用
+(system) => applyHotfix(system, criticalHotfix),
+// その後、変更ログにprefixを追加
+(system) => ({
+…system,
+changeLog: prefix(’EMERGENCY: ’, system.changeLog || [])
+}),
+// 通知リストにも緊急マークをprefix
+(system) => ({
+…system,
+notifications: prefix(‘🚨 Hotfix Applied’, system.notifications || [])
+})
+);
+
+console.log(’\n=== 緊急対応ワークフロー ===’);
+const emergencyResult = emergencyWorkflow(buggySystem);
+console.log(‘緊急対応結果:’, {
+version: emergencyResult.version,
+status: emergencyResult.status,
+changeLog: emergencyResult.changeLog,
+notifications: emergencyResult.notifications
+});
+
+// ===============================================
+// 7. まとめ - 重要な違い
+// ===============================================
+
+console.log(’\n=== まとめ：PrefixとHotfixの本質的違い ===’);
+
+const differences = {
+prefix: {
+概念: ‘データ構造の構造的変換’,
+目的: ‘要素の追加・順序変更’,
+スコープ: ‘データ構造レベル’,
+時間軸: ‘任意のタイミング’,
+可逆性: ‘簡単（tail操作）’,
+例: ‘リストの先頭に要素追加、文字列の前置詞’
+},
+hotfix: {
+概念: ‘システム状態の機能的修正’,
+目的: ‘緊急問題の解決’,
+スコープ: ‘システム全体レベル’,
+時間軸: ‘緊急・即座’,
+可逆性: ‘可能だが複雑（rollback）’,
+例: ‘バグ修正、セキュリティパッチ、緊急アップデート’
+}
+};
+
+console.table(differences);
+
+// 関数型プログラミングにおける共通点
+console.log(’\n関数型プログラミングでの共通点:’);
+console.log(‘✅ 両方とも不変性を保持’);
+console.log(‘✅ 純粋関数として実装可能’);
+console.log(‘✅ 元の状態を変更せず新しい状態を作成’);
+console.log(‘✅ 合成可能で再利用可能’);
+console.log(‘✅ テストが容易’);
