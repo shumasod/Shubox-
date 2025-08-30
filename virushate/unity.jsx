@@ -68,4 +68,10 @@ const decryptData = async (encryptedData, key) => {
     console.error('Decryption error:', error);
     return '';
   }
+  <input
+  type="password"
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+/>
 };
