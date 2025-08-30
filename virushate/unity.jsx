@@ -1,3 +1,20 @@
+// UNIX タイムスタンプで管理
+const [sessionExpiry, setSessionExpiry] = useState(0);
+
+const validateSession = useCallback(() => {
+  const now = Date.now();
+  if (!sessionToken || !sessionExpiry || now > sessionExpiry) {
+    if (isLoggedIn) {
+      logSecurityEvent(`セッションタイムアウト: ${loggedInUser}`);
+      handleLogout();
+    }
+    return false;
+  }
+  // セッション延長
+  setSessionExpiry(now + 30 * 60 * 1000);
+  return true;
+}, [sessionToken, sessionExpiry, isLoggedIn, loggedInUser, handleLogout, logSecurityEvent]);
+
 // 共通キー生成関数
 const getKeyBuffer = async (key) => {
   const encoder = new TextEncoder();
