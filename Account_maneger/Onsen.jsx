@@ -1,7 +1,7 @@
 import React, { useState, useReducer, useCallback } from 'react';
 import { Camera, MapPin, Thermometer, BedDouble, Users, Star, Utensils, Train, AlertCircle, CheckCircle2, ImagePlus } from 'lucide-react';
 
-// 型定義
+
 const ONSEN_TYPES = {
   NATURAL: '天然温泉',
   ARTIFICIAL: '人工温泉', 
