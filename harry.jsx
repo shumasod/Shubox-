@@ -1063,7 +1063,7 @@ const GameOverScreen = ({ duel, onReturnToBank }) => (
       className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold text-xl border-4 border-yellow-400 animate-pulse"
     >
       🔄 再挑戦する 🔄
-    </Button>
+    </Button> 
   </div>
 );
 
