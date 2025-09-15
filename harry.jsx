@@ -6,15 +6,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from �
 import { Input } from ‘@/components/ui/input’;
 import { Label } from ‘@/components/ui/label’;
 import { Tabs, TabsContent, TabsList, TabsTrigger } from ‘@/components/ui/tabs’;
-import { Loader2, CheckCircle, AlertCircle, Wand2, Coins, Sparkles, Shield, Zap } from ‘lucide-react’;
+import { Loader2, CheckCircle, AlertCircle, Shield, Zap } from ‘lucide-react’;
 
 // 定数とデータ
 const SPELLS = {
-‘ルーモス’: { damage: 10, effect: ‘light’, description: ‘明かりを灯す呪文’, icon: ‘💡’ },
-‘エクスペクト・パトローナム’: { damage: 20, effect: ‘patronus’, description: ‘守護霊を呼び出す強力な呪文’, icon: ‘🦌’ },
-‘エクスペリアームス’: { damage: 15, effect: ‘disarm’, description: ‘相手の武器を奪う呪文’, icon: ‘🪄’ },
-‘ウィンガーディアム・レビオサ’: { damage: 5, effect: ‘levitate’, description: ‘物を浮かせる呪文’, icon: ‘🪶’ },
-‘プロテゴ’: { damage: 0, effect: ‘shield’, description: ‘防御の盾を作る呪文’, icon: ‘🛡️’ },
+‘ルーモス’: { damage: 10, effect: ‘light’, description: ‘明かりを灯す呪文’, icon: ‘⚡’ },
+‘エクスペクト・パトローナム’: { damage: 20, effect: ‘patronus’, description: ‘守護霊を呼び出す強力な呪文’, icon: ‘🛡️’ },
+‘エクスペリアームス’: { damage: 15, effect: ‘disarm’, description: ‘相手の武器を奪う呪文’, icon: ‘⚔️’ },
+‘ウィンガーディアム・レビオサ’: { damage: 5, effect: ‘levitate’, description: ‘物を浮かせる呪文’, icon: ‘✨’ },
+‘プロテゴ’: { damage: 0, effect: ‘shield’, description: ‘防御の盾を作る呪文’, icon: ‘🔮’ },
 };
 
 const TRANSFER_STEPS = {
@@ -300,13 +300,13 @@ TRANSFER_STEPS.CHECKING_STATUS
 const getButtonText = useCallback(() => {
 switch (currentStep) {
 case TRANSFER_STEPS.VALIDATING:
-return ‘ゴブリンによる検証中…’;
+return ‘ニューラル検証中’;
 case TRANSFER_STEPS.EXECUTING:
-return ‘金庫間移動中…’;
+return ‘量子転送実行中’;
 case TRANSFER_STEPS.CHECKING_STATUS:
-return ‘魔法封印確認中…’;
+return ‘ブロックチェーン確認中’;
 default:
-return ‘魔法振込処理開始’;
+return ‘デジタル転送開始’;
 }
 }, [currentStep]);
 
@@ -324,7 +324,101 @@ getButtonText
 };
 };
 
-// カスタムフック：決闘ゲーム
+// カスタムフック：アナコンダ生成
+const useAnacondaGenerator = () => {
+const [svgSize, setSvgSize] = useState(600);
+const [snakeData, setSnakeData] = useState(null);
+const [generationCount, setGenerationCount] = useState(0);
+
+const generateSnakePoints = useCallback(() => {
+const points = [{ x: 50, y: svgSize / 2 }];
+
+```
+for (let i = 1; i < 8; i++) {
+  const x = 50 + ((svgSize - 100) * i) / 7;
+  const y = svgSize / 2 + (Math.random() - 0.5) * 200;
+  points.push({ x, y });
+}
+
+return points;
+```
+
+}, [svgSize]);
+
+const generateAnaconda = useCallback(() => {
+const points = generateSnakePoints();
+const patterns = [];
+
+```
+// Generate patterns for snake body
+for (let i = 0; i < points.length - 1; i++) {
+  const x1 = points[i].x;
+  const y1 = points[i].y;
+  const x2 = points[i + 1].x;
+  const y2 = points[i + 1].y;
+  const midX = (x1 + x2) / 2;
+  const midY = (y1 + y2) / 2;
+  
+  patterns.push({ x: midX, y: midY, r: 20 });
+}
+
+setSnakeData({
+  points,
+  patterns,
+  headX: points[0].x - 10,
+  headY: points[0].y,
+  eyeX: points[0].x - 25,
+  eyeY: points[0].y - 10,
+  tongueStartX: points[0].x - 40,
+  tongueStartY: points[0].y,
+  tongue1EndX: points[0].x - 70,
+  tongue1EndY: points[0].y - 15,
+  tongue2EndX: points[0].x - 70,
+  tongue2EndY: points[0].y + 15
+});
+
+setGenerationCount(prev => prev + 1);
+```
+
+}, [generateSnakePoints]);
+
+const downloadSVG = useCallback(() => {
+if (!snakeData) return;
+
+```
+const svgElement = document.getElementById('anaconda-svg');
+if (!svgElement) return;
+
+const svgData = new XMLSerializer().serializeToString(svgElement);
+const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+const svgUrl = URL.createObjectURL(svgBlob);
+
+const downloadLink = document.createElement('a');
+downloadLink.href = svgUrl;
+downloadLink.download = `anaconda_${generationCount}.svg`;
+document.body.appendChild(downloadLink);
+downloadLink.click();
+document.body.removeChild(downloadLink);
+URL.revokeObjectURL(svgUrl);
+```
+
+}, [snakeData, generationCount]);
+
+// Generate initial snake on mount
+useEffect(() => {
+generateAnaconda();
+}, [generateAnaconda]);
+
+return {
+svgSize,
+setSvgSize,
+snakeData,
+generateAnaconda,
+downloadSVG,
+generationCount
+};
+};
+
 const useDuelGame = (playerName) => {
 const [gameState, setGameState] = useState({
 playerHealth: 100,
@@ -451,128 +545,150 @@ setActiveTab(‘duel’);
 // 初期化エラー表示
 if (banking.initializationStatus.error) {
 return (
-<div className="min-h-screen bg-gradient-to-br from-yellow-300 via-pink-400 to-purple-500">
-<div className="p-4">
-<Card className="w-full max-w-xl mx-auto border-4 border-red-500 shadow-2xl">
-<CardHeader className="bg-gradient-to-r from-red-600 to-red-800 text-white text-center">
-<CardTitle className="text-2xl font-bold animate-pulse">⚠️ エラー発生 ⚠️</CardTitle>
-</CardHeader>
-<CardContent className="pt-6 bg-yellow-100">
-<Alert className="border-4 border-red-600 bg-red-100">
-<AlertCircle className="h-4 w-4" />
-<AlertDescription className="font-bold text-red-800">{banking.initializationStatus.error}</AlertDescription>
+<div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+<div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/20 via-slate-900 to-black"></div>
+<div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+<div className="w-full max-w-xl mx-auto">
+<div className="backdrop-blur-xl bg-red-500/10 border border-red-500/30 rounded-2xl p-6 shadow-2xl">
+<div className="text-center mb-4">
+<div className="text-4xl text-red-400 mb-2">⚠</div>
+<h1 className="text-2xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
+システムエラー
+</h1>
+</div>
+<Alert className="border border-red-500/30 bg-red-900/20 mb-4">
+<AlertCircle className="h-4 w-4 text-red-400" />
+<AlertDescription className="text-red-100">
+{banking.initializationStatus.error}
+</AlertDescription>
 </Alert>
 <Button
 onClick={() => window.location.reload()}
-className=“mt-4 w-full bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 text-white font-bold text-lg animate-bounce”
+className=“w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white border-0”
 >
-🔄 再読み込み 🔄
+システム再起動
 </Button>
-</CardContent>
-</Card>
+</div>
+</div>
 </div>
 </div>
 );
 }
 
 return (
-<div className="min-h-screen bg-gradient-to-br from-yellow-300 via-pink-400 to-purple-500 animated-bg">
-<style jsx>{`@keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } } @keyframes rainbow { 0% { color: #ff0000; } 16% { color: #ff8000; } 33% { color: #ffff00; } 50% { color: #80ff00; } 66% { color: #0080ff; } 83% { color: #8000ff; } 100% { color: #ff0080; } } @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } } .animated-bg { background-image:  radial-gradient(circle at 20% 50%, rgba(255,255,255,0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,0,0.3) 0%, transparent 50%), radial-gradient(circle at 40% 80%, rgba(255,0,255,0.3) 0%, transparent 50%); animation: float 6s ease-in-out infinite; } .rainbow-text { animation: rainbow 2s linear infinite; font-weight: bold; } .blink-text { animation: blink 1s linear infinite; } .retro-card { border: 4px solid; border-image: linear-gradient(45deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff) 1; box-shadow: 0 0 20px rgba(255,255,255,0.5); }`}</style>
+<div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+{/* Background Effects */}
+<div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/20 via-slate-900 to-black"></div>
+<div className="absolute inset-0">
+<div className="absolute top-1/4 left-1/4 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+<div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+<div className="absolute top-3/4 left-1/2 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
+</div>
 
 ```
-  <div className="max-w-4xl mx-auto p-4 space-y-6">
-    {/* FC2風ヘッダー */}
-    <div className="text-center bg-gradient-to-r from-blue-400 to-purple-600 p-6 rounded-lg border-4 border-yellow-400 shadow-2xl">
-      <div className="flex justify-center items-center gap-2 mb-2">
-        <span className="text-4xl animate-bounce">🎆</span>
-        <h1 className="text-4xl font-bold rainbow-text" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-          ★☆ 魔法の世界へようこそ ☆★
+  {/* Grid Pattern Overlay */}
+  <div className="absolute inset-0 bg-[linear-gradient(rgba(147,51,234,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(147,51,234,0.1)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+
+  <div className="relative z-10 max-w-6xl mx-auto p-6 space-y-8">
+    {/* Header */}
+    <div className="text-center backdrop-blur-xl bg-slate-800/30 border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
+      <div className="mb-4">
+        <h1 className="text-5xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+          NEXUS MAGICAL SYSTEMS
         </h1>
-        <span className="text-4xl animate-bounce">🎆</span>
-      </div>
-      
-      <div className="text-lg text-white mb-2">
-        <span className="blink-text">✨ 最高の魔法体験をお届け ✨</span>
+        <p className="text-slate-400 text-lg">Advanced Wizarding Technology Platform</p>
       </div>
       
       {playerName && (
-        <div className="bg-yellow-300 p-2 rounded-lg border-2 border-red-500 inline-block">
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-2xl animate-pulse">🧙‍♂️</span>
-            <p className="text-xl font-bold text-purple-800" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-              魔法使い: {playerName}
-            </p>
-            <span className="text-2xl animate-pulse">🧙‍♀️</span>
-          </div>
+        <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 backdrop-blur-md border border-purple-400/30 rounded-full px-6 py-3">
+          <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+          <span className="text-purple-200 font-medium">ユーザー: {playerName}</span>
         </div>
       )}
       
-      {/* カウンター風 */}
-      <div className="mt-4 text-center">
-        <span className="bg-black text-green-400 px-3 py-1 rounded font-mono text-sm">
-          👤 本日の訪問者: {Math.floor(Math.random() * 999) + 1}人目 ⭐
-        </span>
+      {/* Status Bar */}
+      <div className="mt-6 flex justify-center">
+        <div className="bg-black/50 backdrop-blur-md border border-green-500/30 rounded-full px-4 py-2">
+          <span className="text-green-400 text-sm font-mono">SYSTEM ONLINE • CONNECTION SECURE</span>
+        </div>
       </div>
     </div>
     
-    {/* FC2風ナビゲーション */}
-    <div className="bg-gradient-to-r from-orange-400 to-red-500 p-2 rounded-lg border-4 border-blue-400">
+    {/* Navigation */}
+    <div className="backdrop-blur-xl bg-slate-800/30 border border-slate-700/50 rounded-2xl p-2">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-2 mb-6 bg-white border-2 border-purple-500">
+        <TabsList className="grid grid-cols-3 bg-transparent border-0 gap-2">
           <TabsTrigger 
             value="bank" 
-            className="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold border-2 border-yellow-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-orange-500"
+            className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 data-[state=active]:from-emerald-500/40 data-[state=active]:to-teal-500/40 data-[state=active]:border-emerald-400/60 text-emerald-100 hover:from-emerald-500/30 hover:to-teal-500/30 rounded-xl transition-all duration-300"
           >
-            <span className="text-xl">💰</span>
-            <span className="text-lg font-bold">グリンゴッツ銀行</span>
-            <span className="text-xl">💰</span>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+              <span className="font-medium">デジタル銀行</span>
+            </div>
           </TabsTrigger>
           <TabsTrigger 
             value="duel" 
-            disabled={!canDuel && !duel.gameStarted} 
-            className="bg-gradient-to-r from-purple-400 to-pink-500 hover:from-purple-500 hover:to-pink-600 text-white font-bold border-2 border-yellow-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-orange-500"
+            disabled={!canDuel && !duel.gameStarted}
+            className="bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-400/30 data-[state=active]:from-red-500/40 data-[state=active]:to-orange-500/40 data-[state=active]:border-red-400/60 text-red-100 hover:from-red-500/30 hover:to-orange-500/30 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative"
           >
-            <span className="text-xl">⚡</span>
-            <span className="text-lg font-bold">ダンブルドアとの決闘</span>
-            <span className="text-xl">⚡</span>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+              <span className="font-medium">量子決闘</span>
+            </div>
             {canDuel && !duel.gameStarted && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full border-2 border-yellow-300 blink-text">
-                NEW!
-              </span>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping"></div>
             )}
+          </TabsTrigger>
+          <TabsTrigger 
+            value="anaconda" 
+            className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 data-[state=active]:from-purple-500/40 data-[state=active]:to-pink-500/40 data-[state=active]:border-purple-400/60 text-purple-100 hover:from-purple-500/30 hover:to-pink-500/30 rounded-xl transition-all duration-300"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+              <span className="font-medium">AI生成器</span>
+            </div>
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="bank">
-          <BankingInterface 
-            banking={banking} 
-            canDuel={canDuel} 
-            gameStarted={duel.gameStarted}
-            onStartDuel={startDuelFromBank}
-          />
-        </TabsContent>
-        
-        <TabsContent value="duel">
-          <DuelInterface 
-            duel={duel} 
-            playerName={playerName} 
-            onReturnToBank={() => setActiveTab('bank')}
-          />
-        </TabsContent>
+        <div className="mt-6">
+          <TabsContent value="bank">
+            <BankingInterface 
+              banking={banking} 
+              canDuel={canDuel} 
+              gameStarted={duel.gameStarted}
+              onStartDuel={startDuelFromBank}
+            />
+          </TabsContent>
+          
+          <TabsContent value="duel">
+            <DuelInterface 
+              duel={duel} 
+              playerName={playerName} 
+              onReturnToBank={() => setActiveTab('bank')}
+            />
+          </TabsContent>
+          
+          <TabsContent value="anaconda">
+            <AnacondaGenerator />
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
     
-    {/* FC2風フッター */}
-    <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 rounded-lg border-4 border-yellow-400 text-center">
-      <div className="text-white font-bold">
-        <p className="rainbow-text text-lg">✨ Powered by Magic Technology ✨</p>
-        <p className="text-sm mt-2">© 2024 魔法の世界 - すべての権利は魔法省によって保護されています</p>
-        <div className="flex justify-center gap-4 mt-2 text-xs">
-          <span className="blink-text">🌟 今すぐ登録</span>
-          <span>|</span>
-          <span className="blink-text">📧 お問い合わせ</span>
-          <span>|</span>
-          <span className="blink-text">🎯 サイトマップ</span>
+    {/* Footer */}
+    <div className="text-center backdrop-blur-xl bg-slate-800/20 border border-slate-700/30 rounded-2xl p-6">
+      <div className="text-slate-400">
+        <p className="text-lg bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent font-semibold">
+          Powered by Quantum Magic Technology
+        </p>
+        <p className="text-sm mt-2">© 2024 Nexus Systems - All rights protected by Neural Networks</p>
+        <div className="flex justify-center gap-6 mt-3 text-xs">
+          <span className="text-cyan-400 hover:text-cyan-300 cursor-pointer transition-colors">Neural Interface</span>
+          <span className="text-slate-500">•</span>
+          <span className="text-purple-400 hover:text-purple-300 cursor-pointer transition-colors">Quantum Support</span>
+          <span className="text-slate-500">•</span>
+          <span className="text-pink-400 hover:text-pink-300 cursor-pointer transition-colors">System Map</span>
         </div>
       </div>
     </div>
@@ -585,53 +701,48 @@ return (
 
 // 銀行インターフェースコンポーネント
 const BankingInterface = ({ banking, canDuel, gameStarted, onStartDuel }) => (
-<Card className="w-full retro-card bg-gradient-to-br from-green-100 to-blue-100">
-<CardHeader className="bg-gradient-to-r from-green-500 to-teal-600 text-white text-center">
-<CardTitle className=“text-2xl font-bold” style={{fontFamily: ‘Comic Sans MS, cursive’}}>
-<span className="text-3xl">🏦</span>
-<span className="rainbow-text">グリンゴッツ魔法銀行取引</span>
-<span className="text-3xl">🏦</span>
-</CardTitle>
-<div className="text-sm bg-yellow-300 text-black p-2 rounded-lg border-2 border-red-400 inline-block mt-2">
-<span className="blink-text">💎 安全・確実・迅速な魔法振込 💎</span>
-</div>
-</CardHeader>
-<CardContent className="pt-6 bg-gradient-to-br from-yellow-50 to-green-50">
-<div className="space-y-6">
-<BankSelection banking={banking} />
-<TransferForm banking={banking} />
-<ProcessingStatus banking={banking} />
-<TransferResult 
-banking={banking} 
-canDuel={canDuel} 
-gameStarted={gameStarted}
-onStartDuel={onStartDuel}
-/>
-<ActionButtons banking={banking} />
-</div>
-</CardContent>
-</Card>
+
+  <div className="backdrop-blur-xl bg-slate-800/30 border border-slate-700/50 rounded-2xl overflow-hidden">
+    <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-b border-slate-700/50 p-6">
+      <h2 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+        Gringotts Digital Banking System
+      </h2>
+      <p className="text-slate-400 mt-1">Secure • Instant • Quantum-Encrypted</p>
+    </div>
+    <div className="p-6 space-y-6">
+      <BankSelection banking={banking} />
+      <TransferForm banking={banking} />
+      <ProcessingStatus banking={banking} />
+      <TransferResult 
+        banking={banking} 
+        canDuel={canDuel} 
+        gameStarted={gameStarted}
+        onStartDuel={onStartDuel}
+      />
+      <ActionButtons banking={banking} />
+    </div>
+  </div>
 );
 
 // 銀行選択コンポーネント
 const BankSelection = ({ banking }) => (
 
-  <div className="space-y-2 p-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg border-4 border-blue-500">
-    <Label htmlFor="bank-select" className="text-lg font-bold text-purple-800" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-      🏪 支店を選択
+  <div className="space-y-3">
+    <Label htmlFor="bank-select" className="text-slate-200 font-medium">
+      支店選択
     </Label>
     <Select
       value={banking.formData.bankCode}
       onValueChange={(value) => banking.updateFormData('bankCode', value)}
       disabled={banking.isProcessing}
     >
-      <SelectTrigger id="bank-select" className="border-4 border-purple-400 bg-white">
-        <SelectValue placeholder="✨ 支店を選択してください ✨" />
+      <SelectTrigger className="bg-slate-800/50 border-slate-600/50 text-slate-200 backdrop-blur-md">
+        <SelectValue placeholder="支店を選択してください" />
       </SelectTrigger>
-      <SelectContent className="bg-yellow-100 border-4 border-purple-400">
+      <SelectContent className="bg-slate-800 border-slate-600 backdrop-blur-xl">
         {BANK_LIST.map(bank => (
-          <SelectItem key={bank.code} value={bank.code} className="hover:bg-pink-200">
-            🏛️ {bank.name}
+          <SelectItem key={bank.code} value={bank.code} className="text-slate-200 hover:bg-slate-700">
+            {bank.name}
           </SelectItem>
         ))}
       </SelectContent>
@@ -642,15 +753,13 @@ const BankSelection = ({ banking }) => (
 // 振込フォームコンポーネント
 const TransferForm = ({ banking }) => (
 
-  <div className="space-y-4 p-4 bg-gradient-to-br from-pink-100 to-yellow-100 rounded-lg border-4 border-pink-400">
-    <h3 className="text-xl font-bold text-center rainbow-text" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-      💸 振込情報入力フォーム 💸
-    </h3>
+  <div className="space-y-4 bg-slate-900/30 backdrop-blur-md border border-slate-700/50 rounded-xl p-6">
+    <h3 className="text-xl font-semibold text-slate-200 mb-4">転送情報</h3>
 
 ```
 <div className="grid grid-cols-2 gap-4">
   <div className="space-y-2">
-    <Label htmlFor="amount" className="text-lg font-bold text-green-700">💰 ガリオン額</Label>
+    <Label htmlFor="amount" className="text-slate-300">ガリオン額</Label>
     <Input
       id="amount"
       type="number"
@@ -658,62 +767,62 @@ const TransferForm = ({ banking }) => (
       value={banking.formData.amount}
       onChange={(e) => banking.updateFormData('amount', e.target.value)}
       disabled={banking.isProcessing}
-      className="border-4 border-green-400 bg-white text-lg font-bold"
+      className="bg-slate-800/50 border-slate-600/50 text-slate-200 backdrop-blur-md"
     />
     {Number(banking.formData.amount) >= 100 && (
-      <p className="text-xs text-green-600 flex items-center gap-1 bg-green-100 p-2 rounded border-2 border-green-400">
+      <p className="text-xs text-green-400 flex items-center gap-2 bg-green-500/10 border border-green-500/30 rounded p-2">
         <CheckCircle className="h-3 w-3" />
-        <span className="font-bold blink-text">🎉 100ガリオン以上で決闘可能になります！ 🎉</span>
+        <span>100ガリオン以上で量子決闘が解放されます</span>
       </p>
     )}
   </div>
   
   <div className="space-y-2">
-    <Label htmlFor="branch-code" className="text-lg font-bold text-blue-700">🔐 支店暗号</Label>
+    <Label htmlFor="branch-code" className="text-slate-300">支店コード</Label>
     <Input
       id="branch-code"
       placeholder="D12"
       value={banking.formData.branchCode}
       onChange={(e) => banking.updateFormData('branchCode', e.target.value)}
       disabled={banking.isProcessing}
-      className="border-4 border-blue-400 bg-white text-lg font-bold"
+      className="bg-slate-800/50 border-slate-600/50 text-slate-200 backdrop-blur-md"
     />
   </div>
 </div>
 
 <div className="space-y-2">
-  <Label htmlFor="vault-number" className="text-lg font-bold text-purple-700">🔑 金庫番号</Label>
+  <Label htmlFor="vault-number" className="text-slate-300">金庫番号</Label>
   <Input
     id="vault-number"
     placeholder="687"
     value={banking.formData.vaultNumber}
     onChange={(e) => banking.updateFormData('vaultNumber', e.target.value)}
     disabled={banking.isProcessing}
-    className="border-4 border-purple-400 bg-white text-lg font-bold"
+    className="bg-slate-800/50 border-slate-600/50 text-slate-200 backdrop-blur-md"
   />
 </div>
 
 <div className="space-y-2">
-  <Label htmlFor="beneficiary-name" className="text-lg font-bold text-red-700">👤 魔法使いの名前</Label>
+  <Label htmlFor="beneficiary-name" className="text-slate-300">受益者名</Label>
   <Input
     id="beneficiary-name"
     placeholder="ハリー・ポッター"
     value={banking.formData.beneficiaryName}
     onChange={(e) => banking.updateFormData('beneficiaryName', e.target.value)}
     disabled={banking.isProcessing}
-    className="border-4 border-red-400 bg-white text-lg font-bold"
+    className="bg-slate-800/50 border-slate-600/50 text-slate-200 backdrop-blur-md"
   />
 </div>
 
 <div className="space-y-2">
-  <Label htmlFor="description" className="text-lg font-bold text-orange-700">📝 取引メモ（任意）</Label>
+  <Label htmlFor="description" className="text-slate-300">取引メモ（任意）</Label>
   <Input
     id="description"
     placeholder="ホグワーツ学費"
     value={banking.formData.description}
     onChange={(e) => banking.updateFormData('description', e.target.value)}
     disabled={banking.isProcessing}
-    className="border-4 border-orange-400 bg-white text-lg font-bold"
+    className="bg-slate-800/50 border-slate-600/50 text-slate-200 backdrop-blur-md"
   />
 </div>
 ```
@@ -730,24 +839,24 @@ return null;
 const getStatusMessage = () => {
 switch (banking.currentStep) {
 case TRANSFER_STEPS.VALIDATING:
-return ‘🧙‍♂️ ゴブリンによる振込情報を検証しています… 🧙‍♂️’;
+return ‘ニューラルネットワークによる検証を実行中’;
 case TRANSFER_STEPS.EXECUTING:
-return ‘⚡ 地下金庫での振込を実行しています… ⚡’;
+return ‘量子暗号化転送を実行中’;
 case TRANSFER_STEPS.CHECKING_STATUS:
-return ‘🔐 魔法封印状態を確認しています… 🔐’;
+return ‘ブロックチェーン確認を実行中’;
 default:
 return ‘’;
 }
 };
 
 return (
-<div className="bg-gradient-to-r from-yellow-200 to-orange-200 p-4 rounded-lg border-4 border-red-500 shadow-2xl">
-<div className="flex items-center space-x-3 justify-center">
-<Loader2 className="h-8 w-8 text-red-600 animate-spin" />
-<p className=“text-red-800 text-lg font-bold blink-text” style={{fontFamily: ‘Comic Sans MS, cursive’}}>
-{getStatusMessage()}
-</p>
-<Loader2 className="h-8 w-8 text-red-600 animate-spin" />
+<div className="bg-gradient-to-r from-cyan-500/10 to-purple-500/10 backdrop-blur-md border border-cyan-400/30 rounded-xl p-4">
+<div className="flex items-center space-x-3">
+<Loader2 className="h-5 w-5 text-cyan-400 animate-spin" />
+<p className="text-cyan-100 font-medium">{getStatusMessage()}</p>
+</div>
+<div className="mt-3 w-full bg-slate-700 rounded-full h-2">
+<div className=“bg-gradient-to-r from-cyan-400 to-purple-400 h-2 rounded-full animate-pulse” style={{width: ‘75%’}}></div>
 </div>
 </div>
 );
@@ -757,10 +866,10 @@ return (
 const TransferResult = ({ banking, canDuel, gameStarted, onStartDuel }) => {
 if (banking.error) {
 return (
-<Alert className="border-4 border-red-600 bg-red-100">
-<AlertCircle className="h-6 w-6 text-red-600" />
-<AlertDescription className="text-lg font-bold text-red-800">
-❌ {banking.error} ❌
+<Alert className="border border-red-500/30 bg-red-900/20 backdrop-blur-md">
+<AlertCircle className="h-4 w-4 text-red-400" />
+<AlertDescription className="text-red-100">
+{banking.error}
 </AlertDescription>
 </Alert>
 );
@@ -770,49 +879,44 @@ if (!banking.result) return null;
 
 return (
 <div className="space-y-4">
-<Alert className="bg-gradient-to-r from-green-100 to-green-200 border-4 border-green-500">
-<CheckCircle className="h-6 w-6 text-green-600" />
-<AlertDescription className="text-lg font-bold text-green-800">
-✅ {banking.result.message} ✅
+<Alert className="bg-green-500/10 border border-green-500/30 backdrop-blur-md">
+<CheckCircle className="h-4 w-4 text-green-400" />
+<AlertDescription className="text-green-100">
+{banking.result.message}
 </AlertDescription>
 </Alert>
 
 ```
-  <div className="bg-gradient-to-br from-purple-100 to-blue-100 p-4 rounded-lg border-4 border-purple-500 shadow-xl">
-    <h3 className="font-bold text-purple-800 text-xl text-center mb-3 rainbow-text" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-      ✨ 振込詳細 ✨
-    </h3>
+  <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/50 rounded-xl p-6">
+    <h3 className="font-semibold text-slate-200 text-lg mb-4">取引詳細</h3>
     <div className="grid grid-cols-2 gap-3 text-sm">
-      <div className="text-purple-700 font-bold">💰 ガリオン額:</div>
-      <div className="font-bold text-green-600 text-lg">{Number(banking.result.details.amount).toLocaleString()} G</div>
+      <div className="text-slate-400">ガリオン額:</div>
+      <div className="font-medium text-green-400">{Number(banking.result.details.amount).toLocaleString()} G</div>
       
-      <div className="text-purple-700 font-bold">👤 受取人:</div>
-      <div className="font-bold text-blue-600">{banking.result.details.beneficiary}</div>
+      <div className="text-slate-400">受取人:</div>
+      <div className="font-medium text-cyan-400">{banking.result.details.beneficiary}</div>
       
-      <div className="text-purple-700 font-bold">⏰ 処理日時:</div>
-      <div className="font-bold text-red-600">
+      <div className="text-slate-400">処理日時:</div>
+      <div className="font-medium text-purple-400">
         {new Date(banking.result.details.processedAt).toLocaleString('ja-JP')}
       </div>
       
-      <div className="text-purple-700 font-bold">🔖 魔法参照番号:</div>
-      <div className="font-bold text-orange-600">{banking.result.details.reference}</div>
+      <div className="text-slate-400">参照番号:</div>
+      <div className="font-medium text-orange-400">{banking.result.details.reference}</div>
     </div>
   </div>
   
   {canDuel && !gameStarted && (
-    <div className="bg-gradient-to-r from-yellow-200 to-orange-200 p-4 rounded-lg border-4 border-red-500 shadow-2xl">
-      <h3 className="font-bold text-red-700 mb-2 text-xl text-center rainbow-text" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-        🎯 特別招待！ 🎯
-      </h3>
-      <p className="text-sm text-red-600 mb-3 text-center font-bold">
-        高額取引をご利用いただきありがとうございます！<br/>
-        <span className="blink-text">ダンブルドア教授との特別決闘にご招待します！</span>
+    <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 backdrop-blur-md border border-yellow-400/30 rounded-xl p-6">
+      <h3 className="font-semibold text-yellow-400 mb-3 text-lg">高額取引特典</h3>
+      <p className="text-slate-300 mb-4">
+        量子決闘システムへのアクセスが許可されました。
       </p>
       <Button 
         onClick={onStartDuel} 
-        className="w-full bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700 text-white font-bold text-lg border-4 border-yellow-400 animate-pulse"
+        className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-black font-semibold"
       >
-        ⚔️ 決闘を始める ⚔️
+        量子決闘を開始
       </Button>
     </div>
   )}
@@ -828,9 +932,9 @@ if (banking.result) {
 return (
 <Button
 onClick={banking.resetForm}
-className="w-full mt-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-lg border-4 border-yellow-400"
+className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-slate-200"
 >
-🔄 新しい振込を作成 🔄
+新しい転送を作成
 </Button>
 );
 }
@@ -839,62 +943,57 @@ return (
 <Button
 onClick={banking.handleTransfer}
 disabled={banking.isProcessing}
-className="w-full bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white font-bold text-xl border-4 border-yellow-400 animate-bounce"
+className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold disabled:opacity-50"
 >
 {banking.isProcessing && (
-<Loader2 className="mr-2 h-6 w-6 animate-spin" />
+<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 )}
-⚡ {banking.getButtonText()} ⚡
+{banking.getButtonText()}
 </Button>
 );
 };
 
 // 決闘インターフェースコンポーネント
 const DuelInterface = ({ duel, playerName, onReturnToBank }) => (
-<Card className="w-full retro-card bg-gradient-to-br from-red-100 to-purple-100">
-<CardHeader className="bg-gradient-to-r from-red-500 to-purple-600 text-white text-center">
-<CardTitle className=“text-2xl font-bold” style={{fontFamily: ‘Comic Sans MS, cursive’}}>
-<span className="text-3xl">⚔️</span>
-<span className="rainbow-text">ダンブルドアとの魔法決闘</span>
-<span className="text-3xl">⚔️</span>
-</CardTitle>
-<div className="text-sm bg-yellow-300 text-black p-2 rounded-lg border-2 border-red-400 inline-block mt-2">
-<span className="blink-text">🔥 最強の魔法使いを目指せ！ 🔥</span>
-</div>
-</CardHeader>
-<CardContent className="pt-6 bg-gradient-to-br from-blue-50 to-purple-50">
-<div className="p-6 rounded-lg bg-gradient-to-br from-yellow-100 to-pink-100 border-4 border-rainbow">
-{!duel.gameStarted ? (
-<DuelStart onStartGame={duel.startGame} />
-) : (
-<DuelGame 
-duel={duel} 
-playerName={playerName} 
-onReturnToBank={onReturnToBank}
-/>
-)}
-</div>
-</CardContent>
-</Card>
+
+  <div className="backdrop-blur-xl bg-slate-800/30 border border-slate-700/50 rounded-2xl overflow-hidden">
+    <div className="bg-gradient-to-r from-red-500/20 to-orange-500/20 border-b border-slate-700/50 p-6">
+      <h2 className="text-2xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
+        Quantum Duel Chamber
+      </h2>
+      <p className="text-slate-400 mt-1">Neural Combat System • Real-time Processing</p>
+    </div>
+    <div className="p-6">
+      {!duel.gameStarted ? (
+        <DuelStart onStartGame={duel.startGame} />
+      ) : (
+        <DuelGame 
+          duel={duel} 
+          playerName={playerName} 
+          onReturnToBank={onReturnToBank}
+        />
+      )}
+    </div>
+  </div>
 );
 
 // 決闘開始コンポーネント
 const DuelStart = ({ onStartGame }) => (
 
   <div className="text-center space-y-6">
-    <div className="text-8xl mb-4 animate-bounce">🧙‍♂️</div>
-    <h2 className="text-4xl font-bold rainbow-text" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-      ダンブルドア教授との魔法決闘
+    <div className="text-6xl mb-4">⚡</div>
+    <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+      Dumbledore Neural Combat System
     </h2>
-    <p className="text-blue-700 max-w-md mx-auto text-lg font-bold bg-white p-4 rounded-lg border-4 border-blue-500">
-      ダンブルドア教授との魔法の決闘に挑戦しましょう！<br/>
-      <span className="blink-text">あなたの魔法スキルを試す時が来ました。</span>
+    <p className="text-slate-400 max-w-md mx-auto">
+      Advanced AI opponent with adaptive learning algorithms. 
+      Test your skills in real-time quantum combat simulation.
     </p>
     <Button 
       onClick={onStartGame}
-      className="bg-gradient-to-r from-red-600 to-purple-700 hover:from-red-700 hover:to-purple-800 text-white px-8 py-4 text-2xl font-bold border-4 border-yellow-400 animate-pulse"
+      className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white px-8 py-3 text-lg font-semibold"
     >
-      ⚡ 決闘を開始 ⚡
+      Initialize Combat Sequence
     </Button>
   </div>
 );
@@ -903,8 +1002,8 @@ const DuelStart = ({ onStartGame }) => (
 const DuelGame = ({ duel, playerName, onReturnToBank }) => (
 
   <div className="space-y-6">
-    <h2 className="text-3xl font-bold text-center rainbow-text" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-      ⚔️ ダンブルドアとの決闘 ⚔️
+    <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-red-400 to-purple-400 bg-clip-text text-transparent">
+      Combat Session Active
     </h2>
 
 ```
@@ -925,9 +1024,9 @@ const DuelGame = ({ duel, playerName, onReturnToBank }) => (
     duel.resetGame();
     onReturnToBank();
   }}
-  className="w-full bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white font-bold text-lg border-4 border-yellow-400"
+  className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-slate-200"
 >
-  🏦 銀行に戻る 🏦
+  Return to Banking System
 </Button>
 ```
 
@@ -937,20 +1036,20 @@ const DuelGame = ({ duel, playerName, onReturnToBank }) => (
 // プレイヤーステータスコンポーネント
 const PlayerStatus = ({ duel, playerName }) => (
 
-  <div className="bg-gradient-to-r from-blue-100 to-green-100 p-4 rounded-lg border-4 border-blue-500">
-    <h3 className="text-xl font-bold text-blue-800 mb-2 text-center" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-      ✨ {playerName || "魔法使い"} (レベル {duel.gameState.playerLevel}) ✨
+  <div className="bg-slate-900/50 backdrop-blur-md border border-blue-500/30 rounded-xl p-4">
+    <h3 className="text-lg font-semibold text-blue-400 mb-3">
+      {playerName || "Player"} • Level {duel.gameState.playerLevel}
     </h3>
-    <div className="w-full bg-gray-300 rounded-full h-4 mb-2 border-2 border-black">
+    <div className="w-full bg-slate-700 rounded-full h-3 mb-3">
       <div 
-        className="bg-gradient-to-r from-blue-500 to-blue-700 h-4 rounded-full transition-all duration-500 border border-white" 
+        className="bg-gradient-to-r from-blue-400 to-cyan-400 h-3 rounded-full transition-all duration-500" 
         style={{width: `${duel.gameState.playerHealth}%`}}
       />
     </div>
-    <div className="grid grid-cols-3 gap-2 text-sm font-bold">
-      <p className="text-blue-800 bg-white p-1 rounded border-2 border-blue-400">❤️ 体力: {duel.gameState.playerHealth}/100</p>
-      <p className="text-green-800 bg-white p-1 rounded border-2 border-green-400">⭐ 経験値: {duel.gameState.playerExp}/100</p>
-      <p className="text-purple-800 bg-white p-1 rounded border-2 border-purple-400">🔮 効果: {duel.gameState.playerEffects.join(', ') || "なし"}</p>
+    <div className="grid grid-cols-3 gap-3 text-sm">
+      <div className="text-slate-400">Health: <span className="text-blue-400 font-medium">{duel.gameState.playerHealth}/100</span></div>
+      <div className="text-slate-400">EXP: <span className="text-green-400 font-medium">{duel.gameState.playerExp}/100</span></div>
+      <div className="text-slate-400">Effects: <span className="text-purple-400 font-medium">{duel.gameState.playerEffects.join(', ') || "None"}</span></div>
     </div>
   </div>
 );
@@ -958,34 +1057,35 @@ const PlayerStatus = ({ duel, playerName }) => (
 // ダンブルドアステータスコンポーネント
 const DumbledoreStatus = ({ duel }) => (
 
-  <div className="bg-gradient-to-r from-purple-100 to-red-100 p-4 rounded-lg border-4 border-purple-500">
-    <h3 className="text-xl font-bold text-purple-800 mb-2 text-center" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-      🧙‍♂️ ダンブルドア教授 🧙‍♂️
+  <div className="bg-slate-900/50 backdrop-blur-md border border-purple-500/30 rounded-xl p-4">
+    <h3 className="text-lg font-semibold text-purple-400 mb-3">
+      Dumbledore AI • Neural Level 10
     </h3>
-    <div className="w-full bg-gray-300 rounded-full h-4 mb-2 border-2 border-black">
+    <div className="w-full bg-slate-700 rounded-full h-3 mb-3">
       <div 
-        className="bg-gradient-to-r from-purple-500 to-purple-700 h-4 rounded-full transition-all duration-500 border border-white" 
+        className="bg-gradient-to-r from-purple-400 to-pink-400 h-3 rounded-full transition-all duration-500" 
         style={{width: `${duel.gameState.dumbledoreHealth}%`}}
       />
     </div>
-    <p className="text-sm font-bold text-purple-800 bg-white p-2 rounded border-2 border-purple-400">
-      ❤️ 体力: {duel.gameState.dumbledoreHealth}/100 | 🔮 効果: {duel.gameState.dumbledoreEffects.join(', ') || "なし"}
-    </p>
+    <div className="text-sm text-slate-400">
+      Health: <span className="text-purple-400 font-medium">{duel.gameState.dumbledoreHealth}/100</span> • 
+      Effects: <span className="text-pink-400 font-medium">{duel.gameState.dumbledoreEffects.join(', ') || "None"}</span>
+    </div>
   </div>
 );
 
 // ゲームステータスコンポーネント
 const GameStatus = ({ duel }) => (
 
-  <div className="bg-gradient-to-r from-yellow-200 to-orange-200 p-4 rounded-lg border-4 border-red-500">
+  <div className="bg-slate-900/30 backdrop-blur-md border border-slate-700/50 rounded-xl p-4">
     <div className="flex justify-between items-center">
-      <div className="flex items-center gap-2 bg-white p-2 rounded border-2 border-blue-400">
-        <Shield className="h-6 w-6 text-blue-600" />
-        <span className="font-bold text-blue-800 text-lg">🔄 ラウンド: {duel.gameState.round}</span>
+      <div className="flex items-center gap-2">
+        <Shield className="h-5 w-5 text-cyan-400" />
+        <span className="font-medium text-cyan-400">Round: {duel.gameState.round}</span>
       </div>
-      <div className="flex items-center gap-2 bg-white p-2 rounded border-2 border-purple-400">
-        <Zap className="h-6 w-6 text-purple-600" />
-        <span className="font-bold text-purple-800 text-lg">⚡ スコア: {duel.gameState.score}</span>
+      <div className="flex items-center gap-2">
+        <Zap className="h-5 w-5 text-yellow-400" />
+        <span className="font-medium text-yellow-400">Score: {duel.gameState.score}</span>
       </div>
     </div>
   </div>
@@ -994,18 +1094,16 @@ const GameStatus = ({ duel }) => (
 // 前回の攻撃結果コンポーネント
 const LastRoundSummary = ({ lastRound }) => (
 
-  <div className="bg-gradient-to-r from-green-100 to-blue-100 p-4 rounded-lg border-4 border-green-500 space-y-2">
-    <h4 className="font-bold text-green-800 text-center text-lg" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-      ⚔️ 前回の攻撃結果 ⚔️
-    </h4>
+  <div className="bg-slate-900/30 backdrop-blur-md border border-slate-700/50 rounded-xl p-4 space-y-2">
+    <h4 className="font-medium text-slate-200">Last Combat Sequence</h4>
     <div className="space-y-1 text-sm">
-      <p className="text-blue-800 bg-white p-2 rounded border-2 border-blue-400 font-bold">
-        <span>✨ あなたの呪文:</span> {lastRound.playerSpell} 
-        <span className="text-red-600 ml-2">(ダメージ: {lastRound.playerDamage})</span>
+      <p className="text-blue-300">
+        <span className="font-medium">Your Spell:</span> {lastRound.playerSpell} 
+        <span className="text-red-400 ml-2">(Damage: {lastRound.playerDamage})</span>
       </p>
-      <p className="text-purple-800 bg-white p-2 rounded border-2 border-purple-400 font-bold">
-        <span>🧙‍♂️ ダンブルドアの呪文:</span> {lastRound.dumbledoreSpell} 
-        <span className="text-red-600 ml-2">(ダメージ: {lastRound.dumbledoreDamage})</span>
+      <p className="text-purple-300">
+        <span className="font-medium">Dumbledore's Spell:</span> {lastRound.dumbledoreSpell} 
+        <span className="text-red-400 ml-2">(Damage: {lastRound.dumbledoreDamage})</span>
       </p>
     </div>
   </div>
@@ -1015,21 +1113,21 @@ const LastRoundSummary = ({ lastRound }) => (
 const SpellSelection = ({ duel }) => (
 
   <div className="space-y-4">
-    <h3 className="font-bold text-center text-xl rainbow-text" style={{fontFamily: 'Comic Sans MS, cursive'}}>
-      🪄 呪文を選んでください 🪄
+    <h3 className="font-semibold text-center text-xl text-slate-200">
+      Select Combat Spell
     </h3>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {Object.entries(SPELLS).map(([spell, info]) => (
         <Button 
           key={spell} 
           onClick={() => duel.castSpell(spell)}
-          className="p-4 bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-lg h-auto border-4 border-yellow-400 transform hover:scale-105 transition-transform"
+          className="p-4 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-400/30 hover:from-indigo-500/30 hover:to-purple-500/30 hover:border-indigo-400/50 text-slate-200 rounded-xl h-auto transition-all duration-300 hover:scale-105"
         >
-          <div className="text-center space-y-1">
-            <div className="text-3xl animate-pulse">{info.icon}</div>
-            <div className="font-bold text-sm">{spell}</div>
-            <div className="text-xs bg-white text-black p-1 rounded">
-              ダメージ: {info.damage} | {info.effect}
+          <div className="text-center space-y-2">
+            <div className="text-2xl">{info.icon}</div>
+            <div className="font-medium text-sm">{spell}</div>
+            <div className="text-xs text-slate-400">
+              DMG: {info.damage} • {info.effect}
             </div>
           </div>
         </Button>
@@ -1042,29 +1140,235 @@ const SpellSelection = ({ duel }) => (
 const GameOverScreen = ({ duel, onReturnToBank }) => (
 
   <div className="space-y-4">
-    <div className={`p-6 rounded-lg text-center border-4 ${
+    <div className={`p-6 rounded-xl text-center backdrop-blur-md border ${
       duel.gameState.playerHealth <= 0 
-        ? 'bg-gradient-to-br from-red-200 to-red-300 text-red-900 border-red-600' 
-        : 'bg-gradient-to-br from-green-200 to-green-300 text-green-900 border-green-600'
+        ? 'bg-red-500/10 border-red-500/30' 
+        : 'bg-green-500/10 border-green-500/30'
     }`}>
-      <div className="text-6xl mb-2 animate-bounce">
+      <div className="text-4xl mb-2">
         {duel.gameState.playerHealth <= 0 ? '💀' : '🏆'}
       </div>
-      <h2 className="text-3xl font-bold mb-2 rainbow-text" style={{fontFamily: 'Comic Sans MS, cursive'}}>
+      <h2 className={`text-2xl font-bold mb-2 ${
+        duel.gameState.playerHealth <= 0 
+          ? 'text-red-400' 
+          : 'text-green-400'
+      }`}>
         {duel.gameState.playerHealth <= 0 
-          ? '💥 ゲームオーバー！ダンブルドアの勝利です。 💥' 
-          : '🎉 おめでとうございます！あなたの勝利です。 🎉'
+          ? 'Combat Failed - AI Victory' 
+          : 'Mission Complete - Victory Achieved'
         }
       </h2>
-      <p className="text-2xl font-bold">最終スコア: {duel.gameState.score}</p>
+      <p className="text-xl text-slate-300">Final Score: {duel.gameState.score}</p>
     </div>
     <Button 
       onClick={duel.resetGame}
-      className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold text-xl border-4 border-yellow-400 animate-pulse"
+      className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold"
     >
-      🔄 再挑戦する 🔄
-    </Button> 
+      Restart Combat Simulation
+    </Button>
   </div>
 );
+
+// アナコンダ生成器コンポーネント
+const AnacondaGenerator = () => {
+const { svgSize, setSvgSize, snakeData, generateAnaconda, downloadSVG, generationCount } = useAnacondaGenerator();
+
+if (!snakeData) {
+return (
+<div className="backdrop-blur-xl bg-slate-800/30 border border-slate-700/50 rounded-2xl p-6 text-center">
+<div className="text-4xl mb-4">🔄</div>
+<p className="text-lg font-medium text-slate-200">Initializing AI Generator…</p>
+</div>
+);
+}
+
+return (
+<div className="backdrop-blur-xl bg-slate-800/30 border border-slate-700/50 rounded-2xl overflow-hidden">
+<div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-b border-slate-700/50 p-6">
+<h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+AI Anaconda Generator
+</h2>
+<p className="text-slate-400 mt-1">Neural Network Procedural Generation</p>
+</div>
+<div className="p-6 space-y-6">
+{/* Control Panel */}
+<div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/50 rounded-xl p-6">
+<h3 className="text-xl font-semibold text-slate-200 mb-4">Control Panel</h3>
+
+```
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="space-y-2">
+          <Label htmlFor="svg-size" className="text-slate-300">Output Resolution</Label>
+          <Select
+            value={svgSize.toString()}
+            onValueChange={(value) => setSvgSize(Number(value))}
+          >
+            <SelectTrigger className="bg-slate-800/50 border-slate-600/50 text-slate-200">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-800 border-slate-600">
+              <SelectItem value="400">400x400</SelectItem>
+              <SelectItem value="600">600x600</SelectItem>
+              <SelectItem value="800">800x800</SelectItem>
+              <SelectItem value="1000">1000x1000</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="flex items-end">
+          <Button
+            onClick={generateAnaconda}
+            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold"
+          >
+            Generate New Pattern
+          </Button>
+        </div>
+        
+        <div className="flex items-end">
+          <Button
+            onClick={downloadSVG}
+            className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold"
+          >
+            Download SVG
+          </Button>
+        </div>
+      </div>
+      
+      <div className="text-center bg-slate-800/50 backdrop-blur-md border border-slate-600/50 rounded-lg p-3">
+        <p className="font-medium text-slate-200">
+          Generation Count: {generationCount}
+        </p>
+      </div>
+    </div>
+
+    {/* SVG Display */}
+    <div className="bg-slate-900/50 backdrop-blur-md border border-slate-700/50 rounded-xl p-6">
+      <h3 className="text-xl font-semibold text-slate-200 mb-4 text-center">Generated Output</h3>
+      
+      <div className="flex justify-center">
+        <div className="border border-slate-600/50 rounded-lg p-3 bg-slate-800/30 backdrop-blur-md">
+          <svg
+            id="anaconda-svg"
+            width={Math.min(svgSize, 500)}
+            height={Math.min(svgSize, 500)}
+            viewBox={`0 0 ${svgSize} ${svgSize}`}
+            className="rounded"
+          >
+            {/* Background */}
+            <defs>
+              <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#1e293b" />
+                <stop offset="50%" stopColor="#334155" />
+                <stop offset="100%" stopColor="#0f172a" />
+              </linearGradient>
+              <linearGradient id="snakeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#10b981" />
+                <stop offset="50%" stopColor="#059669" />
+                <stop offset="100%" stopColor="#047857" />
+              </linearGradient>
+            </defs>
+            
+            <rect x="0" y="0" width={svgSize} height={svgSize} fill="url(#bgGradient)" />
+            
+            {/* Snake Body */}
+            <polyline
+              points={snakeData.points.map(p => `${p.x},${p.y}`).join(' ')}
+              fill="none"
+              stroke="url(#snakeGradient)"
+              strokeWidth="60"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            
+            {/* Body Patterns */}
+            {snakeData.patterns.map((pattern, index) => (
+              <circle
+                key={index}
+                cx={pattern.x}
+                cy={pattern.y}
+                r={pattern.r}
+                fill="#065f46"
+                opacity="0.8"
+              />
+            ))}
+            
+            {/* Head */}
+            <ellipse
+              cx={snakeData.headX}
+              cy={snakeData.headY}
+              rx="30"
+              ry="20"
+              fill="url(#snakeGradient)"
+            />
+            
+            {/* Eye */}
+            <circle
+              cx={snakeData.eyeX}
+              cy={snakeData.eyeY}
+              r="5"
+              fill="#facc15"
+            />
+            <circle
+              cx={snakeData.eyeX}
+              cy={snakeData.eyeY}
+              r="2"
+              fill="#000"
+            />
+            
+            {/* Tongue */}
+            <line
+              x1={snakeData.tongueStartX}
+              y1={snakeData.tongueStartY}
+              x2={snakeData.tongue1EndX}
+              y2={snakeData.tongue1EndY}
+              stroke="#ef4444"
+              strokeWidth="3"
+            />
+            <line
+              x1={snakeData.tongueStartX}
+              y1={snakeData.tongueStartY}
+              x2={snakeData.tongue2EndX}
+              y2={snakeData.tongue2EndY}
+              stroke="#ef4444"
+              strokeWidth="3"
+            />
+          </svg>
+        </div>
+      </div>
+      
+      <div className="mt-4 text-center">
+        <p className="text-sm text-slate-400 bg-slate-800/30 backdrop-blur-md border border-slate-600/30 rounded p-3">
+          Each generation produces unique procedural patterns using advanced algorithms
+        </p>
+      </div>
+    </div>
+
+    {/* Feature Info */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="bg-slate-900/30 backdrop-blur-md border border-slate-700/50 rounded-xl p-4">
+        <h4 className="text-purple-400 font-semibold mb-3">AI Features</h4>
+        <ul className="space-y-2 text-sm text-slate-300">
+          <li>• Procedural curve generation</li>
+          <li>• Neural pattern recognition</li>
+          <li>• Adaptive coloring system</li>
+          <li>• Real-time rendering</li>
+        </ul>
+      </div>
+      <div className="bg-slate-900/30 backdrop-blur-md border border-slate-700/50 rounded-xl p-4">
+        <h4 className="text-cyan-400 font-semibold mb-3">System Controls</h4>
+        <ul className="space-y-2 text-sm text-slate-300">
+          <li>• Resolution selection</li>
+          <li>• Instant regeneration</li>
+          <li>• SVG export functionality</li>
+          <li>• Infinite variations</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+);
+};
 
 export default WizardingBankAndDuel;
