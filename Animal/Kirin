@@ -1,18 +1,38 @@
 import React, { useState } from 'react';
 
+const giraffeFacts = [
+  { icon: "😴", title: "Sleep", text: "キリンの睡眠時間は1日たったの20分〜2時間程度です。" },
+  { icon: "🏃‍♂️", title: "Speed", text: "走ると時速約60kmのスピードに達します。" },
+  { icon: "🦴", title: "Neck Bones", text: "首の骨の数は人間と同じ7個です。" },
+  { icon: "👨‍👩‍👧", title: "Social", text: "群れで生活し、時には50頭以上の大きな群れをつくります。" },
+  { icon: "🌍", title: "Conservation", text: "IUCNレッドリストでは「危急種（Vulnerable）」に指定されています。" },
+];
+
+const externalLinks = [
+  { href: "https://ja.wikipedia.org/wiki/%E3%82%AD%E3%83%AA%E3%83%B3", text: "Wikipedia: キリン" },
+  { href: "https://www.wwf.or.jp/activities/basicinfo/3849.html", text: "WWF: キリン保護" },
+  { href: "https://www.ueno-zoo.jp/animals/mammal/giraffe", text: "上野動物園: キリン" },
+];
+
+const galleryImages = [
+  { src: "/api/placeholder/800/600?img=1", alt: "キリンの親子" },
+  { src: "/api/placeholder/800/600?img=2", alt: "サバンナを歩くキリン" },
+  { src: "/api/placeholder/800/600?img=3", alt: "木の葉を食べるキリン" },
+];
+
 const GiraffePage = () => {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
+  const [mainImageLoaded, setMainImageLoaded] = useState(false);
+  const [mainImageError, setMainImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   const handleImageLoad = () => {
-    setImageLoaded(true);
-    setImageError(false);
+    setMainImageLoaded(true);
+    setMainImageError(false);
   };
 
   const handleImageError = () => {
-    setImageError(true);
-    setImageLoaded(false);
+    setMainImageError(true);
+    setMainImageLoaded(false);
   };
 
   return (
@@ -33,25 +53,22 @@ const GiraffePage = () => {
           onMouseLeave={() => setIsHovered(false)}
         >
           <div className="relative aspect-[4/3] bg-gray-100">
-            {/* Loading skeleton */}
-            {!imageLoaded && !imageError && (
+            {!mainImageLoaded && !mainImageError && (
               <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse">
                 <div className="flex items-center justify-center h-full">
                   <div className="text-gray-500 text-lg">Loading image...</div>
                 </div>
               </div>
             )}
-
-            {/* Error state */}
-            {imageError && (
+            {mainImageError && (
               <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
                 <div className="text-center p-8">
                   <div className="text-6xl mb-4">🦒</div>
                   <p className="text-gray-600 text-lg mb-4">Failed to load image</p>
                   <button 
                     onClick={() => {
-                      setImageError(false);
-                      setImageLoaded(false);
+                      setMainImageError(false);
+                      setMainImageLoaded(false);
                     }}
                     className="bg-amber-600 text-white px-6 py-2 rounded-lg hover:bg-amber-700 transition-colors"
                   >
@@ -60,26 +77,20 @@ const GiraffePage = () => {
                 </div>
               </div>
             )}
-
-            {/* Main image */}
             <img 
               src="/api/placeholder/800/600"
               alt="A graceful giraffe standing tall in its natural habitat, showcasing its distinctive spotted pattern and elegant neck" 
               className={`
                 w-full h-full object-cover transition-all duration-500
-                ${imageLoaded ? 'opacity-100' : 'opacity-0'}
+                ${mainImageLoaded ? 'opacity-100' : 'opacity-0'}
                 ${isHovered ? 'scale-105' : 'scale-100'}
               `}
               onLoad={handleImageLoad}
               onError={handleImageError}
               loading="lazy"
             />
-
-            {/* Overlay gradient */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
           </div>
-
-          {/* Image caption */}
           <div className="p-6 bg-white">
             <h2 className="text-2xl font-semibold text-gray-800 mb-3">
               The Tallest Mammal on Earth
@@ -103,25 +114,48 @@ const GiraffePage = () => {
           </div>
         </section>
 
-        {/* Fun facts section */}
-        <section className="mt-12 grid md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-lg text-center">
-            <div className="text-3xl mb-3">📏</div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">Height</h3>
-            <p className="text-gray-600">Up to 18 feet tall</p>
+        {/* 画像ギャラリー */}
+        <section className="mt-12">
+          <h2 className="text-xl font-bold text-amber-700 mb-4">🖼️ キリンのフォトギャラリー</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {galleryImages.map((img, idx) => (
+              <img 
+                key={idx}
+                src={img.src}
+                alt={img.alt}
+                className="rounded-xl object-cover w-full h-48 shadow-md hover:scale-105 transition-transform"
+                loading="lazy"
+              />
+            ))}
           </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-lg text-center">
-            <div className="text-3xl mb-3">💓</div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">Heart</h3>
-            <p className="text-gray-600">25 pounds, 2 feet long</p>
+        </section>
+
+        {/* 豆知識 */}
+        <section className="mt-12">
+          <h2 className="text-xl font-bold text-amber-700 mb-4">🦒 キリン豆知識</h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {giraffeFacts.map((fact, idx) => (
+              <div key={idx} className="bg-white rounded-xl p-6 shadow-lg text-center">
+                <div className="text-3xl mb-3">{fact.icon}</div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">{fact.title}</h3>
+                <p className="text-gray-600">{fact.text}</p>
+              </div>
+            ))}
           </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-lg text-center">
-            <div className="text-3xl mb-3">👅</div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">Tongue</h3>
-            <p className="text-gray-600">Up to 20 inches long</p>
-          </div>
+        </section>
+
+        {/* 外部リンク */}
+        <section className="mt-12">
+          <h2 className="text-xl font-bold text-amber-700 mb-4">🔗 もっと知りたい方へ</h2>
+          <ul className="list-disc ml-6 space-y-2">
+            {externalLinks.map((link, idx) => (
+              <li key={idx}>
+                <a href={link.href} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline hover:text-blue-900">
+                  {link.text}
+                </a>
+              </li>
+            ))}
+          </ul>
         </section>
       </div>
     </main>
