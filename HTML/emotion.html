@@ -1,293 +1,239 @@
-<!DOCTYPE html>
+import React, { useState, useEffect } from ‘react’;
 
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="かわいいおじいさんの感情表現アニメーション">
-    <title>かわいいおじいさんの感情表現</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --oldman-skin: #f8e1c6;
-            --oldman-cheek: #f8a5c2;
-            --oldman-mustache: #e0e0e0;
-            --oldman-text: #f582ae;
-            --oldman-eye: #4a4a4a;
-            --oldman-eye-white: #ffffff;
-            --background: #fef6e4;
-            --shadow-color: rgba(0, 0, 0, 0.1);
-            --animation-duration: 2s;
-            --blink-duration: 3s;
-        }
+const CuteOldmanAnimation = () => {
+const emotions = [
+{ text: ‘むむっ！’, color: ‘#f582ae’ },
+{ text: ‘わしゃわしゃ’, color: ‘#f5a742’ },
+{ text: ‘ほっほっほ’, color: ‘#82c0f5’ },
+{ text: ‘うむうむ’, color: ‘#82f5a7’ },
+{ text: ‘おやおや？’, color: ‘#f582d4’ },
+{ text: ‘ふぉふぉふぉ’, color: ‘#f5d082’ }
+];
+
+const [currentEmotion, setCurrentEmotion] = useState(0);
+const [isClicked, setIsClicked] = useState(false);
+const [isHovered, setIsHovered] = useState(false);
+
+useEffect(() => {
+const interval = setInterval(() => {
+if (!isClicked) {
+setCurrentEmotion((prev) => (prev + 1) % emotions.length);
+}
+}, 4000);
 
 ```
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-
-    .oldman-wrapper {
-        width: 100%;
-        min-height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background: linear-gradient(135deg, var(--background) 0%, #f9f0d9 100%);
-        overflow: hidden;
-        font-family: 'M PLUS Rounded 1c', sans-serif;
-        padding: 1rem;
-    }
-
-    .oldman-container {
-        position: relative;
-        width: min(300px, 80vw);
-        height: min(300px, 80vw);
-        aspect-ratio: 1;
-        filter: drop-shadow(0 15px 25px var(--shadow-color));
-    }
-
-    .oldman-face {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        background: radial-gradient(circle at 30% 30%, var(--oldman-skin) 0%, #f5d7b3 100%);
-        border-radius: 50%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        animation: oldmanWobble var(--animation-duration) ease-in-out infinite;
-        will-change: transform;
-        position: relative;
-        overflow: hidden;
-    }
-
-    /* より自然な影の追加 */
-    .oldman-face::before {
-        content: '';
-        position: absolute;
-        width: 70%;
-        height: 30%;
-        background: rgba(0, 0, 0, 0.05);
-        border-radius: 50%;
-        bottom: 10%;
-        left: 15%;
-        filter: blur(8px);
-    }
-
-    .oldman-eye {
-        position: absolute;
-        width: 13.33%;  /* 40px / 300px */
-        height: 13.33%;
-        background-color: var(--oldman-eye-white);
-        border-radius: 50%;
-        top: 26.67%;  /* 80px / 300px */
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-        z-index: 2;
-    }
-
-    .oldman-eye::after {
-        content: '';
-        position: absolute;
-        width: 50%;
-        height: 50%;
-        background: radial-gradient(circle, var(--oldman-eye) 40%, #2a2a2a 100%);
-        border-radius: 50%;
-        top: 25%;
-        left: 25%;
-        animation: oldmanBlink var(--blink-duration) ease-in-out infinite;
-        will-change: transform;
-    }
-
-    .oldman-eye--left { 
-        left: 20%; 
-        animation: oldmanEyeFollowLeft 4s ease-in-out infinite;
-    }
-    .oldman-eye--right { 
-        right: 20%;
-        animation: oldmanEyeFollowRight 4s ease-in-out infinite;
-    }
-
-    .oldman-cheek {
-        position: absolute;
-        width: 10%;
-        height: 6.67%;
-        background: radial-gradient(circle, var(--oldman-cheek) 0%, transparent 70%);
-        border-radius: 50%;
-        opacity: 0.8;
-        top: 43.33%;
-        animation: oldmanBlush var(--animation-duration) ease-in-out infinite;
-        z-index: 1;
-    }
-
-    .oldman-cheek--left { left: 16.67%; }
-    .oldman-cheek--right { right: 16.67%; }
-
-    .oldman-mouth {
-        position: absolute;
-        width: 26.67%;
-        height: 13.33%;
-        border: 2.5px solid var(--oldman-eye);
-        border-bottom-left-radius: 40px;
-        border-bottom-right-radius: 40px;
-        border-top: none;
-        bottom: 23.33%;
-        animation: oldmanMouthMove var(--animation-duration) ease-in-out infinite;
-        will-change: transform;
-        z-index: 2;
-    }
-
-    .oldman-mustache {
-        position: absolute;
-        width: 40%;
-        height: 6.67%;
-        background: linear-gradient(to bottom, var(--oldman-mustache) 0%, #d5d5d5 100%);
-        border-radius: 10px;
-        bottom: 36.67%;
-        z-index: 2;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    /* ひげに質感を追加 */
-    .oldman-mustache::before {
-        content: '';
-        position: absolute;
-        width: 100%;
-        height: 2px;
-        background: #ccc;
-        top: 30%;
-        border-radius: 1px;
-    }
-
-    .oldman-emotion {
-        position: absolute;
-        font-size: clamp(1.5rem, 5vw, 2rem);
-        font-weight: 700;
-        color: var(--oldman-text);
-        text-shadow: 
-            2px 2px 4px rgba(0, 0, 0, 0.1),
-            0 0 8px rgba(245, 130, 174, 0.3);
-        opacity: 0;
-        transform: translateY(20px);
-        animation: oldmanTextBounce var(--animation-duration) ease-in-out infinite;
-        will-change: transform, opacity;
-        top: -60px;
-        left: 50%;
-        transform-origin: center;
-        white-space: nowrap;
-        user-select: none;
-    }
-
-    /* インタラクティブ要素の追加 */
-    .oldman-container:hover .oldman-face {
-        animation-duration: 1s;
-    }
-
-    .oldman-container:hover .oldman-emotion {
-        animation-duration: 1s;
-    }
-
-    /* アクセシビリティ対応 */
-    @media (prefers-reduced-motion: reduce) {
-        .oldman-face,
-        .oldman-eye::after,
-        .oldman-eye--left,
-        .oldman-eye--right,
-        .oldman-mouth,
-        .oldman-emotion,
-        .oldman-cheek {
-            animation: none !important;
-        }
-        
-        .oldman-emotion {
-            opacity: 1;
-            transform: translateY(-50px);
-        }
-    }
-
-    @media (max-width: 480px) {
-        .oldman-wrapper {
-            padding: 0.5rem;
-        }
-        
-        .oldman-emotion {
-            font-size: clamp(1.2rem, 6vw, 1.8rem);
-        }
-    }
-
-    /* アニメーション定義 */
-    @keyframes oldmanWobble {
-        0%, 100% { transform: rotate(-3deg) scale(1); }
-        50% { transform: rotate(3deg) scale(1.02); }
-    }
-
-    @keyframes oldmanBlink {
-        0%, 90%, 100% { transform: scale(1); }
-        95% { transform: scale(0.1, 0.05); }
-    }
-
-    @keyframes oldmanEyeFollowLeft {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-2px); }
-        75% { transform: translateX(2px); }
-    }
-
-    @keyframes oldmanEyeFollowRight {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(2px); }
-        75% { transform: translateX(-2px); }
-    }
-
-    @keyframes oldmanMouthMove {
-        0%, 100% { transform: scaleY(1) scaleX(1); }
-        50% { transform: scaleY(0.7) scaleX(1.1); }
-    }
-
-    @keyframes oldmanBlush {
-        0%, 100% { opacity: 0.6; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.1); }
-    }
-
-    @keyframes oldmanTextBounce {
-        0%, 100% { 
-            opacity: 0; 
-            transform: translate(-50%, 20px) scale(0.8); 
-        }
-        10%, 90% { 
-            opacity: 1; 
-            transform: translate(-50%, -10px) scale(1.1); 
-        }
-        50% {
-            transform: translate(-50%, -15px) scale(1);
-        }
-    }
-
-    /* フォーカス時のアクセシビリティ */
-    .oldman-container:focus-visible {
-        outline: 3px solid var(--oldman-text);
-        outline-offset: 8px;
-        border-radius: 50%;
-    }
-</style>
+return () => clearInterval(interval);
 ```
 
-</head>
-<body>
-    <div class="oldman-wrapper">
-        <div class="oldman-container" tabindex="0" role="img" aria-label="感情を表現するかわいいおじいさんのアニメーション">
-            <div class="oldman-face">
-                <div class="oldman-eye oldman-eye--left"></div>
-                <div class="oldman-eye oldman-eye--right"></div>
-                <div class="oldman-cheek oldman-cheek--left"></div>
-                <div class="oldman-cheek oldman-cheek--right"></div>
-                <div class="oldman-mustache"></div>
-                <div class="oldman-mouth"></div>
-            </div>
-            <div class="oldman-emotion">むむっ！</div>
+}, [isClicked, emotions.length]);
+
+const handleClick = () => {
+setIsClicked(true);
+setCurrentEmotion((prev) => (prev + 1) % emotions.length);
+
+```
+setTimeout(() => {
+  setIsClicked(false);
+}, 500);
+```
+
+};
+
+return (
+<div className="w-full min-h-screen flex justify-center items-center bg-gradient-to-br from-[#fef6e4] to-[#f9f0d9] overflow-hidden p-4">
+<div className="relative w-[min(300px,80vw)] aspect-square">
+{/* 感情テキスト */}
+<div
+className=“absolute -top-16 left-1/2 -translate-x-1/2 whitespace-nowrap pointer-events-none z-20”
+style={{
+fontFamily: “‘M PLUS Rounded 1c’, sans-serif”,
+fontSize: ‘clamp(1.5rem, 5vw, 2rem)’,
+fontWeight: 700,
+color: emotions[currentEmotion].color,
+textShadow: ‘2px 2px 4px rgba(0, 0, 0, 0.1), 0 0 8px rgba(245, 130, 174, 0.3)’,
+animation: ‘textBounce 2s ease-in-out infinite’
+}}
+>
+{emotions[currentEmotion].text}
+</div>
+
+```
+    {/* おじいさんコンテナ */}
+    <button
+      className={`relative w-full h-full cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-pink-300 rounded-full transition-all duration-300 ${
+        isClicked ? 'scale-95' : isHovered ? 'scale-105' : 'scale-100'
+      }`}
+      onClick={handleClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      aria-label={`感情を表現するかわいいおじいさん。現在の感情: ${emotions[currentEmotion].text}`}
+      style={{
+        filter: 'drop-shadow(0 15px 25px rgba(0, 0, 0, 0.1))'
+      }}
+    >
+      {/* 顔 */}
+      <div 
+        className="absolute w-full h-full rounded-full flex justify-center items-center overflow-hidden"
+        style={{
+          background: 'radial-gradient(circle at 30% 30%, #f8e1c6 0%, #f5d7b3 100%)',
+          animation: isHovered ? 'wobble 1s ease-in-out infinite' : 'wobble 2s ease-in-out infinite'
+        }}
+      >
+        {/* 顔の影 */}
+        <div 
+          className="absolute w-[70%] h-[30%] rounded-full bottom-[10%] left-[15%]"
+          style={{
+            background: 'rgba(0, 0, 0, 0.05)',
+            filter: 'blur(8px)'
+          }}
+        />
+
+        {/* 左目 */}
+        <div 
+          className="absolute w-[13.33%] h-[13.33%] bg-white rounded-full top-[26.67%] left-[20%] z-10"
+          style={{
+            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)',
+            animation: 'eyeFollowLeft 4s ease-in-out infinite'
+          }}
+        >
+          <div 
+            className="absolute w-1/2 h-1/2 rounded-full top-1/4 left-1/4"
+            style={{
+              background: 'radial-gradient(circle, #4a4a4a 40%, #2a2a2a 100%)',
+              animation: 'blink 3s ease-in-out infinite'
+            }}
+          />
         </div>
+
+        {/* 右目 */}
+        <div 
+          className="absolute w-[13.33%] h-[13.33%] bg-white rounded-full top-[26.67%] right-[20%] z-10"
+          style={{
+            boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)',
+            animation: 'eyeFollowRight 4s ease-in-out infinite'
+          }}
+        >
+          <div 
+            className="absolute w-1/2 h-1/2 rounded-full top-1/4 left-1/4"
+            style={{
+              background: 'radial-gradient(circle, #4a4a4a 40%, #2a2a2a 100%)',
+              animation: 'blink 3s ease-in-out infinite'
+            }}
+          />
+        </div>
+
+        {/* 左頬 */}
+        <div 
+          className="absolute w-[10%] h-[6.67%] rounded-full top-[43.33%] left-[16.67%] z-[1]"
+          style={{
+            background: 'radial-gradient(circle, #f8a5c2 0%, transparent 70%)',
+            opacity: 0.8,
+            animation: 'blush 2s ease-in-out infinite'
+          }}
+        />
+
+        {/* 右頬 */}
+        <div 
+          className="absolute w-[10%] h-[6.67%] rounded-full top-[43.33%] right-[16.67%] z-[1]"
+          style={{
+            background: 'radial-gradient(circle, #f8a5c2 0%, transparent 70%)',
+            opacity: 0.8,
+            animation: 'blush 2s ease-in-out infinite'
+          }}
+        />
+
+        {/* ひげ */}
+        <div 
+          className="absolute w-[40%] h-[6.67%] rounded-xl bottom-[36.67%] z-10"
+          style={{
+            background: 'linear-gradient(to bottom, #e0e0e0 0%, #d5d5d5 100%)',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+          }}
+        >
+          <div 
+            className="absolute w-full h-[2px] bg-[#ccc] top-[30%] rounded-sm"
+          />
+        </div>
+
+        {/* 口 */}
+        <div 
+          className="absolute w-[26.67%] h-[13.33%] bottom-[23.33%] z-10"
+          style={{
+            border: '2.5px solid #4a4a4a',
+            borderBottomLeftRadius: '40px',
+            borderBottomRightRadius: '40px',
+            borderTop: 'none',
+            animation: 'mouthMove 2s ease-in-out infinite'
+          }}
+        />
+      </div>
+    </button>
+
+    {/* 操作ヒント */}
+    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 text-center text-sm text-gray-600 whitespace-nowrap">
+      クリックで感情を変更
     </div>
-</body>
-</html>
+  </div>
+
+  {/* CSS アニメーション */}
+  <style jsx>{`
+    @keyframes wobble {
+      0%, 100% { transform: rotate(-3deg) scale(1); }
+      50% { transform: rotate(3deg) scale(1.02); }
+    }
+
+    @keyframes blink {
+      0%, 90%, 100% { transform: scale(1); }
+      95% { transform: scale(0.1, 0.05); }
+    }
+
+    @keyframes eyeFollowLeft {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      75% { transform: translateX(2px); }
+    }
+
+    @keyframes eyeFollowRight {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(2px); }
+      75% { transform: translateX(-2px); }
+    }
+
+    @keyframes mouthMove {
+      0%, 100% { transform: scaleY(1) scaleX(1); }
+      50% { transform: scaleY(0.7) scaleX(1.1); }
+    }
+
+    @keyframes blush {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.1); }
+    }
+
+    @keyframes textBounce {
+      0%, 100% { 
+        opacity: 0; 
+        transform: translate(-50%, 20px) scale(0.8); 
+      }
+      10%, 90% { 
+        opacity: 1; 
+        transform: translate(-50%, -10px) scale(1.1); 
+      }
+      50% {
+        transform: translate(-50%, -15px) scale(1);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+  `}</style>
+</div>
+```
+
+);
+};
+
+export default CuteOldmanAnimation;
