@@ -1,0 +1,355 @@
+# Terraformでデプロイするための設定ファイル
+
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.primary_region
+}
+
+variable "primary_region" {
+  description = "Primary AWS region"
+  default     = "us-east-1"
+}
+
+variable "app_name" {
+  description = "Application name"
+  default     = "ssl-cert-manager"
+}
+
+# Lambda実行ロール
+resource "aws_iam_role" "lambda_role" {
+  name = "${var.app_name}-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+}
+
+# Lambda用のポリシー
+resource "aws_iam_role_policy" "lambda_policy" {
+  name = "${var.app_name}-lambda-policy"
+  role = aws_iam_role.lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "acm:ListCertificates",
+          "acm:DescribeCertificate",
+          "acm:GetCertificate",
+          "acm:RequestCertificate",
+          "acm:ImportCertificate",
+          "acm:UpdateCertificateOptions"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sns:Publish"
+        ]
+        Resource = aws_sns_topic.cert_alerts.arn
+      }
+    ]
+  })
+}
+
+# Lambda関数
+resource "aws_lambda_function" "cert_manager" {
+  filename         = "lambda_function.zip"
+  function_name    = var.app_name
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "lambda_function.lambda_handler"
+  source_code_hash = filebase64sha256("lambda_function.zip")
+  runtime         = "python3.11"
+  timeout         = 300
+  memory_size     = 512
+
+  environment {
+    variables = {
+      REGIONS = "us-east-1,us-west-2,ap-northeast-1,eu-west-1"
+      SNS_TOPIC_ARN = aws_sns_topic.cert_alerts.arn
+    }
+  }
+}
+
+# CloudWatch Logsグループ
+resource "aws_cloudwatch_log_group" "lambda_logs" {
+  name              = "/aws/lambda/${var.app_name}"
+  retention_in_days = 14
+}
+
+# API Gateway REST API
+resource "aws_api_gateway_rest_api" "cert_api" {
+  name        = "${var.app_name}-api"
+  description = "SSL Certificate Manager API"
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
+}
+
+# API Gateway リソース: /certificates
+resource "aws_api_gateway_resource" "certificates" {
+  rest_api_id = aws_api_gateway_rest_api.cert_api.id
+  parent_id   = aws_api_gateway_rest_api.cert_api.root_resource_id
+  path_part   = "certificates"
+}
+
+# API Gateway メソッド: GET /certificates
+resource "aws_api_gateway_method" "get_certificates" {
+  rest_api_id   = aws_api_gateway_rest_api.cert_api.id
+  resource_id   = aws_api_gateway_resource.certificates.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+# Lambda統合
+resource "aws_api_gateway_integration" "get_certificates_integration" {
+  rest_api_id = aws_api_gateway_rest_api.cert_api.id
+  resource_id = aws_api_gateway_resource.certificates.id
+  http_method = aws_api_gateway_method.get_certificates.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.cert_manager.invoke_arn
+}
+
+# API Gateway リソース: /certificates/renew
+resource "aws_api_gateway_resource" "renew" {
+  rest_api_id = aws_api_gateway_rest_api.cert_api.id
+  parent_id   = aws_api_gateway_resource.certificates.id
+  path_part   = "renew"
+}
+
+# API Gateway メソッド: POST /certificates/renew
+resource "aws_api_gateway_method" "renew_certificate" {
+  rest_api_id   = aws_api_gateway_rest_api.cert_api.id
+  resource_id   = aws_api_gateway_resource.renew.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "renew_integration" {
+  rest_api_id = aws_api_gateway_rest_api.cert_api.id
+  resource_id = aws_api_gateway_resource.renew.id
+  http_method = aws_api_gateway_method.renew_certificate.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.cert_manager.invoke_arn
+}
+
+# API Gateway リソース: /certificates/renew-all
+resource "aws_api_gateway_resource" "renew_all" {
+  rest_api_id = aws_api_gateway_rest_api.cert_api.id
+  parent_id   = aws_api_gateway_resource.certificates.id
+  path_part   = "renew-all"
+}
+
+resource "aws_api_gateway_method" "renew_all_certificates" {
+  rest_api_id   = aws_api_gateway_rest_api.cert_api.id
+  resource_id   = aws_api_gateway_resource.renew_all.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "renew_all_integration" {
+  rest_api_id = aws_api_gateway_rest_api.cert_api.id
+  resource_id = aws_api_gateway_resource.renew_all.id
+  http_method = aws_api_gateway_method.renew_all_certificates.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.cert_manager.invoke_arn
+}
+
+# API Gatewayのデプロイ
+resource "aws_api_gateway_deployment" "cert_api_deployment" {
+  depends_on = [
+    aws_api_gateway_integration.get_certificates_integration,
+    aws_api_gateway_integration.renew_integration,
+    aws_api_gateway_integration.renew_all_integration
+  ]
+
+  rest_api_id = aws_api_gateway_rest_api.cert_api.id
+  stage_name  = "prod"
+}
+
+# Lambda権限（API Gatewayからの呼び出しを許可）
+resource "aws_lambda_permission" "api_gateway" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.cert_manager.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.cert_api.execution_arn}/*/*"
+}
+
+# SNSトピック（アラート用）
+resource "aws_sns_topic" "cert_alerts" {
+  name = "${var.app_name}-alerts"
+}
+
+# SNSサブスクリプション（メール通知）
+resource "aws_sns_topic_subscription" "cert_alerts_email" {
+  topic_arn = aws_sns_topic.cert_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
+variable "alert_email" {
+  description = "Email address for SSL certificate alerts"
+  type        = string
+}
+
+# CloudWatchイベントルール（定期実行）
+resource "aws_cloudwatch_event_rule" "daily_check" {
+  name                = "${var.app_name}-daily-check"
+  description         = "Daily SSL certificate expiry check"
+  schedule_expression = "cron(0 9 * * ? *)" # 毎日9:00 UTC
+}
+
+resource "aws_cloudwatch_event_target" "daily_check_target" {
+  rule      = aws_cloudwatch_event_rule.daily_check.name
+  target_id = "lambda"
+  arn       = aws_lambda_function.cert_manager.arn
+}
+
+resource "aws_lambda_permission" "cloudwatch_events" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.cert_manager.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.daily_check.arn
+}
+
+# S3バケット（フロントエンド用）
+resource "aws_s3_bucket" "frontend" {
+  bucket = "${var.app_name}-frontend-${data.aws_caller_identity.current.account_id}"
+}
+
+resource "aws_s3_bucket_public_access_block" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_website_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "index.html"
+  }
+}
+
+resource "aws_s3_bucket_policy" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "PublicReadGetObject"
+      Effect    = "Allow"
+      Principal = "*"
+      Action    = "s3:GetObject"
+      Resource  = "${aws_s3_bucket.frontend.arn}/*"
+    }]
+  })
+}
+
+# CloudFront（オプション）
+resource "aws_cloudfront_distribution" "frontend" {
+  enabled             = true
+  default_root_object = "index.html"
+
+  origin {
+    domain_name = aws_s3_bucket_website_configuration.frontend.website_endpoint
+    origin_id   = "S3-${aws_s3_bucket.frontend.id}"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  default_cache_behavior {
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "S3-${aws_s3_bucket.frontend.id}"
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+}
+
+data "aws_caller_identity" "current" {}
+
+# 出力
+output "api_endpoint" {
+  description = "API Gateway endpoint URL"
+  value       = "${aws_api_gateway_deployment.cert_api_deployment.invoke_url}"
+}
+
+output "cloudfront_url" {
+  description = "CloudFront distribution URL"
+  value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+
+output "s3_website_url" {
+  description = "S3 website URL"
+  value       = "http://${aws_s3_bucket_website_configuration.frontend.website_endpoint}"
+}
