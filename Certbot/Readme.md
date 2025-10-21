@@ -244,43 +244,7 @@ resource "aws_lambda_function" "cert_manager" {
 }
 ```
 
-## コスト見積もり
 
-月間の推定コスト（東京リージョン）：
-
-- **Lambda**: 無料枠内（100万リクエスト/月まで無料）
-- **API Gateway**: $3.50/100万リクエスト
-- **S3**: $0.025/GB + $0.0047/1,000リクエスト
-- **CloudFront**: $0.114/GB（最初の10TB）
-- **SNS**: $0.50/100万通知
-- **CloudWatch Logs**: $0.76/GB
-
-**月間推定コスト**: 約 $5-15（使用量により変動）
-
-## 監視とアラート
-
-### CloudWatchダッシュボードの作成
-
-```bash
-aws cloudwatch put-dashboard \
-  --dashboard-name ssl-cert-manager \
-  --dashboard-body file://dashboard.json
-```
-
-### アラームの設定
-
-```bash
-# Lambda関数のエラー率監視
-aws cloudwatch put-metric-alarm \
-  --alarm-name ssl-manager-errors \
-  --alarm-description "Alert on Lambda errors" \
-  --metric-name Errors \
-  --namespace AWS/Lambda \
-  --statistic Sum \
-  --period 300 \
-  --threshold 5 \
-  --comparison-operator GreaterThanThreshold \
-  --dimensions Name=FunctionName,Value=ssl-cert-manager
 ```
 
 ## バックアップとリカバリ
