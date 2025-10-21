@@ -4,15 +4,6 @@
 
 このシステムは、AWS Certificate Manager (ACM) で管理されている30以上のSSL証明書を一括で更新・管理できるWebアプリケーションです。
 
-### アーキテクチャ
-
-```
-[React Frontend] → [CloudFront] → [S3]
-       ↓
-[API Gateway] → [Lambda] → [ACM (複数リージョン)]
-       ↓
-[CloudWatch Events] → [Lambda] → [SNS] (アラート通知)
-```
 
 ## 必要な環境
 
