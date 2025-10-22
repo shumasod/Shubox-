@@ -5,222 +5,412 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Database, Code, Dumbbell } from 'lucide-react';
 
-const Header = () => (
-  <header className="bg-gradient-to-r from-red-700 to-blue-900 text-white py-6">
-    <div className="container mx-auto px-4 flex justify-between items-center">
-      <h1 className="text-4xl font-bold">マッスルコード道場</h1>
-      <nav>
-        <ul className="flex space-x-4">
-          <li><a href="#" className="hover:text-yellow-300 transition">ホーム</a></li>
-          <li><a href="#" className="hover:text-yellow-300 transition">コース</a></li>
-          <li><a href="#" className="hover:text-yellow-300 transition">トレーナー</a></li>
-          <li><a href="#" className="hover:text-yellow-300 transition">お問い合わせ</a></li>
-        </ul>
-      </nav>
-    </div>
-  </header>
-);
+/**
+ * ヘッダーコンポーネント
+ * サイトのナビゲーションとロゴを表示
+ */
+const Header = () => {
+  // スムーズスクロール機能
+  const scrollToSection = (e, sectionId) => {
+    e.preventDefault();
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
-const Hero = () => (
-  <section className="relative h-screen flex items-center justify-center overflow-hidden">
-    <div className="absolute inset-0 z-0">
-      <img src="/api/placeholder/1920/1080" alt="Hero background" className="w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-black opacity-50"></div>
-    </div>
-    <div className="relative z-10 text-center text-white">
-      <h2 className="text-5xl font-bold mb-4">データベースと筋肉を同時に鍛えろ！</h2>
-      <p className="text-xl mb-8">最強のSQLスキルと肉体を手に入れる唯一の道場</p>
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button variant="default" size="lg" className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold">
-            今すぐ入門
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>入門申し込み</AlertDialogTitle>
-            <AlertDialogDescription>
-              マッスルコード道場への入門申し込みを受け付けました。担当トレーナーからご連絡いたします。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction>了解</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  </section>
-);
-
-const Features = () => (
-  <section className="py-16 bg-gray-100">
-    <div className="container mx-auto px-4">
-      <h2 className="text-3xl font-bold text-center mb-12">マッスルコード道場の特徴</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Database className="mr-2" /> データベース力
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            複雑なクエリも、重量挙げのように軽々と扱える力を身につける
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Code className="mr-2" /> コーディング技術
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            相撲の技のように、効率的で力強いコードを書く技術を習得
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Dumbbell className="mr-2" /> 肉体改造
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            デスクワークの合間に、体を鍛え上げるトレーニングプログラム
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  </section>
-);
-
-const Courses = () => (
-  <section className="py-16">
-    <div className="container mx-auto px-4">
-      <h2 className="text-3xl font-bold text-center mb-12">コース一覧</h2>
-      <Tabs defaultValue="beginner" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="beginner">初心者</TabsTrigger>
-          <TabsTrigger value="intermediate">中級者</TabsTrigger>
-          <TabsTrigger value="advanced">上級者</TabsTrigger>
-        </TabsList>
-        <TabsContent value="beginner">
-          <Card>
-            <CardHeader>
-              <CardTitle>SQLの基礎と腹筋強化</CardTitle>
-              <CardDescription>データベースの基本と体幹トレーニングを学ぶ</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="list-disc list-inside">
-                <li>SELECT文とプッシュアップの基礎</li>
-                <li>WHERE句とスクワットの正しいフォーム</li>
-                <li>JOIN操作と腹筋ローラーの使い方</li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button>申し込む</Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-        <TabsContent value="intermediate">
-          <Card>
-            <CardHeader>
-              <CardTitle>高度なクエリと筋肥大プログラム</CardTitle>
-              <CardDescription>複雑なSQLと効果的な筋トレを習得</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="list-disc list-inside">
-                <li>サブクエリとデッドリフトの応用</li>
-                <li>インデックス最適化とベンチプレスの増量法</li>
-                <li>ストアドプロシージャと筋肉増強サプリメンテーション</li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button>申し込む</Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-        <TabsContent value="advanced">
-          <Card>
-            <CardHeader>
-              <CardTitle>データベース設計とボディビル大会準備</CardTitle>
-              <CardDescription>エキスパートレベルのスキルと肉体を目指す</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="list-disc list-inside">
-                <li>大規模データベース設計とマスビルディング</li>
-                <li>パフォーマンスチューニングと競技用ポージング</li>
-                <li>データセキュリティと極限の減量テクニック</li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button>申し込む</Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  </section>
-);
-
-const Testimonials = () => (
-  <section className="py-16 bg-gray-800 text-white">
-    <div className="container mx-auto px-4">
-      <h2 className="text-3xl font-bold text-center mb-12">受講生の声</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card className="bg-gray-700">
-          <CardHeader>
-            <CardTitle>山田太郎</CardTitle>
-            <CardDescription>データアナリスト兼アマチュアボディビルダー</CardDescription>
-          </CardHeader>
-          <CardContent>
-            「マッスルコード道場のおかげで、クエリの実行速度と共にベンチプレスの重量も劇的に向上しました！」
-          </CardContent>
-        </Card>
-        <Card className="bg-gray-700">
-          <CardHeader>
-            <CardTitle>鈴木花子</CardTitle>
-            <CardDescription>フルスタックデベロッパー兼クロスフィットアスリート</CardDescription>
-          </CardHeader>
-          <CardContent>
-            「コードの品質と体の柔軟性が同時に改善。今では困難なバグも、高難度のヨガのポーズもこなせます！」
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  </section>
-);
-
-const Footer = () => (
-  <footer className="bg-gray-900 text-white py-8">
-    <div className="container mx-auto px-4">
-      <div className="flex flex-wrap justify-between">
-        <div>
-          <h3 className="text-2xl font-bold mb-4">マッスルコード道場</h3>
-          <p>最強のデータベーススキルと肉体を手に入れる</p>
-        </div>
-        <div>
-          <h4 className="text-xl font-semibold mb-4">リンク</h4>
-          <ul>
-            <li><a href="#" className="hover:text-yellow-300 transition">プライバシーポリシー</a></li>
-            <li><a href="#" className="hover:text-yellow-300 transition">利用規約</a></li>
-            <li><a href="#" className="hover:text-yellow-300 transition">お問い合わせ</a></li>
+  return (
+    <header className="bg-gradient-to-r from-red-700 to-blue-900 text-white py-6" role="banner">
+      <div className="container mx-auto px-4 flex justify-between items-center">
+        <h1 className="text-4xl font-bold">マッスルコード道場</h1>
+        <nav role="navigation" aria-label="メインナビゲーション">
+          <ul className="flex space-x-4">
+            <li>
+              <a 
+                href="#hero" 
+                onClick={(e) => scrollToSection(e, 'hero')}
+                className="hover:text-yellow-300 transition focus:outline-none focus:ring-2 focus:ring-yellow-300 rounded px-2 py-1"
+                aria-label="ホームセクションへ移動"
+              >
+                ホーム
+              </a>
+            </li>
+            <li>
+              <a 
+                href="#courses" 
+                onClick={(e) => scrollToSection(e, 'courses')}
+                className="hover:text-yellow-300 transition focus:outline-none focus:ring-2 focus:ring-yellow-300 rounded px-2 py-1"
+                aria-label="コースセクションへ移動"
+              >
+                コース
+              </a>
+            </li>
+            <li>
+              <a 
+                href="#testimonials" 
+                onClick={(e) => scrollToSection(e, 'testimonials')}
+                className="hover:text-yellow-300 transition focus:outline-none focus:ring-2 focus:ring-yellow-300 rounded px-2 py-1"
+                aria-label="受講生の声セクションへ移動"
+              >
+                受講生の声
+              </a>
+            </li>
+            <li>
+              <a 
+                href="#contact" 
+                onClick={(e) => scrollToSection(e, 'contact')}
+                className="hover:text-yellow-300 transition focus:outline-none focus:ring-2 focus:ring-yellow-300 rounded px-2 py-1"
+                aria-label="お問い合わせセクションへ移動"
+              >
+                お問い合わせ
+              </a>
+            </li>
           </ul>
-        </div>
+        </nav>
       </div>
-      <div className="mt-8 text-center">
-        <p>&copy; 2024 マッスルコード道場. All rights reserved.</p>
+    </header>
+  );
+};
+
+/**
+ * ヒーローセクションコンポーネント
+ * メインビジュアルとCTAボタンを表示
+ */
+const Hero = () => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  return (
+    <section 
+      id="hero"
+      className="relative h-screen flex items-center justify-center overflow-hidden"
+      aria-label="メインビジュアル"
+    >
+      <div className="absolute inset-0 z-0">
+        <img 
+          src="/api/placeholder/1920/1080" 
+          alt="データベーストレーニング中の筋肉質なエンジニアがコーディングをしている様子" 
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black opacity-50" aria-hidden="true"></div>
       </div>
-    </div>
-  </footer>
+      <div className="relative z-10 text-center text-white">
+        <h2 className="text-5xl font-bold mb-4">データベースと筋肉を同時に鍛えろ！</h2>
+        <p className="text-xl mb-8">最強のSQLスキルと肉体を手に入れる唯一の道場</p>
+        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <AlertDialogTrigger asChild>
+            <Button 
+              variant="default" 
+              size="lg" 
+              className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold focus:ring-4 focus:ring-yellow-300"
+              aria-label="入門申し込みダイアログを開く"
+            >
+              今すぐ入門
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>入門申し込み</AlertDialogTitle>
+              <AlertDialogDescription>
+                マッスルコード道場への入門申し込みを受け付けました。担当トレーナーからご連絡いたします。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setIsDialogOpen(false)}>
+                了解
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </section>
+  );
+};
+
+/**
+ * 特徴カードコンポーネント（細分化）
+ * 各特徴を個別のカードとして表示
+ */
+const FeatureCard = ({ icon: Icon, title, description }) => (
+  <Card className="hover:shadow-xl transition-shadow duration-300">
+    <CardHeader>
+      <CardTitle className="flex items-center">
+        <Icon className="mr-2" aria-hidden="true" /> 
+        {title}
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <p>{description}</p>
+    </CardContent>
+  </Card>
 );
 
+/**
+ * 特徴セクションコンポーネント
+ * マッスルコード道場の3つの主要特徴を表示
+ */
+const Features = () => {
+  const features = [
+    {
+      icon: Database,
+      title: 'データベース力',
+      description: '複雑なクエリも、重量挙げのように軽々と扱える力を身につける'
+    },
+    {
+      icon: Code,
+      title: 'コーディング技術',
+      description: '相撲の技のように、効率的で力強いコードを書く技術を習得'
+    },
+    {
+      icon: Dumbbell,
+      title: '肉体改造',
+      description: 'デスクワークの合間に、体を鍛え上げるトレーニングプログラム'
+    }
+  ];
+
+  return (
+    <section id="features" className="py-16 bg-gray-100" aria-labelledby="features-heading">
+      <div className="container mx-auto px-4">
+        <h2 id="features-heading" className="text-3xl font-bold text-center mb-12">
+          マッスルコード道場の特徴
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {features.map((feature, index) => (
+            <FeatureCard 
+              key={index}
+              icon={feature.icon}
+              title={feature.title}
+              description={feature.description}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+/**
+ * コースカードコンポーネント（細分化）
+ * 各コースの詳細を表示
+ */
+const CourseCard = ({ title, description, items, level }) => (
+  <Card>
+    <CardHeader>
+      <CardTitle>{title}</CardTitle>
+      <CardDescription>{description}</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <ul className="list-disc list-inside space-y-2" role="list">
+        {items.map((item, index) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
+    </CardContent>
+    <CardFooter>
+      <Button 
+        className="focus:ring-4 focus:ring-blue-300"
+        aria-label={`${level}コースに申し込む`}
+      >
+        申し込む
+      </Button>
+    </CardFooter>
+  </Card>
+);
+
+/**
+ * コースセクションコンポーネント
+ * 初心者から上級者まで3つのレベルのコースを表示
+ */
+const Courses = () => {
+  const courses = {
+    beginner: {
+      title: 'SQLの基礎と腹筋強化',
+      description: 'データベースの基本と体幹トレーニングを学ぶ',
+      items: [
+        'SELECT文とプッシュアップの基礎',
+        'WHERE句とスクワットの正しいフォーム',
+        'JOIN操作と腹筋ローラーの使い方'
+      ],
+      level: '初心者'
+    },
+    intermediate: {
+      title: '高度なクエリと筋肥大プログラム',
+      description: '複雑なSQLと効果的な筋トレを習得',
+      items: [
+        'サブクエリとデッドリフトの応用',
+        'インデックス最適化とベンチプレスの増量法',
+        'ストアドプロシージャと筋肉増強サプリメンテーション'
+      ],
+      level: '中級者'
+    },
+    advanced: {
+      title: 'データベース設計とボディビル大会準備',
+      description: 'エキスパートレベルのスキルと肉体を目指す',
+      items: [
+        '大規模データベース設計とマスビルディング',
+        'パフォーマンスチューニングと競技用ポージング',
+        'データセキュリティと極限の減量テクニック'
+      ],
+      level: '上級者'
+    }
+  };
+
+  return (
+    <section id="courses" className="py-16" aria-labelledby="courses-heading">
+      <div className="container mx-auto px-4">
+        <h2 id="courses-heading" className="text-3xl font-bold text-center mb-12">
+          コース一覧
+        </h2>
+        <Tabs defaultValue="beginner" className="w-full">
+          <TabsList className="grid w-full grid-cols-3" role="tablist">
+            <TabsTrigger value="beginner" role="tab">初心者</TabsTrigger>
+            <TabsTrigger value="intermediate" role="tab">中級者</TabsTrigger>
+            <TabsTrigger value="advanced" role="tab">上級者</TabsTrigger>
+          </TabsList>
+          <TabsContent value="beginner" role="tabpanel">
+            <CourseCard {...courses.beginner} />
+          </TabsContent>
+          <TabsContent value="intermediate" role="tabpanel">
+            <CourseCard {...courses.intermediate} />
+          </TabsContent>
+          <TabsContent value="advanced" role="tabpanel">
+            <CourseCard {...courses.advanced} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </section>
+  );
+};
+
+/**
+ * 受講生カードコンポーネント（細分化）
+ * 個別の受講生の声を表示
+ */
+const TestimonialCard = ({ name, role, testimonial }) => (
+  <Card className="bg-gray-700 hover:bg-gray-650 transition-colors">
+    <CardHeader>
+      <CardTitle className="text-white">{name}</CardTitle>
+      <CardDescription className="text-gray-300">{role}</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <p className="text-gray-100">{testimonial}</p>
+    </CardContent>
+  </Card>
+);
+
+/**
+ * 受講生の声セクションコンポーネント
+ * 実際の受講生からのフィードバックを表示
+ */
+const Testimonials = () => {
+  const testimonials = [
+    {
+      name: '山田太郎',
+      role: 'データアナリスト兼アマチュアボディビルダー',
+      testimonial: 'マッスルコード道場のおかげで、クエリの実行速度と共にベンチプレスの重量も劇的に向上しました！'
+    },
+    {
+      name: '鈴木花子',
+      role: 'フルスタックデベロッパー兼クロスフィットアスリート',
+      testimonial: 'コードの品質と体の柔軟性が同時に改善。今では困難なバグも、高難度のヨガのポーズもこなせます！'
+    }
+  ];
+
+  return (
+    <section 
+      id="testimonials" 
+      className="py-16 bg-gray-800 text-white"
+      aria-labelledby="testimonials-heading"
+    >
+      <div className="container mx-auto px-4">
+        <h2 id="testimonials-heading" className="text-3xl font-bold text-center mb-12">
+          受講生の声
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {testimonials.map((testimonial, index) => (
+            <TestimonialCard key={index} {...testimonial} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+/**
+ * フッターコンポーネント
+ * サイトの基本情報とリンクを表示
+ */
+const Footer = () => {
+  const scrollToSection = (e, sectionId) => {
+    e.preventDefault();
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  return (
+    <footer id="contact" className="bg-gray-900 text-white py-8" role="contentinfo">
+      <div className="container mx-auto px-4">
+        <div className="flex flex-wrap justify-between">
+          <div>
+            <h3 className="text-2xl font-bold mb-4">マッスルコード道場</h3>
+            <p>最強のデータベーススキルと肉体を手に入れる</p>
+          </div>
+          <nav aria-label="フッターナビゲーション">
+            <h4 className="text-xl font-semibold mb-4">リンク</h4>
+            <ul>
+              <li>
+                <a 
+                  href="#hero" 
+                  onClick={(e) => scrollToSection(e, 'hero')}
+                  className="hover:text-yellow-300 transition focus:outline-none focus:ring-2 focus:ring-yellow-300 rounded"
+                >
+                  プライバシーポリシー
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="#hero" 
+                  onClick={(e) => scrollToSection(e, 'hero')}
+                  className="hover:text-yellow-300 transition focus:outline-none focus:ring-2 focus:ring-yellow-300 rounded"
+                >
+                  利用規約
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="#contact" 
+                  onClick={(e) => scrollToSection(e, 'contact')}
+                  className="hover:text-yellow-300 transition focus:outline-none focus:ring-2 focus:ring-yellow-300 rounded"
+                >
+                  お問い合わせ
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+        <div className="mt-8 text-center">
+          <p>&copy; 2024 マッスルコード道場. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+/**
+ * メインアプリケーションコンポーネント
+ * 全セクションを統合して表示
+ */
 const App = () => {
   return (
     <div className="font-sans">
       <Header />
-      <Hero />
-      <Features />
-      <Courses />
-      <Testimonials />
+      <main role="main">
+        <Hero />
+        <Features />
+        <Courses />
+        <Testimonials />
+      </main>
       <Footer />
     </div>
   );
