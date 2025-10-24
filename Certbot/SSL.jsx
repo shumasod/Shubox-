@@ -6,7 +6,7 @@ AWS環境なしでロジックを検証
 import json
 from datetime import datetime, timedelta
 
-# モックデータ
+
 MOCK_CERTIFICATES = [
     {
         'CertificateArn': 'arn:aws:acm:us-east-1:123456789012:certificate/abc123',
