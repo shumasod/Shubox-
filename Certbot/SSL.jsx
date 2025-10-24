@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """
-Lambda関数のローカルテストスクリプト
 AWS環境なしでロジックを検証
 """
 
