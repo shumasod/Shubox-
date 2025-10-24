@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """
-AWS環境なしでロジックを検証
 """
 
 import json
