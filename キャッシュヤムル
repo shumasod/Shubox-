@@ -1,0 +1,173 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: ElastiCache Monitoring Lambda with Slack/Teams notifications
+
+Parameters:
+  ClusterId:
+    Type: String
+    Description: ElastiCache Cluster ID to monitor
+    Default: elasticache-cluster-01
+  
+  SlackWebhookUrl:
+    Type: String
+    Description: Slack Incoming Webhook URL
+    NoEcho: true
+    Default: ''
+  
+  TeamsWebhookUrl:
+    Type: String
+    Description: Microsoft Teams Incoming Webhook URL
+    NoEcho: true
+    Default: ''
+  
+  ScheduleExpression:
+    Type: String
+    Description: CloudWatch Events schedule expression
+    Default: rate(5 minutes)
+
+Resources:
+  # Lambda関数
+  ElastiCacheMonitorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: elasticache-monitor
+      Runtime: python3.11
+      Handler: lambda_function.lambda_handler
+      CodeUri: .
+      Description: ElastiCache monitoring with Slack/Teams notifications
+      MemorySize: 256
+      Timeout: 60
+      Environment:
+        Variables:
+          CLUSTER_ID: !Ref ClusterId
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+          TEAMS_WEBHOOK_URL: !Ref TeamsWebhookUrl
+          AWS_REGION: !Ref AWS::Region
+      Policies:
+        - CloudWatchReadOnlyAccess
+        - Statement:
+          - Effect: Allow
+            Action:
+              - elasticache:DescribeCacheClusters
+              - elasticache:DescribeReplicationGroups
+              - cloudwatch:GetMetricStatistics
+              - cloudwatch:ListMetrics
+            Resource: '*'
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref ScheduleExpression
+            Description: Trigger ElastiCache monitoring every 5 minutes
+            Enabled: true
+
+  # CloudWatch Logs
+  ElastiCacheMonitorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ElastiCacheMonitorFunction}
+      RetentionInDays: 7
+
+  # SNS Topic for CloudWatch Alarms
+  ElastiCacheAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: elasticache-alarms
+      DisplayName: ElastiCache Alarms
+      Subscription:
+        - Endpoint: !GetAtt ElastiCacheMonitorFunction.Arn
+          Protocol: lambda
+
+  # Lambda permission for SNS
+  ElastiCacheMonitorSNSPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ElastiCacheMonitorFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref ElastiCacheAlarmTopic
+
+  # CloudWatch Alarm - High CPU
+  HighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ClusterId}-high-cpu
+      AlarmDescription: ElastiCache CPU utilization is too high
+      MetricName: CPUUtilization
+      Namespace: AWS/ElastiCache
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 70
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Ref ClusterId
+      AlarmActions:
+        - !Ref ElastiCacheAlarmTopic
+      TreatMissingData: notBreaching
+
+  # CloudWatch Alarm - High Memory
+  HighMemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ClusterId}-high-memory
+      AlarmDescription: ElastiCache memory usage is too high
+      MetricName: DatabaseMemoryUsagePercentage
+      Namespace: AWS/ElastiCache
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Ref ClusterId
+      AlarmActions:
+        - !Ref ElastiCacheAlarmTopic
+      TreatMissingData: notBreaching
+
+  # CloudWatch Alarm - High Evictions
+  HighEvictionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ClusterId}-high-evictions
+      AlarmDescription: ElastiCache evictions are too high
+      MetricName: Evictions
+      Namespace: AWS/ElastiCache
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 100
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Ref ClusterId
+      AlarmActions:
+        - !Ref ElastiCacheAlarmTopic
+      TreatMissingData: notBreaching
+
+Outputs:
+  FunctionName:
+    Description: Lambda Function Name
+    Value: !Ref ElastiCacheMonitorFunction
+    Export:
+      Name: !Sub ${AWS::StackName}-FunctionName
+  
+  FunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt ElastiCacheMonitorFunction.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-FunctionArn
+  
+  SNSTopicArn:
+    Description: SNS Topic ARN for alarms
+    Value: !Ref ElastiCacheAlarmTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-SNSTopicArn
+  
+  LogGroupName:
+    Description: CloudWatch Logs Group Name
+    Value: !Ref ElastiCacheMonitorLogGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-LogGroupName
