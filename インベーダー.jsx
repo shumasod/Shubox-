@@ -1,840 +1,844 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Zap, Heart, Star, Trophy, RefreshCw, Pause, Play, MessageCircle, Search, Bot, Sparkles } from 'lucide-react';
+import { Heart, Star, RefreshCw, Pause, Play, Sparkles, Shield, Zap } from 'lucide-react';
 
-// 質問してくる敵（倒すべきターゲット）- ggrks時代とchprks時代の両方
-const enemies = [
-  // ggrks世代の敵
-  { id: 1, type: 'ggrks', name: 'ググらない君', icon: '🔍', points: 100, health: 1, question: 'このエラーってなに？', answer: 'ggrks！エラーメッセージでググれ', era: 'ggrks' },
-  { id: 2, type: 'ggrks', name: 'Wiki見ない奴', icon: '📖', points: 120, health: 1, question: 'この用語の意味教えて', answer: 'ggrks！Wikipediaくらい見ろ', era: 'ggrks' },
-  { id: 3, type: 'ggrks', name: '検索できない人', icon: '❓', points: 150, health: 2, question: '〇〇のやり方がわからない', answer: 'ggrks！検索ワード工夫しろ', era: 'ggrks' },
+// 敵キャラクター - ggrks世代とchprks世代
+const enemyTypes = [
+  // ggrks世代（緑系）
+  { id: 'g1', era: 'ggrks', name: 'ググらない君', icon: '🔍', color: '#22c55e', points: 100, health: 1, speed: 2, size: 36, question: 'このエラーってなに？', answer: 'ggrks！エラーメッセージでググれ' },
+  { id: 'g2', era: 'ggrks', name: 'Wiki見ない奴', icon: '📖', color: '#16a34a', points: 120, health: 1, speed: 2.5, size: 36, question: 'この用語の意味教えて', answer: 'ggrks！Wikipediaくらい見ろ' },
+  { id: 'g3', era: 'ggrks', name: '検索できない人', icon: '❓', color: '#15803d', points: 150, health: 2, speed: 1.5, size: 42, question: '〇〇のやり方がわからない', answer: 'ggrks！検索ワード工夫しろ' },
   
-  // chprks世代の敵
-  { id: 4, type: 'chprks', name: '初歩的質問マン', icon: '🙋', points: 100, health: 1, question: 'Pythonのインストール方法教えて', answer: 'chprks！ChatGPTに聞け', era: 'chprks' },
-  { id: 5, type: 'chprks', name: 'AI使えない君', icon: '😴', points: 150, health: 1, question: 'エラーが出たんだけど...', answer: 'chprks！エラーをAIに貼れ', era: 'chprks' },
-  { id: 6, type: 'chprks', name: '緊急質問野郎', icon: '😱', points: 200, health: 2, question: '【急募】明日までにReact覚えたい', answer: 'chprks！AIにロードマップ作らせろ', era: 'chprks' },
-  { id: 7, type: 'chprks', name: 'ふわふわ質問者', icon: '🌀', points: 150, health: 1, question: 'なんかうまくいかない', answer: 'chprks！状況整理してAIに説明しろ', era: 'chprks' },
-  { id: 8, type: 'chprks', name: '何度も聞くマン', icon: '🔄', points: 250, health: 2, question: '前も聞いたけどもう一回...', answer: 'chprks！AIの履歴見ろ', era: 'chprks' },
-  { id: 9, type: 'chprks', name: 'コピペ願望者', icon: '📋', points: 100, health: 1, question: 'コード全部書いて', answer: 'chprks！AIに書かせて理解しろ', era: 'chprks' },
-  { id: 10, type: 'chprks', name: '長文質問おじさん', icon: '📜', points: 200, health: 2, question: '（5000文字の質問）', answer: 'chprks！AIに要約させろ', era: 'chprks' },
+  // chprks世代（シアン系）
+  { id: 'c1', era: 'chprks', name: '初歩的質問マン', icon: '🙋', color: '#06b6d4', points: 100, health: 1, speed: 2, size: 36, question: 'Pythonのインストール方法教えて', answer: 'chprks！ChatGPTに聞け' },
+  { id: 'c2', era: 'chprks', name: 'AI使えない君', icon: '😴', color: '#0891b2', points: 150, health: 1, speed: 2.5, size: 36, question: 'エラーが出たんだけど...', answer: 'chprks！エラーをAIに貼れ' },
+  { id: 'c3', era: 'chprks', name: '緊急質問野郎', icon: '😱', color: '#0e7490', points: 200, health: 2, speed: 3, size: 38, question: '【急募】明日までに覚えたい', answer: 'chprks！AIにロードマップ作らせろ' },
+  { id: 'c4', era: 'chprks', name: 'コピペ願望者', icon: '📋', color: '#155e75', points: 120, health: 1, speed: 2, size: 36, question: 'コード全部書いて', answer: 'chprks！AIに書かせて理解しろ' },
+  { id: 'c5', era: 'chprks', name: '何度も聞くマン', icon: '🔄', color: '#164e63', points: 180, health: 2, speed: 1.8, size: 40, question: '前も聞いたけどもう一回...', answer: 'chprks！AIの履歴見ろ' },
   
-  // ボスキャラ
-  { id: 11, type: 'boss', name: '教えてクレクレ大王', icon: '👑', points: 500, health: 4, question: '全部教えて！！！', answer: 'ggrks → chprks の進化を学べ！', era: 'boss' },
-  { id: 12, type: 'boss', name: '自助努力ゼロ魔王', icon: '👿', points: 800, health: 5, question: '調べるの面倒だから教えて', answer: 'まずググれ！それでもダメならAIに聞け！', era: 'boss' },
+  // ボス
+  { id: 'b1', era: 'boss', name: '教えてクレクレ大王', icon: '👑', color: '#eab308', points: 1000, health: 20, speed: 1, size: 64, question: '全部教えて！！！', answer: 'ggrks → chprks の進化を学べ！', isBoss: true },
+  { id: 'b2', era: 'boss', name: '自助努力ゼロ魔王', icon: '👿', color: '#dc2626', points: 1500, health: 30, speed: 0.8, size: 72, question: '調べるの面倒だから教えて', answer: 'まずググれ！ダメならAIに聞け！', isBoss: true },
 ];
 
-// 弾の種類（回答・誘導）- ggrks系とchprks系
-const ammoTypes = [
-  // ggrks系
-  { id: 1, name: 'ggrks弾', icon: '🔍', damage: 1, color: 'from-green-400 to-emerald-500', phrase: 'ggrks!', era: 'ggrks' },
-  { id: 2, name: 'RTFM弾', icon: '📚', damage: 1, color: 'from-orange-400 to-red-500', phrase: 'ドキュメント読め!', era: 'ggrks' },
-  // chprks系
-  { id: 3, name: 'chprks弾', icon: '🤖', damage: 1, color: 'from-cyan-400 to-blue-500', phrase: 'chprks!', era: 'chprks' },
-  { id: 4, name: 'AI回答弾', icon: '✨', damage: 2, color: 'from-purple-400 to-pink-500', phrase: 'AIに聞いた?', era: 'chprks' },
-  // 最強
-  { id: 5, name: '自己解決砲', icon: '💡', damage: 3, color: 'from-yellow-400 to-amber-500', phrase: '自分で調べろ!', era: 'ultimate' },
+// パワーアップアイテム
+const powerUpTypes = [
+  { id: 'p1', name: 'Google先生', icon: '🔎', effect: 'power', duration: 10000, color: '#22c55e' },
+  { id: 'p2', name: 'ChatGPT Plus', icon: '⚡', effect: 'rapid', duration: 8000, color: '#06b6d4' },
+  { id: 'p3', name: 'Copilot', icon: '🤝', effect: 'spread', duration: 10000, color: '#8b5cf6' },
+  { id: 'p4', name: 'Claude', icon: '🧡', effect: 'shield', duration: 12000, color: '#f97316' },
+  { id: 'p5', name: 'Perplexity', icon: '🔮', effect: 'homing', duration: 8000, color: '#ec4899' },
 ];
 
-// パワーアップ
-const powerUps = [
-  { id: 1, name: 'Google先生', icon: '🔎', effect: 'powerShot', description: '検索力UP！攻撃力+1' },
-  { id: 2, name: 'ChatGPT Plus', icon: '⚡', effect: 'powerShot', description: 'GPT-4の力！攻撃力+1' },
-  { id: 3, name: 'Copilot', icon: '🤝', effect: 'multiShot', description: '3方向同時回答' },
-  { id: 4, name: 'Perplexity', icon: '🔮', effect: 'speedUp', description: '高速検索！移動速度UP' },
-  { id: 5, name: 'Claude', icon: '🧡', effect: 'extraLife', description: 'ライフ+1' },
-  { id: 6, name: 'Stack Overflow', icon: '📚', effect: 'multiShot', description: '先人の知恵！3方向弾' },
-];
+const GAME_WIDTH = 380;
+const GAME_HEIGHT = 600;
+const PLAYER_SIZE = 44;
 
-const GAME_WIDTH = 360;
-const GAME_HEIGHT = 560;
-const PLAYER_WIDTH = 48;
-const PLAYER_HEIGHT = 36;
-const ENEMY_SIZE = 40;
-const BULLET_SIZE = 10;
-
-export default function ChprksInvaders() {
-  const [gameState, setGameState] = useState('title');
+export default function ChprksShooter() {
+  const [gameState, setGameState] = useState('title'); // title, playing, paused, boss, gameover, victory
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [lives, setLives] = useState(3);
-  const [level, setLevel] = useState(1);
-  const [playerX, setPlayerX] = useState(GAME_WIDTH / 2 - PLAYER_WIDTH / 2);
+  const [wave, setWave] = useState(1);
+  const [player, setPlayer] = useState({ x: GAME_WIDTH / 2, y: GAME_HEIGHT - 80 });
   const [bullets, setBullets] = useState([]);
+  const [enemies, setEnemies] = useState([]);
   const [enemyBullets, setEnemyBullets] = useState([]);
-  const [currentEnemies, setCurrentEnemies] = useState([]);
-  const [enemyDirection, setEnemyDirection] = useState(1);
-  const [currentAmmo, setCurrentAmmo] = useState(ammoTypes[0]);
-  const [powerUpActive, setPowerUpActive] = useState(null);
-  const [floatingPowerUp, setFloatingPowerUp] = useState(null);
-  const [currentAnswer, setCurrentAnswer] = useState(null);
+  const [explosions, setExplosions] = useState([]);
+  const [powerUps, setPowerUps] = useState([]);
+  const [activePowerUp, setActivePowerUp] = useState(null);
   const [combo, setCombo] = useState(0);
-  const [showExplosion, setShowExplosion] = useState([]);
-  const [floatingText, setFloatingText] = useState([]);
-  const [questionsAnswered, setQuestionsAnswered] = useState(0);
+  const [maxCombo, setMaxCombo] = useState(0);
+  const [destroyedInfo, setDestroyedInfo] = useState(null);
   const [ggrksCount, setGgrksCount] = useState(0);
   const [chprksCount, setChprksCount] = useState(0);
+  const [bossHealth, setBossHealth] = useState(0);
+  const [bossMaxHealth, setBossMaxHealth] = useState(0);
+  const [isInvincible, setIsInvincible] = useState(false);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  
+  const gameRef = useRef(null);
+  const keysRef = useRef({});
   const lastShotRef = useRef(0);
+  const frameRef = useRef(0);
 
-  // Initialize enemies
-  const initializeEnemies = useCallback((lvl) => {
-    const rows = Math.min(2 + Math.floor(lvl / 2), 4);
-    const cols = Math.min(4 + Math.floor(lvl / 2), 7);
-    const newEnemies = [];
+  // スポーン敵
+  const spawnEnemy = useCallback(() => {
+    const isBossWave = wave % 5 === 0;
     
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const isBoss = lvl >= 3 && row === 0 && col === Math.floor(cols / 2);
-        let enemyType;
-        
-        if (isBoss) {
-          const bosses = enemies.filter(e => e.type === 'boss');
-          enemyType = bosses[Math.floor(Math.random() * bosses.length)];
-        } else {
-          // レベルに応じてggrks/chprksの比率を変える
-          const normalEnemies = enemies.filter(e => e.type !== 'boss');
-          const ggrksEnemies = normalEnemies.filter(e => e.era === 'ggrks');
-          const chprksEnemies = normalEnemies.filter(e => e.era === 'chprks');
-          
-          // 序盤はggrks多め、後半はchprks多め
-          if (lvl <= 2) {
-            enemyType = Math.random() < 0.7 
-              ? ggrksEnemies[Math.floor(Math.random() * ggrksEnemies.length)]
-              : chprksEnemies[Math.floor(Math.random() * chprksEnemies.length)];
-          } else {
-            enemyType = Math.random() < 0.3 
-              ? ggrksEnemies[Math.floor(Math.random() * ggrksEnemies.length)]
-              : chprksEnemies[Math.floor(Math.random() * chprksEnemies.length)];
-          }
-        }
-        
-        newEnemies.push({
-          ...enemyType,
-          uid: `${row}-${col}-${Date.now()}`,
-          x: col * (ENEMY_SIZE + 10) + 20,
-          y: row * (ENEMY_SIZE + 12) + 80,
-          currentHealth: enemyType.health,
-        });
-      }
+    if (isBossWave && enemies.length === 0 && !enemies.some(e => e.isBoss)) {
+      const bossType = enemyTypes.find(e => e.id === (wave % 10 === 0 ? 'b2' : 'b1'));
+      const boss = {
+        ...bossType,
+        uid: Date.now(),
+        x: GAME_WIDTH / 2,
+        y: -bossType.size,
+        targetY: 80,
+        currentHealth: bossType.health + wave * 2,
+        phase: 0,
+      };
+      setBossHealth(boss.currentHealth);
+      setBossMaxHealth(boss.currentHealth);
+      setEnemies([boss]);
+      setGameState('boss');
+      return;
     }
-    setCurrentEnemies(newEnemies);
-  }, []);
+    
+    if (isBossWave) return;
+    
+    // 通常敵
+    const ggrksTypes = enemyTypes.filter(e => e.era === 'ggrks');
+    const chprksTypes = enemyTypes.filter(e => e.era === 'chprks');
+    
+    // waveが進むとchprks率が上がる
+    const chprksRate = Math.min(0.3 + wave * 0.1, 0.8);
+    const pool = Math.random() < chprksRate ? chprksTypes : ggrksTypes;
+    const type = pool[Math.floor(Math.random() * pool.length)];
+    
+    const enemy = {
+      ...type,
+      uid: Date.now() + Math.random(),
+      x: Math.random() * (GAME_WIDTH - type.size * 2) + type.size,
+      y: -type.size,
+      currentHealth: type.health,
+      movePattern: Math.floor(Math.random() * 3), // 0: straight, 1: sine, 2: zigzag
+      moveOffset: Math.random() * Math.PI * 2,
+    };
+    
+    setEnemies(prev => [...prev, enemy]);
+  }, [wave, enemies]);
 
-  // Start game
+  // ゲーム開始
   const startGame = () => {
     setGameState('playing');
     setScore(0);
     setLives(3);
-    setLevel(1);
-    setPlayerX(GAME_WIDTH / 2 - PLAYER_WIDTH / 2);
+    setWave(1);
+    setPlayer({ x: GAME_WIDTH / 2, y: GAME_HEIGHT - 80 });
     setBullets([]);
+    setEnemies([]);
     setEnemyBullets([]);
+    setExplosions([]);
+    setPowerUps([]);
+    setActivePowerUp(null);
     setCombo(0);
-    setPowerUpActive(null);
-    setFloatingPowerUp(null);
-    setQuestionsAnswered(0);
+    setMaxCombo(0);
     setGgrksCount(0);
     setChprksCount(0);
-    initializeEnemies(1);
+    setIsInvincible(false);
   };
 
-  // Shoot
+  // 弾発射
   const shoot = useCallback(() => {
     const now = Date.now();
-    if (now - lastShotRef.current < 200) return;
+    const cooldown = activePowerUp?.effect === 'rapid' ? 80 : 150;
+    if (now - lastShotRef.current < cooldown) return;
     lastShotRef.current = now;
 
     const newBullets = [];
-    const bulletX = playerX + PLAYER_WIDTH / 2 - BULLET_SIZE / 2;
-    const bulletY = GAME_HEIGHT - PLAYER_HEIGHT - 30;
+    const bulletBase = { 
+      x: player.x, 
+      y: player.y - PLAYER_SIZE / 2,
+      damage: activePowerUp?.effect === 'power' ? 2 : 1,
+      isHoming: activePowerUp?.effect === 'homing',
+    };
 
-    if (powerUpActive === 'multiShot') {
-      newBullets.push(
-        { x: bulletX - 20, y: bulletY, dx: -1.5, ammo: currentAmmo, id: Date.now() },
-        { x: bulletX, y: bulletY, dx: 0, ammo: currentAmmo, id: Date.now() + 1 },
-        { x: bulletX + 20, y: bulletY, dx: 1.5, ammo: currentAmmo, id: Date.now() + 2 }
-      );
+    if (activePowerUp?.effect === 'spread') {
+      // 5方向弾
+      for (let i = -2; i <= 2; i++) {
+        newBullets.push({
+          ...bulletBase,
+          id: Date.now() + i,
+          angle: -90 + i * 15,
+          speed: 12,
+        });
+      }
     } else {
-      newBullets.push({ x: bulletX, y: bulletY, dx: 0, ammo: currentAmmo, id: Date.now() });
+      // 通常弾（または強化弾）
+      newBullets.push({
+        ...bulletBase,
+        id: Date.now(),
+        angle: -90,
+        speed: 14,
+      });
+      if (activePowerUp?.effect === 'power') {
+        newBullets.push(
+          { ...bulletBase, id: Date.now() + 1, x: player.x - 15, angle: -90, speed: 14 },
+          { ...bulletBase, id: Date.now() + 2, x: player.x + 15, angle: -90, speed: 14 }
+        );
+      }
     }
 
     setBullets(prev => [...prev, ...newBullets]);
-    
-    setFloatingText(prev => [...prev, {
-      id: Date.now(),
-      x: bulletX,
-      y: bulletY,
-      text: currentAmmo.phrase,
-      color: currentAmmo.era === 'ggrks' ? 'text-green-400' : 'text-cyan-400',
-    }]);
-    setTimeout(() => {
-      setFloatingText(prev => prev.slice(1));
-    }, 500);
-  }, [playerX, currentAmmo, powerUpActive]);
+  }, [player, activePowerUp]);
 
-  // Keyboard input
+  // キーボード入力
   useEffect(() => {
-    if (gameState !== 'playing') return;
-
     const handleKeyDown = (e) => {
-      const speed = powerUpActive === 'speedUp' ? 25 : 15;
-      switch (e.key) {
-        case 'ArrowLeft':
-        case 'a':
-          setPlayerX(prev => Math.max(0, prev - speed));
-          break;
-        case 'ArrowRight':
-        case 'd':
-          setPlayerX(prev => Math.min(GAME_WIDTH - PLAYER_WIDTH, prev + speed));
-          break;
-        case ' ':
-        case 'ArrowUp':
-          e.preventDefault();
-          shoot();
-          break;
-        case 'Escape':
-          setGameState('paused');
-          break;
-        case '1': case '2': case '3': case '4': case '5':
-          const ammoIndex = parseInt(e.key) - 1;
-          if (ammoTypes[ammoIndex]) setCurrentAmmo(ammoTypes[ammoIndex]);
-          break;
+      keysRef.current[e.key] = true;
+      if (e.key === ' ' || e.key === 'ArrowUp') {
+        e.preventDefault();
+      }
+      if (e.key === 'Escape' && gameState === 'playing') {
+        setGameState('paused');
+      }
+      if (e.key === 'Escape' && gameState === 'paused') {
+        setGameState('playing');
       }
     };
-
+    const handleKeyUp = (e) => {
+      keysRef.current[e.key] = false;
+    };
+    
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, shoot, powerUpActive]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [gameState]);
 
-  // Touch controls
+  // タッチ操作
   const handleTouchMove = (e) => {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing' && gameState !== 'boss') return;
     const touch = e.touches[0];
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = touch.clientX - rect.left - PLAYER_WIDTH / 2;
-    setPlayerX(Math.max(0, Math.min(GAME_WIDTH - PLAYER_WIDTH, x)));
+    const rect = gameRef.current.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    setPlayer({
+      x: Math.max(PLAYER_SIZE / 2, Math.min(GAME_WIDTH - PLAYER_SIZE / 2, x)),
+      y: Math.max(PLAYER_SIZE / 2, Math.min(GAME_HEIGHT - PLAYER_SIZE / 2, y)),
+    });
   };
 
-  // Game loop
+  // メインゲームループ
   useEffect(() => {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing' && gameState !== 'boss') return;
 
     const gameLoop = setInterval(() => {
-      setBullets(prev => prev
-        .map(b => ({ ...b, y: b.y - 10, x: b.x + (b.dx || 0) }))
-        .filter(b => b.y > 0 && b.x > 0 && b.x < GAME_WIDTH)
-      );
-
-      setEnemyBullets(prev => prev
-        .map(b => ({ ...b, y: b.y + 5 }))
-        .filter(b => b.y < GAME_HEIGHT)
-      );
-
-      setCurrentEnemies(prev => {
-        if (prev.length === 0) return prev;
-        
-        const rightMost = Math.max(...prev.map(e => e.x));
-        const leftMost = Math.min(...prev.map(e => e.x));
-        
-        let newDirection = enemyDirection;
-        let moveDown = false;
-        
-        if (rightMost > GAME_WIDTH - ENEMY_SIZE - 10 && enemyDirection > 0) {
-          newDirection = -1;
-          moveDown = true;
-        } else if (leftMost < 10 && enemyDirection < 0) {
-          newDirection = 1;
-          moveDown = true;
-        }
-        
-        if (newDirection !== enemyDirection) {
-          setEnemyDirection(newDirection);
-        }
-        
-        return prev.map(e => ({
-          ...e,
-          x: e.x + newDirection * 2,
-          y: moveDown ? e.y + 20 : e.y,
-        }));
+      frameRef.current++;
+      setScrollOffset(prev => (prev + 2) % 40);
+      
+      // プレイヤー移動
+      const speed = 6;
+      setPlayer(prev => {
+        let newX = prev.x;
+        let newY = prev.y;
+        if (keysRef.current['ArrowLeft'] || keysRef.current['a']) newX -= speed;
+        if (keysRef.current['ArrowRight'] || keysRef.current['d']) newX += speed;
+        if (keysRef.current['ArrowUp'] || keysRef.current['w']) newY -= speed;
+        if (keysRef.current['ArrowDown'] || keysRef.current['s']) newY += speed;
+        return {
+          x: Math.max(PLAYER_SIZE / 2, Math.min(GAME_WIDTH - PLAYER_SIZE / 2, newX)),
+          y: Math.max(PLAYER_SIZE / 2, Math.min(GAME_HEIGHT - PLAYER_SIZE / 2, newY)),
+        };
       });
 
-      if (Math.random() < 0.025 && currentEnemies.length > 0) {
-        const shooter = currentEnemies[Math.floor(Math.random() * currentEnemies.length)];
-        setEnemyBullets(prev => [...prev, {
-          x: shooter.x + ENEMY_SIZE / 2,
-          y: shooter.y + ENEMY_SIZE,
-          question: shooter.question,
-          id: Date.now(),
-        }]);
+      // 自動発射
+      if (keysRef.current[' '] || keysRef.current['z']) {
+        shoot();
       }
 
-      if (!floatingPowerUp && Math.random() < 0.003) {
-        const powerUp = powerUps[Math.floor(Math.random() * powerUps.length)];
-        setFloatingPowerUp({
-          ...powerUp,
-          x: Math.random() * (GAME_WIDTH - 40),
-          y: 0,
+      // 弾移動
+      setBullets(prev => prev.map(b => {
+        let angle = b.angle;
+        
+        // ホーミング処理
+        if (b.isHoming && enemies.length > 0) {
+          const nearestEnemy = enemies.reduce((nearest, enemy) => {
+            const dist = Math.hypot(enemy.x - b.x, enemy.y - b.y);
+            return dist < nearest.dist ? { enemy, dist } : nearest;
+          }, { enemy: null, dist: Infinity });
+          
+          if (nearestEnemy.enemy) {
+            const targetAngle = Math.atan2(nearestEnemy.enemy.y - b.y, nearestEnemy.enemy.x - b.x) * 180 / Math.PI;
+            const diff = targetAngle - angle;
+            angle += Math.sign(diff) * Math.min(Math.abs(diff), 5);
+          }
+        }
+        
+        const rad = angle * Math.PI / 180;
+        return {
+          ...b,
+          x: b.x + Math.cos(rad) * b.speed,
+          y: b.y + Math.sin(rad) * b.speed,
+          angle,
+        };
+      }).filter(b => b.y > -20 && b.y < GAME_HEIGHT + 20 && b.x > -20 && b.x < GAME_WIDTH + 20));
+
+      // 敵移動
+      setEnemies(prev => prev.map(e => {
+        if (e.isBoss) {
+          // ボス移動
+          let newY = e.y;
+          if (e.y < e.targetY) {
+            newY = Math.min(e.y + 1, e.targetY);
+          }
+          
+          // ボス左右移動
+          const bossX = GAME_WIDTH / 2 + Math.sin(frameRef.current * 0.02) * (GAME_WIDTH / 3);
+          
+          return { ...e, x: bossX, y: newY };
+        }
+        
+        // 通常敵移動パターン
+        let newX = e.x;
+        const newY = e.y + e.speed;
+        
+        if (e.movePattern === 1) {
+          // サイン波
+          newX = e.x + Math.sin(frameRef.current * 0.05 + e.moveOffset) * 2;
+        } else if (e.movePattern === 2) {
+          // ジグザグ
+          newX = e.x + (Math.floor(frameRef.current / 30) % 2 === 0 ? 1.5 : -1.5);
+        }
+        
+        newX = Math.max(e.size / 2, Math.min(GAME_WIDTH - e.size / 2, newX));
+        
+        return { ...e, x: newX, y: newY };
+      }).filter(e => e.y < GAME_HEIGHT + 50));
+
+      // 敵弾移動
+      setEnemyBullets(prev => prev.map(b => ({
+        ...b,
+        x: b.x + Math.cos(b.angle * Math.PI / 180) * b.speed,
+        y: b.y + Math.sin(b.angle * Math.PI / 180) * b.speed,
+      })).filter(b => b.y < GAME_HEIGHT + 20 && b.y > -20 && b.x > -20 && b.x < GAME_WIDTH + 20));
+
+      // パワーアップ移動
+      setPowerUps(prev => prev.map(p => ({
+        ...p,
+        y: p.y + 1.5,
+      })).filter(p => p.y < GAME_HEIGHT + 30));
+
+      // 敵弾発射
+      setEnemies(prev => {
+        prev.forEach(e => {
+          if (e.isBoss && e.y >= e.targetY) {
+            // ボス弾幕
+            if (frameRef.current % 20 === 0) {
+              const angleToPlayer = Math.atan2(player.y - e.y, player.x - e.x) * 180 / Math.PI;
+              setEnemyBullets(eb => [...eb, 
+                { id: Date.now(), x: e.x, y: e.y + e.size / 2, angle: angleToPlayer, speed: 4 },
+                { id: Date.now() + 1, x: e.x, y: e.y + e.size / 2, angle: angleToPlayer - 15, speed: 4 },
+                { id: Date.now() + 2, x: e.x, y: e.y + e.size / 2, angle: angleToPlayer + 15, speed: 4 },
+              ]);
+            }
+            if (frameRef.current % 60 === 0) {
+              // 円形弾幕
+              for (let i = 0; i < 12; i++) {
+                setEnemyBullets(eb => [...eb, {
+                  id: Date.now() + i,
+                  x: e.x,
+                  y: e.y + e.size / 2,
+                  angle: i * 30 + frameRef.current,
+                  speed: 3,
+                }]);
+              }
+            }
+          } else if (Math.random() < 0.005) {
+            const angleToPlayer = Math.atan2(player.y - e.y, player.x - e.x) * 180 / Math.PI;
+            setEnemyBullets(eb => [...eb, {
+              id: Date.now() + Math.random(),
+              x: e.x,
+              y: e.y + e.size / 2,
+              angle: angleToPlayer,
+              speed: 3,
+            }]);
+          }
         });
+        return prev;
+      });
+
+      // 敵スポーン
+      if (gameState === 'playing' && frameRef.current % 60 === 0) {
+        spawnEnemy();
       }
 
-      if (floatingPowerUp) {
-        setFloatingPowerUp(prev => {
-          if (!prev) return null;
-          const newY = prev.y + 2;
-          if (newY > GAME_HEIGHT) return null;
-          return { ...prev, y: newY };
-        });
-      }
+      // エフェクト消去
+      setExplosions(prev => prev.filter(e => Date.now() - e.time < 300));
+      
     }, 1000 / 60);
 
     return () => clearInterval(gameLoop);
-  }, [gameState, enemyDirection, currentEnemies.length, floatingPowerUp]);
+  }, [gameState, shoot, spawnEnemy, player]);
 
-  // Collision detection
+  // 当たり判定
   useEffect(() => {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing' && gameState !== 'boss') return;
 
+    // 弾 vs 敵
     bullets.forEach(bullet => {
-      currentEnemies.forEach(enemy => {
-        if (
-          bullet.x < enemy.x + ENEMY_SIZE &&
-          bullet.x + BULLET_SIZE > enemy.x &&
-          bullet.y < enemy.y + ENEMY_SIZE &&
-          bullet.y + BULLET_SIZE > enemy.y
-        ) {
-          const damage = powerUpActive === 'powerShot' ? bullet.ammo.damage + 1 : bullet.ammo.damage;
+      enemies.forEach(enemy => {
+        const dist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
+        if (dist < enemy.size / 2 + 8) {
+          // ヒット
+          setBullets(prev => prev.filter(b => b.id !== bullet.id));
           
-          setCurrentEnemies(prev => {
+          setEnemies(prev => {
             const updated = prev.map(e => {
               if (e.uid === enemy.uid) {
-                const newHealth = e.currentHealth - damage;
+                const newHealth = e.currentHealth - bullet.damage;
                 if (newHealth <= 0) {
-                  setScore(s => s + e.points * (1 + combo * 0.1));
-                  setCombo(c => c + 1);
-                  setQuestionsAnswered(q => q + 1);
+                  // 撃破
+                  setScore(s => s + e.points * (1 + combo * 0.05));
+                  setCombo(c => {
+                    const newCombo = c + 1;
+                    setMaxCombo(m => Math.max(m, newCombo));
+                    return newCombo;
+                  });
                   
-                  // ggrks/chprksカウント
-                  if (e.era === 'ggrks') {
-                    setGgrksCount(c => c + 1);
-                  } else if (e.era === 'chprks') {
-                    setChprksCount(c => c + 1);
+                  if (e.era === 'ggrks') setGgrksCount(c => c + 1);
+                  else if (e.era === 'chprks') setChprksCount(c => c + 1);
+                  
+                  setExplosions(exp => [...exp, { x: e.x, y: e.y, time: Date.now(), size: e.size }]);
+                  setDestroyedInfo({ enemy: e });
+                  setTimeout(() => setDestroyedInfo(null), 2000);
+                  
+                  // パワーアップドロップ
+                  if (Math.random() < 0.15 || e.isBoss) {
+                    const powerUp = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                    setPowerUps(p => [...p, { ...powerUp, uid: Date.now(), x: e.x, y: e.y }]);
                   }
                   
-                  setShowExplosion(exp => [...exp, { x: e.x, y: e.y, id: Date.now() }]);
-                  setCurrentAnswer({ enemy: e, question: e.question, answer: e.answer });
-                  setGameState('answer');
+                  // ボス撃破
+                  if (e.isBoss) {
+                    setWave(w => w + 1);
+                    setGameState('playing');
+                  }
+                  
                   return null;
                 }
+                
+                if (e.isBoss) {
+                  setBossHealth(newHealth);
+                }
+                
                 return { ...e, currentHealth: newHealth };
               }
               return e;
             });
             return updated.filter(e => e !== null);
           });
-          
-          setBullets(prev => prev.filter(b => b.id !== bullet.id));
         }
       });
     });
 
-    enemyBullets.forEach(bullet => {
-      if (
-        bullet.x < playerX + PLAYER_WIDTH &&
-        bullet.x + BULLET_SIZE > playerX &&
-        bullet.y < GAME_HEIGHT - 20 &&
-        bullet.y + BULLET_SIZE > GAME_HEIGHT - PLAYER_HEIGHT - 20
-      ) {
-        setEnemyBullets(prev => prev.filter(b => b.id !== bullet.id));
-        setLives(prev => {
-          const newLives = prev - 1;
-          if (newLives <= 0) {
-            setGameState('gameover');
-            if (score > highScore) setHighScore(score);
-          }
-          return newLives;
-        });
-        setCombo(0);
+    // 敵弾 vs プレイヤー
+    if (!isInvincible && activePowerUp?.effect !== 'shield') {
+      enemyBullets.forEach(bullet => {
+        const dist = Math.hypot(bullet.x - player.x, bullet.y - player.y);
+        if (dist < PLAYER_SIZE / 3 + 6) {
+          setEnemyBullets(prev => prev.filter(b => b.id !== bullet.id));
+          setLives(prev => {
+            const newLives = prev - 1;
+            if (newLives <= 0) {
+              setGameState('gameover');
+              setHighScore(h => Math.max(h, score));
+            }
+            return newLives;
+          });
+          setCombo(0);
+          setIsInvincible(true);
+          setTimeout(() => setIsInvincible(false), 2000);
+        }
+      });
+    }
+
+    // 敵 vs プレイヤー
+    if (!isInvincible && activePowerUp?.effect !== 'shield') {
+      enemies.forEach(enemy => {
+        const dist = Math.hypot(enemy.x - player.x, enemy.y - player.y);
+        if (dist < PLAYER_SIZE / 2 + enemy.size / 2 - 10) {
+          setLives(prev => {
+            const newLives = prev - 1;
+            if (newLives <= 0) {
+              setGameState('gameover');
+              setHighScore(h => Math.max(h, score));
+            }
+            return newLives;
+          });
+          setCombo(0);
+          setIsInvincible(true);
+          setTimeout(() => setIsInvincible(false), 2000);
+        }
+      });
+    }
+
+    // パワーアップ取得
+    powerUps.forEach(powerUp => {
+      const dist = Math.hypot(powerUp.x - player.x, powerUp.y - player.y);
+      if (dist < PLAYER_SIZE / 2 + 20) {
+        setPowerUps(prev => prev.filter(p => p.uid !== powerUp.uid));
+        setActivePowerUp(powerUp);
+        setTimeout(() => setActivePowerUp(null), powerUp.duration);
       }
     });
 
-    if (floatingPowerUp) {
-      if (
-        floatingPowerUp.x < playerX + PLAYER_WIDTH &&
-        floatingPowerUp.x + 40 > playerX &&
-        floatingPowerUp.y < GAME_HEIGHT - 20 &&
-        floatingPowerUp.y + 40 > GAME_HEIGHT - PLAYER_HEIGHT - 20
-      ) {
-        if (floatingPowerUp.effect === 'extraLife') {
-          setLives(prev => Math.min(prev + 1, 5));
-        } else {
-          setPowerUpActive(floatingPowerUp.effect);
-          setTimeout(() => setPowerUpActive(null), 12000);
-        }
-        setFloatingPowerUp(null);
+    // Wave進行
+    if (gameState === 'playing' && enemies.length === 0 && frameRef.current > 120) {
+      if (wave % 5 !== 0) {
+        // 次のWaveへ
+        setTimeout(() => {
+          setWave(w => w + 1);
+        }, 1000);
       }
     }
-
-    if (currentEnemies.some(e => e.y > GAME_HEIGHT - 120)) {
-      setGameState('gameover');
-      if (score > highScore) setHighScore(score);
-    }
-
-    setTimeout(() => setShowExplosion([]), 300);
-  }, [bullets, enemyBullets, currentEnemies, playerX, floatingPowerUp, gameState, combo, score, highScore, powerUpActive]);
-
-  // Level complete
-  useEffect(() => {
-    if (gameState === 'playing' && currentEnemies.length === 0) {
-      setLevel(prev => prev + 1);
-      initializeEnemies(level + 1);
-    }
-  }, [currentEnemies.length, gameState, level, initializeEnemies]);
-
-  const continueGame = () => {
-    setCurrentAnswer(null);
-    setGameState('playing');
-  };
+  }, [bullets, enemies, enemyBullets, powerUps, player, isInvincible, activePowerUp, gameState, score, combo, wave]);
 
   const getRank = () => {
-    if (score >= 10000) return { name: '自己解決の神', icon: '🌟', color: 'text-yellow-400' };
-    if (score >= 7000) return { name: 'ggrks & chprks マスター', icon: '👑', color: 'text-purple-400' };
-    if (score >= 4000) return { name: 'AI時代の賢者', icon: '🤖', color: 'text-cyan-400' };
-    if (score >= 2000) return { name: '検索の達人', icon: '🔍', color: 'text-green-400' };
-    if (score >= 800) return { name: '自己解決見習い', icon: '📚', color: 'text-blue-400' };
+    if (score >= 30000) return { name: '自己解決の神', icon: '🌟', color: 'text-yellow-400' };
+    if (score >= 20000) return { name: 'ggrks & chprks マスター', icon: '👑', color: 'text-purple-400' };
+    if (score >= 10000) return { name: 'AI時代の賢者', icon: '🤖', color: 'text-cyan-400' };
+    if (score >= 5000) return { name: '検索の達人', icon: '🔍', color: 'text-green-400' };
+    if (score >= 2000) return { name: '自己解決見習い', icon: '📚', color: 'text-blue-400' };
     return { name: '質問初心者', icon: '🐣', color: 'text-gray-400' };
   };
 
-  const getEraColor = (era) => {
-    if (era === 'ggrks') return 'border-green-500 bg-green-500/20';
-    if (era === 'chprks') return 'border-cyan-500 bg-cyan-500/20';
-    return 'border-yellow-500 bg-yellow-500/20';
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-indigo-950 to-black flex items-center justify-center p-4">
+    <div className="min-h-screen bg-black flex items-center justify-center p-2">
       <div className="relative">
-        {/* Game Container */}
-        <div 
-          className="relative border-4 border-cyan-500 rounded-xl overflow-hidden shadow-2xl shadow-cyan-500/30"
-          style={{ width: GAME_WIDTH, height: GAME_HEIGHT, background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2a 100%)' }}
+        {/* ゲーム画面 */}
+        <div
+          ref={gameRef}
+          className="relative overflow-hidden rounded-lg border-2 border-cyan-500 shadow-2xl shadow-cyan-500/30"
+          style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
           onTouchMove={handleTouchMove}
-          onTouchStart={() => gameState === 'playing' && shoot()}
+          onTouchStart={(e) => {
+            handleTouchMove(e);
+            if (gameState === 'playing' || gameState === 'boss') shoot();
+          }}
         >
-          {/* Animated grid background */}
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute inset-0" style={{
-              backgroundImage: 'linear-gradient(cyan 1px, transparent 1px), linear-gradient(90deg, cyan 1px, transparent 1px)',
-              backgroundSize: '40px 40px',
-            }} />
+          {/* 背景 */}
+          <div 
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(180deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2a 100%)',
+            }}
+          >
+            {/* スクロールするグリッド */}
+            <div 
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: 'linear-gradient(rgba(6,182,212,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,0.3) 1px, transparent 1px)',
+                backgroundSize: '40px 40px',
+                transform: `translateY(${scrollOffset}px)`,
+              }}
+            />
+            {/* 星 */}
+            {[...Array(30)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute bg-white rounded-full"
+                style={{
+                  width: Math.random() * 2 + 1,
+                  height: Math.random() * 2 + 1,
+                  left: `${(i * 37) % 100}%`,
+                  top: `${((i * 73 + scrollOffset * 2) % 120) - 10}%`,
+                  opacity: 0.5 + Math.random() * 0.5,
+                }}
+              />
+            ))}
           </div>
 
-          {/* Title Screen */}
+          {/* タイトル画面 */}
           {gameState === 'title' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-50 p-4">
-              <div className="text-center">
-                {/* Logo Image */}
-                <div className="mb-2">
-                  <img 
-                    src="/api/files/1764398801494_image.png" 
-                    alt="chprks チャピレカス" 
-                    className="w-56 mx-auto rounded-lg shadow-lg shadow-cyan-500/30"
-                    style={{ filter: 'drop-shadow(0 0 20px rgba(34, 211, 238, 0.5))' }}
-                  />
-                </div>
-                <div className="mb-3">
-                  <p className="text-cyan-400 text-2xl font-black tracking-widest animate-pulse">INVADERS</p>
-                </div>
-
-                {/* ggrks → chprks 進化表示 */}
-                <div className="flex items-center justify-center gap-2 mb-4 text-sm">
-                  <span className="px-2 py-1 bg-green-500/20 border border-green-500 rounded text-green-400 font-mono font-bold">ggrks</span>
-                  <span className="text-gray-500">→</span>
-                  <span className="px-2 py-1 bg-cyan-500/20 border border-cyan-500 rounded text-cyan-400 font-mono font-bold">chprks</span>
-                </div>
-
-                {/* Enemy preview */}
-                <div className="flex justify-center gap-2 mb-4">
-                  <div className="text-center">
-                    <div className="flex gap-1 text-xl mb-1">
-                      <span>🔍</span><span>📖</span><span>❓</span>
-                    </div>
-                    <p className="text-green-400 text-xs">ggrks世代</p>
-                  </div>
-                  <div className="text-gray-600 flex items-center">|</div>
-                  <div className="text-center">
-                    <div className="flex gap-1 text-xl mb-1">
-                      <span>🙋</span><span>😴</span><span>😱</span>
-                    </div>
-                    <p className="text-cyan-400 text-xs">chprks世代</p>
-                  </div>
-                </div>
-
-                <p className="text-gray-400 text-xs mb-6 px-4">
-                  「教えて」と聞いてくる質問者たちを<br/>
-                  「ggrks!」「chprks!」で撃退せよ！
-                </p>
-
-                <button
-                  onClick={startGame}
-                  className="px-10 py-4 bg-gradient-to-r from-green-500 via-cyan-500 to-purple-600 text-white font-bold rounded-xl text-lg shadow-lg shadow-cyan-500/50 hover:shadow-cyan-400/70 transition-all hover:scale-105"
-                >
-                  🎮 GAME START
-                </button>
-                
-                <div className="mt-6 text-xs text-gray-600 space-y-1">
-                  <p>← → : 移動 | SPACE : 発射</p>
-                  <p>1-5 : 弾切り替え</p>
-                </div>
-                
-                {highScore > 0 && (
-                  <div className="mt-4 text-yellow-500">
-                    <p className="text-xs text-gray-500">HIGH SCORE</p>
-                    <p className="text-xl font-bold font-mono">{highScore}</p>
-                  </div>
-                )}
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-50 p-4">
+              <img 
+                src="/api/files/1764398801494_image.png" 
+                alt="chprks" 
+                className="w-64 mb-2 rounded-lg"
+                style={{ filter: 'drop-shadow(0 0 30px rgba(6,182,212,0.6))' }}
+              />
+              <h2 className="text-2xl font-black text-cyan-400 tracking-widest mb-4 animate-pulse">SHOOTING</h2>
+              
+              <div className="flex items-center gap-2 mb-4">
+                <span className="px-3 py-1 bg-green-500/20 border border-green-500 rounded text-green-400 font-mono text-sm">ggrks</span>
+                <span className="text-gray-500">→</span>
+                <span className="px-3 py-1 bg-cyan-500/20 border border-cyan-500 rounded text-cyan-400 font-mono text-sm">chprks</span>
               </div>
+              
+              <p className="text-gray-400 text-sm mb-6 text-center">
+                質問してくる敵を撃退せよ！<br/>
+                ggrks世代からchprks世代へ...
+              </p>
+              
+              <button
+                onClick={startGame}
+                className="px-12 py-4 bg-gradient-to-r from-green-500 via-cyan-500 to-purple-600 text-white font-bold rounded-xl text-xl shadow-lg hover:scale-105 transition-transform"
+              >
+                START
+              </button>
+              
+              <div className="mt-6 text-xs text-gray-600 text-center space-y-1">
+                <p>移動: ← → ↑ ↓ / WASD</p>
+                <p>発射: SPACE / Z (長押し)</p>
+                <p>タッチ操作対応</p>
+              </div>
+              
+              {highScore > 0 && (
+                <p className="mt-4 text-yellow-500 font-mono">HIGH SCORE: {highScore.toLocaleString()}</p>
+              )}
             </div>
           )}
 
           {/* HUD */}
-          {gameState !== 'title' && (
-            <div className="absolute top-0 left-0 right-0 p-2 bg-gradient-to-b from-black/80 to-transparent z-40">
-              <div className="flex justify-between items-center mb-1">
-                <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Heart
-                      key={i}
-                      size={16}
-                      className={i < lives ? 'text-red-500 fill-red-500' : 'text-gray-700'}
-                    />
-                  ))}
+          {(gameState === 'playing' || gameState === 'boss' || gameState === 'paused') && (
+            <>
+              <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-40">
+                <div>
+                  <div className="flex gap-1 mb-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Heart key={i} size={18} className={i < lives ? 'text-red-500 fill-red-500' : 'text-gray-700'} />
+                    ))}
+                  </div>
+                  <div className="flex gap-2 text-xs">
+                    <span className="text-green-400 font-mono">G:{ggrksCount}</span>
+                    <span className="text-cyan-400 font-mono">C:{chprksCount}</span>
+                  </div>
                 </div>
                 <div className="text-center">
-                  <p className="text-cyan-400 font-mono text-xl font-bold">{score.toLocaleString()}</p>
+                  <p className="text-cyan-400 font-mono text-2xl font-bold">{score.toLocaleString()}</p>
                   {combo > 1 && (
-                    <p className="text-yellow-400 text-xs animate-pulse font-bold">🔥 x{combo}</p>
+                    <p className="text-yellow-400 text-sm font-bold animate-pulse">{combo} COMBO!</p>
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-purple-400 text-sm font-bold">WAVE {level}</p>
+                  <p className="text-purple-400 font-bold">WAVE {wave}</p>
+                  {activePowerUp && (
+                    <div className="flex items-center gap-1 text-xs mt-1 bg-black/50 px-2 py-1 rounded">
+                      <span>{activePowerUp.icon}</span>
+                      <span style={{ color: activePowerUp.color }}>{activePowerUp.name}</span>
+                    </div>
+                  )}
                 </div>
               </div>
-              {/* ggrks / chprks カウンター */}
-              <div className="flex justify-center gap-3 text-xs">
-                <span className="text-green-400 font-mono">ggrks: {ggrksCount}</span>
-                <span className="text-gray-600">|</span>
-                <span className="text-cyan-400 font-mono">chprks: {chprksCount}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Ammo selector */}
-          {gameState === 'playing' && (
-            <div className="absolute top-16 left-2 right-2 flex justify-center gap-1 z-30">
-              {ammoTypes.map((ammo) => (
-                <button
-                  key={ammo.id}
-                  onClick={() => setCurrentAmmo(ammo)}
-                  className={`w-10 h-10 rounded-lg flex flex-col items-center justify-center text-base transition-all ${
-                    currentAmmo.id === ammo.id 
-                      ? `bg-gradient-to-br ${ammo.color} scale-110 shadow-lg ring-2 ring-white/50` 
-                      : 'bg-gray-800/80 opacity-50 hover:opacity-80'
-                  }`}
-                  title={ammo.name}
-                >
-                  <span>{ammo.icon}</span>
-                  <span className={`text-[8px] ${ammo.era === 'ggrks' ? 'text-green-300' : ammo.era === 'chprks' ? 'text-cyan-300' : 'text-yellow-300'}`}>
-                    {ammo.era === 'ggrks' ? 'G' : ammo.era === 'chprks' ? 'C' : '★'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Power-up indicator */}
-          {powerUpActive && (
-            <div className="absolute top-[104px] left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-1 rounded-full text-xs text-white font-bold animate-pulse z-30 flex items-center gap-1">
-              <Sparkles size={12} />
-              {powerUpActive === 'speedUp' && '高速移動'}
-              {powerUpActive === 'powerShot' && 'パワーUP'}
-              {powerUpActive === 'multiShot' && '3方向弾'}
-            </div>
-          )}
-
-          {/* Enemies */}
-          {currentEnemies.map(enemy => (
-            <div
-              key={enemy.uid}
-              className="absolute transition-all duration-75"
-              style={{ left: enemy.x, top: enemy.y, width: ENEMY_SIZE, height: ENEMY_SIZE }}
-            >
-              <div className="relative w-full h-full">
-                <div 
-                  className={`w-full h-full flex items-center justify-center text-3xl rounded-lg border ${getEraColor(enemy.era)} ${enemy.type === 'boss' ? 'animate-pulse' : ''}`}
-                  style={{ animation: 'enemyFloat 1s ease-in-out infinite' }}
-                >
-                  {enemy.icon}
-                </div>
-                {enemy.currentHealth > 1 && (
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+              
+              {/* ボスHP */}
+              {gameState === 'boss' && bossMaxHealth > 0 && (
+                <div className="absolute top-14 left-4 right-4 z-40">
+                  <div className="h-3 bg-gray-800 rounded-full overflow-hidden border border-red-500/50">
                     <div 
-                      className="h-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all"
-                      style={{ width: `${(enemy.currentHealth / enemy.health) * 100}%` }}
+                      className="h-full bg-gradient-to-r from-red-600 to-orange-500 transition-all duration-200"
+                      style={{ width: `${(bossHealth / bossMaxHealth) * 100}%` }}
                     />
                   </div>
-                )}
+                  <p className="text-center text-red-400 text-xs mt-1 font-bold">BOSS</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* 敵 */}
+          {enemies.map(enemy => (
+            <div
+              key={enemy.uid}
+              className="absolute flex items-center justify-center transition-all duration-75"
+              style={{
+                left: enemy.x - enemy.size / 2,
+                top: enemy.y - enemy.size / 2,
+                width: enemy.size,
+                height: enemy.size,
+              }}
+            >
+              <div 
+                className={`w-full h-full rounded-lg flex items-center justify-center border-2 ${enemy.isBoss ? 'animate-pulse' : ''}`}
+                style={{ 
+                  borderColor: enemy.color,
+                  backgroundColor: `${enemy.color}33`,
+                  fontSize: enemy.size * 0.6,
+                }}
+              >
+                {enemy.icon}
               </div>
             </div>
           ))}
 
-          {/* Player bullets */}
-          {bullets.map((bullet) => (
+          {/* プレイヤー弾 */}
+          {bullets.map(bullet => (
             <div
               key={bullet.id}
-              className={`absolute rounded-full bg-gradient-to-t ${bullet.ammo.color} shadow-lg`}
-              style={{ 
-                left: bullet.x, 
-                top: bullet.y,
-                width: BULLET_SIZE,
-                height: BULLET_SIZE * 1.5,
+              className="absolute w-3 h-5 rounded-full"
+              style={{
+                left: bullet.x - 6,
+                top: bullet.y - 10,
+                background: bullet.isHoming 
+                  ? 'linear-gradient(to top, #ec4899, #f472b6)' 
+                  : 'linear-gradient(to top, #06b6d4, #22d3ee)',
+                boxShadow: bullet.isHoming 
+                  ? '0 0 10px #ec4899' 
+                  : '0 0 10px #06b6d4',
+                transform: `rotate(${bullet.angle + 90}deg)`,
               }}
             />
           ))}
 
-          {/* Floating text */}
-          {floatingText.map(ft => (
-            <div
-              key={ft.id}
-              className={`absolute text-xs font-bold pointer-events-none animate-ping ${ft.color}`}
-              style={{ left: ft.x - 20, top: ft.y - 20 }}
-            >
-              {ft.text}
-            </div>
-          ))}
-
-          {/* Enemy bullets */}
-          {enemyBullets.map((bullet) => (
+          {/* 敵弾 */}
+          {enemyBullets.map(bullet => (
             <div
               key={bullet.id}
-              className="absolute"
-              style={{ left: bullet.x - 15, top: bullet.y }}
+              className="absolute w-3 h-3 rounded-full bg-red-500"
+              style={{
+                left: bullet.x - 6,
+                top: bullet.y - 6,
+                boxShadow: '0 0 8px #ef4444',
+              }}
+            />
+          ))}
+
+          {/* パワーアップ */}
+          {powerUps.map(p => (
+            <div
+              key={p.uid}
+              className="absolute w-10 h-10 flex items-center justify-center text-2xl animate-bounce"
+              style={{ left: p.x - 20, top: p.y - 20 }}
             >
-              <div className="bg-red-500/90 text-white text-[8px] px-1.5 py-0.5 rounded shadow-lg shadow-red-500/50">
-                ❓
-              </div>
+              <div 
+                className="absolute inset-0 rounded-full opacity-50"
+                style={{ backgroundColor: p.color, filter: 'blur(8px)' }}
+              />
+              <span className="relative z-10">{p.icon}</span>
             </div>
           ))}
 
-          {/* Floating power-up */}
-          {floatingPowerUp && (
+          {/* 爆発 */}
+          {explosions.map((exp, i) => (
             <div
-              className="absolute text-3xl"
+              key={i}
+              className="absolute pointer-events-none animate-ping"
               style={{ 
-                left: floatingPowerUp.x, 
-                top: floatingPowerUp.y,
+                left: exp.x - exp.size / 2, 
+                top: exp.y - exp.size / 2,
+                fontSize: exp.size,
               }}
-            >
-              <div className="relative animate-bounce">
-                <span>{floatingPowerUp.icon}</span>
-                <div className="absolute inset-0 bg-white/30 rounded-full blur-md -z-10" />
-              </div>
-            </div>
-          )}
-
-          {/* Explosions */}
-          {showExplosion.map(exp => (
-            <div
-              key={exp.id}
-              className="absolute text-4xl animate-ping pointer-events-none"
-              style={{ left: exp.x, top: exp.y }}
             >
               💥
             </div>
           ))}
 
-          {/* Player */}
-          {gameState === 'playing' && (
+          {/* プレイヤー */}
+          {(gameState === 'playing' || gameState === 'boss') && (
             <div
-              className="absolute transition-all duration-50"
-              style={{ 
-                left: playerX, 
-                bottom: 20,
-                width: PLAYER_WIDTH,
-                height: PLAYER_HEIGHT,
+              className={`absolute transition-all duration-50 ${isInvincible ? 'animate-pulse opacity-50' : ''}`}
+              style={{
+                left: player.x - PLAYER_SIZE / 2,
+                top: player.y - PLAYER_SIZE / 2,
+                width: PLAYER_SIZE,
+                height: PLAYER_SIZE,
               }}
             >
-              <div className="relative w-full h-full flex items-center justify-center">
-                <Bot size={40} className="text-cyan-400" />
-                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-4 h-5 bg-gradient-to-t from-cyan-500 via-purple-400 to-transparent rounded-full animate-pulse opacity-80" />
+              <div className="relative w-full h-full">
+                {/* シールドエフェクト */}
+                {activePowerUp?.effect === 'shield' && (
+                  <div className="absolute inset-0 -m-2 rounded-full border-2 border-orange-400 animate-pulse" 
+                       style={{ boxShadow: '0 0 20px #f97316' }} />
+                )}
+                {/* 機体 */}
+                <div className="w-full h-full flex items-center justify-center text-4xl">
+                  🚀
+                </div>
+                {/* エンジン炎 */}
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-6 bg-gradient-to-t from-cyan-400 via-blue-500 to-transparent rounded-full animate-pulse opacity-80" />
               </div>
             </div>
           )}
 
-          {/* Paused Screen */}
+          {/* 撃破情報 */}
+          {destroyedInfo && (
+            <div className="absolute bottom-20 left-4 right-4 bg-black/80 border border-cyan-500/50 rounded-lg p-3 z-40 animate-pulse">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">{destroyedInfo.enemy.icon}</span>
+                <div className="flex-1">
+                  <p className={`text-sm font-bold ${destroyedInfo.enemy.era === 'ggrks' ? 'text-green-400' : 'text-cyan-400'}`}>
+                    {destroyedInfo.enemy.name} 撃破！
+                  </p>
+                  <p className="text-gray-400 text-xs truncate">「{destroyedInfo.enemy.question}」</p>
+                  <p className="text-yellow-400 text-xs">{destroyedInfo.enemy.answer}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ポーズ画面 */}
           {gameState === 'paused' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-50">
-              <Pause size={56} className="text-cyan-400 mb-4" />
-              <p className="text-white text-2xl font-bold mb-6">PAUSED</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-50">
+              <Pause size={64} className="text-cyan-400 mb-4" />
+              <p className="text-white text-3xl font-bold mb-6">PAUSED</p>
               <button
                 onClick={() => setGameState('playing')}
-                className="px-8 py-3 bg-cyan-500 text-white rounded-xl flex items-center gap-2 font-bold"
+                className="px-8 py-3 bg-cyan-500 text-white rounded-xl flex items-center gap-2 font-bold text-lg"
               >
                 <Play size={24} /> RESUME
               </button>
             </div>
           )}
 
-          {/* Answer Screen */}
-          {gameState === 'answer' && currentAnswer && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-4">
-              <div className="text-center max-w-xs">
-                <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 ${
-                  currentAnswer.enemy.era === 'ggrks' ? 'bg-green-500/30 text-green-400' :
-                  currentAnswer.enemy.era === 'chprks' ? 'bg-cyan-500/30 text-cyan-400' :
-                  'bg-yellow-500/30 text-yellow-400'
-                }`}>
-                  {currentAnswer.enemy.era === 'ggrks' ? '🔍 ggrks世代' : 
-                   currentAnswer.enemy.era === 'chprks' ? '🤖 chprks世代' : '👑 BOSS'}
-                </div>
-                
-                <div className="text-5xl mb-3 animate-bounce">{currentAnswer.enemy.icon}</div>
-                <p className="text-red-400 text-sm mb-1">💥 撃破！</p>
-                <h2 className="text-lg font-bold text-white mb-4">{currentAnswer.enemy.name}</h2>
-                
-                <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4 mb-4 text-left">
-                  <p className="text-gray-400 text-xs mb-1 flex items-center gap-1">
-                    <MessageCircle size={12} /> 質問
-                  </p>
-                  <p className="text-white text-sm mb-3">「{currentAnswer.question}」</p>
-                  
-                  <div className="flex items-center gap-2 mb-1">
-                    <img 
-                      src="/api/files/1764398801494_image.png" 
-                      alt="chprks" 
-                      className="w-5 h-5 object-contain rounded"
-                    />
-                    <p className={`text-xs ${currentAnswer.enemy.era === 'ggrks' ? 'text-green-400' : 'text-cyan-400'}`}>
-                      正しい対応
-                    </p>
-                  </div>
-                  <p className={`text-sm font-bold ${currentAnswer.enemy.era === 'ggrks' ? 'text-green-300' : 'text-cyan-300'}`}>
-                    {currentAnswer.answer}
-                  </p>
-                </div>
-                
-                <div className="flex items-center justify-center gap-2 text-yellow-400 mb-6">
-                  <Star size={20} className="fill-yellow-400" />
-                  <span className="font-bold text-xl">+{currentAnswer.enemy.points}</span>
-                </div>
-                
-                <button
-                  onClick={continueGame}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-green-500 via-cyan-500 to-purple-600 text-white font-bold rounded-xl"
-                >
-                  CONTINUE →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Game Over Screen */}
+          {/* ゲームオーバー */}
           {gameState === 'gameover' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-4">
-              <div className="text-center">
-                <img 
-                  src="/api/files/1764398801494_image.png" 
-                  alt="chprks" 
-                  className="w-28 mx-auto mb-3 opacity-50 grayscale"
-                />
-                <p className="text-red-500 text-3xl font-black mb-2 animate-pulse">GAME OVER</p>
-                <p className="text-gray-500 text-sm mb-4">質問攻撃に負けてしまった...</p>
-                
-                <div className="bg-gray-900 border border-cyan-500/50 rounded-xl p-4 mb-4">
-                  <p className="text-gray-500 text-xs mb-1">FINAL SCORE</p>
-                  <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-cyan-400 to-purple-500 font-mono">
-                    {score.toLocaleString()}
-                  </p>
-                  <div className={`flex items-center justify-center gap-2 mt-2 ${getRank().color}`}>
-                    <span className="text-xl">{getRank().icon}</span>
-                    <span className="font-bold">{getRank().name}</span>
-                  </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-50 p-4">
+              <img 
+                src="/api/files/1764398801494_image.png" 
+                alt="chprks" 
+                className="w-32 mb-4 opacity-50 grayscale"
+              />
+              <p className="text-red-500 text-4xl font-black mb-2 animate-pulse">GAME OVER</p>
+              
+              <div className="bg-gray-900/80 border border-cyan-500/50 rounded-xl p-5 mb-4 w-full max-w-xs">
+                <p className="text-gray-500 text-sm text-center">SCORE</p>
+                <p className="text-4xl font-black text-center bg-gradient-to-r from-green-400 via-cyan-400 to-purple-500 bg-clip-text text-transparent font-mono">
+                  {score.toLocaleString()}
+                </p>
+                <div className={`flex items-center justify-center gap-2 mt-2 ${getRank().color}`}>
+                  <span className="text-2xl">{getRank().icon}</span>
+                  <span className="font-bold">{getRank().name}</span>
                 </div>
                 
-                {/* 統計 */}
-                <div className="flex justify-center gap-4 mb-4 text-sm">
+                <div className="flex justify-around mt-4 pt-4 border-t border-gray-700">
                   <div className="text-center">
                     <p className="text-green-400 font-mono text-xl font-bold">{ggrksCount}</p>
-                    <p className="text-gray-500 text-xs">ggrks撃破</p>
+                    <p className="text-gray-500 text-xs">ggrks</p>
                   </div>
                   <div className="text-center">
                     <p className="text-cyan-400 font-mono text-xl font-bold">{chprksCount}</p>
-                    <p className="text-gray-500 text-xs">chprks撃破</p>
+                    <p className="text-gray-500 text-xs">chprks</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-purple-400 font-mono text-xl font-bold">{questionsAnswered}</p>
-                    <p className="text-gray-500 text-xs">総撃破数</p>
+                    <p className="text-yellow-400 font-mono text-xl font-bold">{maxCombo}</p>
+                    <p className="text-gray-500 text-xs">MAX COMBO</p>
                   </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <button
-                    onClick={startGame}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-green-500 via-cyan-500 to-purple-600 text-white font-bold rounded-xl flex items-center justify-center gap-2"
-                  >
-                    <RefreshCw size={20} /> RETRY
-                  </button>
-                  <button
-                    onClick={() => setGameState('title')}
-                    className="w-full px-6 py-2 bg-gray-800 text-gray-300 rounded-xl"
-                  >
-                    TITLE
-                  </button>
-                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={startGame}
+                  className="px-6 py-3 bg-gradient-to-r from-green-500 via-cyan-500 to-purple-600 text-white font-bold rounded-xl flex items-center gap-2"
+                >
+                  <RefreshCw size={20} /> RETRY
+                </button>
+                <button
+                  onClick={() => setGameState('title')}
+                  className="px-6 py-3 bg-gray-800 text-gray-300 rounded-xl"
+                >
+                  TITLE
+                </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Touch Controls */}
-        {gameState === 'playing' && (
-          <div className="mt-4 flex justify-center gap-4">
-            <button
-              onTouchStart={() => setPlayerX(prev => Math.max(0, prev - 25))}
-              onClick={() => setPlayerX(prev => Math.max(0, prev - 25))}
-              className="w-16 h-16 bg-gray-800 border-2 border-cyan-500/50 rounded-2xl flex items-center justify-center text-cyan-400 text-2xl active:bg-cyan-900/50 active:scale-95 transition-all"
-            >
-              ◀
-            </button>
+        {/* モバイル用発射ボタン */}
+        {(gameState === 'playing' || gameState === 'boss') && (
+          <div className="mt-3 flex justify-center">
             <button
               onTouchStart={shoot}
               onClick={shoot}
-              className="w-24 h-16 bg-gradient-to-r from-green-500 via-cyan-500 to-purple-600 rounded-2xl flex flex-col items-center justify-center active:scale-95 transition-all shadow-lg shadow-cyan-500/30"
+              className="px-12 py-4 bg-gradient-to-r from-green-500 via-cyan-500 to-purple-600 rounded-2xl active:scale-95 transition-all shadow-lg"
             >
-              <span className="text-white font-bold text-xs">ggrks!</span>
-              <span className="text-white font-bold text-xs">chprks!</span>
-            </button>
-            <button
-              onTouchStart={() => setPlayerX(prev => Math.min(GAME_WIDTH - PLAYER_WIDTH, prev + 25))}
-              onClick={() => setPlayerX(prev => Math.min(GAME_WIDTH - PLAYER_WIDTH, prev + 25))}
-              className="w-16 h-16 bg-gray-800 border-2 border-cyan-500/50 rounded-2xl flex items-center justify-center text-cyan-400 text-2xl active:bg-cyan-900/50 active:scale-95 transition-all"
-            >
-              ▶
+              <Zap size={32} className="text-white" />
             </button>
           </div>
         )}
-
-        {/* Tips */}
-        {gameState === 'playing' && (
-          <p className="mt-3 text-center text-gray-600 text-xs">
-            🔍 ggrks世代 → 🤖 chprks世代 の進化を体験せよ！
-          </p>
-        )}
       </div>
-
-      <style jsx>{`
-        @keyframes enemyFloat {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-3px); }
-        }
-      `}</style>
     </div>
   );
 }
