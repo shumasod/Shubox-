@@ -1,29 +1,35 @@
 import React, { useState } from 'react';
 
 const giraffeFacts = [
-  { icon: "😴", title: "Sleep", text: "キリンの睡眠時間は1日たったの20分〜2時間程度です。" },
-  { icon: "🏃‍♂️", title: "Speed", text: "走ると時速約60kmのスピードに達します。" },
-  { icon: "🦴", title: "Neck Bones", text: "首の骨の数は人間と同じ7個です。" },
-  { icon: "👨‍👩‍👧", title: "Social", text: "群れで生活し、時には50頭以上の大きな群れをつくります。" },
-  { icon: "🌍", title: "Conservation", text: "IUCNレッドリストでは「危急種（Vulnerable）」に指定されています。" },
-];
+  { icon: "Sleep", title: "Sleep", text: "キリンの睡眠時間は1日たったの20分〜2時間程度です。" },
+  { icon: "Speed", title: "Speed", text: "走ると時速約60kmのスピードに達します。" },
+  { icon: "Neck Bones", title: "Neck Bones", text: "首の骨の数は人間と同じ7個です。" },
+  { icon: "Social", title: "Social", text: "群れで生活し、時には50頭以上の大きな群れをつくります。" },
+  { icon: "Conservation", title: "Conservation", text: "IUCNレッドリストでは「危急種（Vulnerable）」に指定されています。" },
+] as const;
 
 const externalLinks = [
   { href: "https://ja.wikipedia.org/wiki/%E3%82%AD%E3%83%AA%E3%83%B3", text: "Wikipedia: キリン" },
   { href: "https://www.wwf.or.jp/activities/basicinfo/3849.html", text: "WWF: キリン保護" },
   { href: "https://www.ueno-zoo.jp/animals/mammal/giraffe", text: "上野動物園: キリン" },
-];
+] as const;
 
 const galleryImages = [
   { src: "/api/placeholder/800/600?img=1", alt: "キリンの親子" },
   { src: "/api/placeholder/800/600?img=2", alt: "サバンナを歩くキリン" },
   { src: "/api/placeholder/800/600?img=3", alt: "木の葉を食べるキリン" },
-];
+  { src: "/api/placeholder/800/600?img=4", alt: "夕陽とキリンのシルエット" },
+  { src: "/api/placeholder/800/600?img=5", alt: "水を飲むキリン" },
+  { src: "/api/placeholder/800/600?img=6", alt: "赤ちゃんキリンと母キリン" },
+] as const;
 
 const GiraffePage = () => {
   const [mainImageLoaded, setMainImageLoaded] = useState(false);
   const [mainImageError, setMainImageError] = useState(false);
+  const [mainImageRetryCount, setMainImageRetryCount] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+
+  const mainImageSrc = `/api/placeholder/1200/800?text=Giraffe+${mainImageRetryCount}`;
 
   const handleImageLoad = () => {
     setMainImageLoaded(true);
@@ -35,131 +41,106 @@ const GiraffePage = () => {
     setMainImageLoaded(false);
   };
 
+  const handleRetry = () => {
+    setMainImageRetryCount(prev => prev + 1);
+    setMainImageError(false);
+    setMainImageLoaded(false);
+  };
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-amber-800 mb-4 tracking-tight">
-            🦒 Beautiful Giraffe
+    <main className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 py-12 px-4">
+      <div className="max-w-5xl mx-auto">
+        {/* ヘッダー */}
+        <header className="text-center mb-12">
+          <h1 className="text-5xl md:text-6xl font-bold text-amber-800 mb-4 tracking-tight">
+            Beautiful Giraffe
           </h1>
-          <p className="text-lg text-amber-700 max-w-2xl mx-auto leading-relaxed">
-            Discover the elegance and grace of one of nature's most magnificent creatures
+          <p className="text-xl text-amber-700 max-w-2xl mx-auto leading-relaxed">
+            自然が作り出した最も優雅で美しい生き物の一つ
           </p>
         </header>
 
-        <section 
-          className="relative bg-white rounded-2xl shadow-xl overflow-hidden transition-all duration-300 hover:shadow-2xl"
+        {/* メイン画像カード */}
+        <article
+          className="relative bg-white rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 hover:shadow-3xl"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          <div className="relative aspect-[4/3] bg-gray-100">
+          <div className="relative aspect-[16/10] bg-gray-100 overflow-hidden">
+            {/* ローディングスケルトン */}
             {!mainImageLoaded && !mainImageError && (
-              <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse">
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-gray-500 text-lg">Loading image...</div>
-                </div>
-              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse" />
             )}
+
+            {/* エラー時フォールバック */}
             {mainImageError && (
-              <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center">
                 <div className="text-center p-8">
-                  <div className="text-6xl mb-4">🦒</div>
-                  <p className="text-gray-600 text-lg mb-4">Failed to load image</p>
-                  <button 
-                    onClick={() => {
-                      setMainImageError(false);
-                      setMainImageLoaded(false);
-                    }}
-                    className="bg-amber-600 text-white px-6 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+                  <div className="text-8xl mb-6">Giraffe</div>
+                  <p className="text-gray-700 text-lg mb-6">画像の読み込みに失敗しました</p>
+                  <button
+                    onClick={handleRetry}
+                    className="bg-amber-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-amber-700 transition-colors focus:outline-none focus:ring-4 focus:ring-amber-300"
+                    aria-label="メイン画像を再読み込み"
                   >
-                    Try Again
+                    再読み込みする
                   </button>
                 </div>
               </div>
             )}
-            <img 
-              src="/api/placeholder/800/600"
-              alt="A graceful giraffe standing tall in its natural habitat, showcasing its distinctive spotted pattern and elegant neck" 
+
+            {/* メイン画像 */}
+            <img
+              src={mainImageSrc}
+              alt="サバンナに佇む優雅なキリン。長い首と美しい斑模様が特徴的"
               className={`
-                w-full h-full object-cover transition-all duration-500
+                absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out
                 ${mainImageLoaded ? 'opacity-100' : 'opacity-0'}
-                ${isHovered ? 'scale-105' : 'scale-100'}
+                ${isHovered ? 'scale-110' : 'scale-100'}
               `}
               onLoad={handleImageLoad}
               onError={handleImageError}
-              loading="lazy"
+              loading="eager"
+              decoding="async"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
+
+            {/* ホバー時のオーバーレイ */}
+            <div
+              className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+              aria-hidden="true"
+            />
           </div>
-          <div className="p-6 bg-white">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-3">
-              The Tallest Mammal on Earth
+
+          <div className="p-8 bg-white">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">
+              地球上でもっとも背の高い哺乳類
             </h2>
-            <p className="text-gray-600 leading-relaxed mb-4">
-              Giraffes are remarkable creatures that can reach heights of up to 18 feet, 
-              making them the tallest mammals on our planet. Their unique spotted patterns 
-              are as individual as human fingerprints.
+            <p className="text-gray-600 leading-relaxed text-lg mb-6">
+              キリンは最大で5.5mを超える高さに達します。その斑模様は指紋のように個体ごとに異なり、
+              まるで自然が描いたアート作品のようです。
             </p>
-            <div className="flex flex-wrap gap-2">
-              <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-sm font-medium">
-                Wildlife
-              </span>
-              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                African Savanna
-              </span>
-              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                Herbivore
-              </span>
+            <div className="flex flex-wrap gap-3">
+              {["野生動物", "アフリカ", "草食動物", "絶滅危惧"].map(tag => (
+                <span
+                  key={tag}
+                  className="bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-sm font-medium"
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
           </div>
-        </section>
+        </article>
 
-        {/* 画像ギャラリー */}
-        <section className="mt-12">
-          <h2 className="text-xl font-bold text-amber-700 mb-4">🖼️ キリンのフォトギャラリー</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {galleryImages.map((img, idx) => (
-              <img 
-                key={idx}
-                src={img.src}
-                alt={img.alt}
-                className="rounded-xl object-cover w-full h-48 shadow-md hover:scale-105 transition-transform"
-                loading="lazy"
-              />
-            ))}
-          </div>
-        </section>
-
-        {/* 豆知識 */}
-        <section className="mt-12">
-          <h2 className="text-xl font-bold text-amber-700 mb-4">🦒 キリン豆知識</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {giraffeFacts.map((fact, idx) => (
-              <div key={idx} className="bg-white rounded-xl p-6 shadow-lg text-center">
-                <div className="text-3xl mb-3">{fact.icon}</div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">{fact.title}</h3>
-                <p className="text-gray-600">{fact.text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 外部リンク */}
-        <section className="mt-12">
-          <h2 className="text-xl font-bold text-amber-700 mb-4">🔗 もっと知りたい方へ</h2>
-          <ul className="list-disc ml-6 space-y-2">
-            {externalLinks.map((link, idx) => (
-              <li key={idx}>
-                <a href={link.href} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline hover:text-blue-900">
-                  {link.text}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </div>
-    </main>
-  );
-};
-
-export default GiraffePage;
+        {/* フォトギャラリー */}
+        <section className="mt-16" aria-labelledby="gallery-heading">
+          <h2 id="gallery-heading" className="text-3xl font-bold text-amber-800 mb-8 text-center">
+            キリンのフォトギャラリー
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            {galleryImages.map((img) => (
+              <figure key={img.src} className="group relative overflow-hidden rounded-2xl shadow-lg">
+                <img
+                  src={img.src}
+                  alt={img.alt}
+                  className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
