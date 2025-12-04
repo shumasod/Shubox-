@@ -1,316 +1,273 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Star, RotateCcw, Play, Pause } from 'lucide-react';
 
+interface Position {
+  x: number;
+  y: number;
+}
+
+const GAME_CONFIG = {
+  AREA: { width: 400, height: 384 },
+  GIRAFFE_SIZE: 48,
+  LEAF_SIZE: 32,
+  COLLISION_DISTANCE: 40,
+  MOVEMENT_SPEED: 18,
+  GAME_DURATION: 30,
+} as const;
+
 const GiraffeGame = () => {
-  // ゲーム状態の管理
   const [score, setScore] = useState(0);
-  const [bestScore, setBestScore] = useState(0);
-  const [giraffePosition, setGiraffePosition] = useState({ x: 50, y: 50 });
-  const [leafPosition, setLeafPosition] = useState({ x: 200, y: 200 });
-  const [isGameOver, setIsGameOver] = useState(false);
-  const [isGameStarted, setIsGameStarted] = useState(false);
+  const [bestScore, setBestScore] = useState(() => {
+    const saved = localStorage.getItem('giraffeBestScore');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [giraffePos, setGiraffePos] = useState<Position>({ x: 50, y: 50 });
+  const [leafPos, setLeafPos] = useState<Position | null>(null);
+  const [leafId, setLeafId] = useState(0);
+  const [isStarted, setIsStarted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(30);
-  const [showScoreAnimation, setShowScoreAnimation] = useState(false);
-  const [leafCollectedAnimation, setLeafCollectedAnimation] = useState(false);
-  
-  // ゲーム設定定数
-  const GAME_CONFIG = {
-    AREA: { width: 400, height: 384 },
-    GIRAFFE_SIZE: 48,
-    LEAF_SIZE: 32,
-    COLLISION_DISTANCE: 35,
-    MOVEMENT_SPEED: 15,
-    GAME_DURATION: 30
-  };
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(GAME_CONFIG.GAME_DURATION);
+  const [showScoreAnim, setShowScoreAnim] = useState(false);
+  const startTimeRef = useRef<number>(0);
 
-  // スコアアニメーション効果
-  const triggerScoreAnimation = useCallback(() => {
-    setShowScoreAnimation(true);
-    setLeafCollectedAnimation(true);
-    setTimeout(() => setShowScoreAnimation(false), 600);
-    setTimeout(() => setLeafCollectedAnimation(false), 400);
-  }, []);
-
-  // 新しい葉っぱの位置を生成
-  const generateNewLeaf = useCallback(() => {
-    const margin = 20;
-    setLeafPosition({
-      x: Math.floor(Math.random() * (GAME_CONFIG.AREA.width - GAME_CONFIG.LEAF_SIZE - margin * 2) + margin),
-      y: Math.floor(Math.random() * (GAME_CONFIG.AREA.height - GAME_CONFIG.LEAF_SIZE - margin * 2) + margin)
-    });
-  }, []);
-
-  // 衝突判定
-  const checkCollision = useCallback((giraffePos) => {
-    const distance = Math.sqrt(
-      Math.pow(giraffePos.x + GAME_CONFIG.GIRAFFE_SIZE / 2 - leafPosition.x - GAME_CONFIG.LEAF_SIZE / 2, 2) + 
-      Math.pow(giraffePos.y + GAME_CONFIG.GIRAFFE_SIZE / 2 - leafPosition.y - GAME_CONFIG.LEAF_SIZE / 2, 2)
-    );
-
-    if (distance < GAME_CONFIG.COLLISION_DISTANCE) {
-      setScore(prev => {
-        const newScore = prev + 1;
-        if (newScore > bestScore) {
-          setBestScore(newScore);
-        }
-        return newScore;
-      });
-      triggerScoreAnimation();
-      generateNewLeaf();
-    }
-  }, [leafPosition, bestScore, triggerScoreAnimation, generateNewLeaf]);
-
-  // キー入力処理
+  // ベストスコア保存
   useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (!isGameStarted || isGameOver || isPaused) return;
+    if (score > bestScore) {
+      setBestScore(score);
+      localStorage.setItem('giraffeBestScore', score.toString());
+    }
+  }, [score, bestScore]);
 
-      const newPosition = { ...giraffePosition };
-      const { MOVEMENT_SPEED, AREA, GIRAFFE_SIZE } = GAME_CONFIG;
+  // 正確なタイマー（ドリフトなし）
+  useEffect(() => {
+    if (!isStarted || isPaused || isGameOver) return;
 
-      switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-          newPosition.y = Math.max(0, giraffePosition.y - MOVEMENT_SPEED);
-          break;
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-          newPosition.y = Math.min(AREA.height - GIRAFFE_SIZE, giraffePosition.y + MOVEMENT_SPEED);
-          break;
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-          newPosition.x = Math.max(0, giraffePosition.x - MOVEMENT_SPEED);
-          break;
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-          newPosition.x = Math.min(AREA.width - GIRAFFE_SIZE, giraffePosition.x + MOVEMENT_SPEED);
-          break;
-        case ' ':
-          e.preventDefault();
-          setIsPaused(!isPaused);
-          return;
-        default:
-          return;
+    startTimeRef.current = Date.now() - (GAME_CONFIG.GAME_DURATION - timeLeft) * 1000;
+
+    const tick = () => {
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const remaining = Math.max(0, GAME_CONFIG.GAME_DURATION - elapsed);
+      setTimeLeft(Math.ceil(remaining));
+
+      if (remaining > 0) {
+        requestAnimationFrame(tick);
+      } else {
+        setIsGameOver(true);
       }
-
-      setGiraffePosition(newPosition);
-      checkCollision(newPosition);
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [giraffePosition, isGameStarted, isGameOver, isPaused, checkCollision]);
+    const id = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(id);
+  }, [isStarted, isPaused, isGameOver]);
 
-  // タイマー処理
-  useEffect(() => {
-    if (timeLeft > 0 && isGameStarted && !isGameOver && !isPaused) {
-      const timer = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-      return () => clearInterval(timer);
-    } else if (timeLeft === 0 && !isGameOver) {
-      setIsGameOver(true);
+  // 葉っぱ生成
+  const generateLeaf = useCallback(() => {
+    const margin = 40;
+    const x = Math.random() * (GAME_CONFIG.AREA.width - GAME_CONFIG.LEAF_SIZE - margin * 2) + margin;
+    const y = Math.random() * (GAME_CONFIG.AREA.height - GAME_CONFIG.LEAF_SIZE - margin * 2) + margin;
+    setLeafPos({ x, y });
+    setLeafId(prev => prev + 1);
+  }, []);
+
+  // 衝突判定（安定化したuseCallback）
+  const checkCollision = useCallback((pos: Position) => {
+    if (!leafPos) return;
+
+    const dx = pos.x + GAME_CONFIG.GIRAFFE_SIZE / 2 - (leafPos.x + GAME_CONFIG.LEAF_SIZE / 2);
+    const dy = pos.y + GAME_CONFIG.GIRAFFE_SIZE / 2 - (leafPos.y + GAME_CONFIG.LEAF_SIZE / 2);
+    const distance = Math.hypot(dx, dy);
+
+    if (distance < GAME_CONFIG.COLLISION_DISTANCE) {
+      setScore(s => s + 1);
+      setShowScoreAnim(true);
+      setTimeout(() => setShowScoreAnim(false), 600);
+      generateLeaf();
     }
-  }, [timeLeft, isGameStarted, isGameOver, isPaused]);
+  }, [leafPos, generateLeaf]);
 
-  // ゲーム開始
+  // キーボード操作（依存配列完全安定化）
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (!isStarted || isGameOver || isPaused) return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        setIsPaused(p => !p);
+        return;
+      }
+
+      const move = { ...giraffePos };
+      const speed = GAME_CONFIG.MOVEMENT_SPEED;
+
+      switch (e.key) {
+        case 'ArrowUp': case 'w': case 'W':
+          move.y = Math.max(0, move.y - speed); break;
+        case 'ArrowDown': case 's': case 'S':
+          move.y = Math.min(GAME_CONFIG.AREA.height - GAME_CONFIG.GIRAFFE_SIZE, move.y + speed); break;
+        case 'ArrowLeft': case 'a': case 'A':
+          move.x = Math.max(0, move.x - speed); break;
+        case 'ArrowRight': case 'd': case 'D':
+          move.x = Math.min(GAME_CONFIG.AREA.width - GAME_CONFIG.GIRAFFE_SIZE, move.x + speed); break;
+        default: return;
+      }
+
+      setGiraffePos(move);
+      checkCollision(move);
+    };
+
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [giraffePos, isStarted, isGameOver, isPaused, checkCollision]);
+
   const startGame = () => {
-    setIsGameStarted(true);
+    setIsStarted(true);
     setIsGameOver(false);
     setIsPaused(false);
     setScore(0);
     setTimeLeft(GAME_CONFIG.GAME_DURATION);
-    setGiraffePosition({ x: 50, y: 50 });
-    generateNewLeaf();
+    setGiraffePos({ x: 100, y: 160 });
+    generateLeaf();
   };
-
-  // ゲーム一時停止/再開
-  const togglePause = () => {
-    if (isGameStarted && !isGameOver) {
-      setIsPaused(!isPaused);
-    }
-  };
-
-  // 初期化
-  useEffect(() => {
-    generateNewLeaf();
-  }, [generateNewLeaf]);
 
   return (
-    <div className="flex flex-col items-center p-6 max-w-2xl mx-auto bg-gradient-to-br from-green-50 to-yellow-50 rounded-2xl shadow-lg">
-      {/* ヘッダー */}
-      <div className="text-center mb-6 w-full">
-        <h1 className="text-4xl font-bold text-green-800 mb-2 flex items-center justify-center gap-2">
-          🦒 キリンの葉っぱ集め 🌿
+    <div className="flex flex-col items-center p-8 max-w-2xl mx-auto bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 rounded-3xl shadow-2xl">
+      <header className="text-center mb-8">
+        <h1 className="text-5xl font-bold text-green-800 mb-3 flex items-center justify-center gap-3">
+          キリンの葉っぱ大冒険
         </h1>
-        <p className="text-green-600 text-sm">矢印キーまたはWASDでキリンを操作して葉っぱを集めよう！</p>
-      </div>
+        <p className="text-green-700 text-lg">矢印キー or WASD でキリンを動かして、葉っぱをたくさん集めよう！</p>
+      </header>
 
       {/* スコアボード */}
-      <div className="flex justify-between items-center w-full max-w-md mb-6 bg-white rounded-xl p-4 shadow-md">
+      <div className="grid grid-cols-3 gap-6 w-full mb-8 bg-white/80 backdrop-blur rounded-2xl p-6 shadow-xl">
         <div className="text-center">
-          <p className="text-sm text-gray-600">現在のスコア</p>
-          <p className={`text-2xl font-bold text-green-700 transition-all duration-300 ${
-            showScoreAnimation ? 'scale-125 text-yellow-500' : ''
-          }`}>
+          <p className="text-gray-600 text-sm">現在のスコア</p>
+          <p className={`text-4xl font-bold transition-all duration-300 ${showScoreAnim ? 'scale-150 text-yellow-500' : 'text-green-700'}`}>
             {score}
           </p>
         </div>
-        
         <div className="text-center">
-          <p className="text-sm text-gray-600">残り時間</p>
-          <p className={`text-2xl font-bold ${
-            timeLeft <= 10 ? 'text-red-500 animate-pulse' : 'text-blue-700'
-          }`}>
-            {timeLeft}秒
+          <p className="text-gray-600 text-sm">残り時間</p>
+          <p className={`text-4xl font-bold ${timeLeft <= 10 ? 'text-red-600 animate-pulse' : 'text-blue-700'}`}>
+            {timeLeft}s
           </p>
         </div>
-        
         <div className="text-center">
-          <p className="text-sm text-gray-600 flex items-center gap-1">
-            <Star size={14} className="text-yellow-500" />
-            ベストスコア
+          <p className="text-gray-600 text-sm flex items-center justify-center gap-1">
+            <Star className="text-yellow-500" /> ベスト
           </p>
-          <p className="text-2xl font-bold text-yellow-600">{bestScore}</p>
+          <p className="text-4xl font-bold text-purple-700">{bestScore}</p>
         </div>
       </div>
 
-      {/* コントロールボタン */}
-      <div className="flex gap-3 mb-6">
-        {!isGameStarted || isGameOver ? (
-          <button
-            onClick={startGame}
-            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg"
-          >
-            <Play size={20} />
-            {isGameOver ? 'もう一度プレイ' : 'ゲーム開始'}
+      {/* コントロール */}
+      <div className="flex gap-4 mb-8">
+        {!isStarted || isGameOver ? (
+          <button onClick={startGame} className="btn-primary">
+            <Play size={24} /> ゲームスタート
           </button>
         ) : (
-          <button
-            onClick={togglePause}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg"
-          >
-            {isPaused ? <Play size={20} /> : <Pause size={20} />}
+          <button onClick={() => setIsPaused(p => !p)} className="btn-blue">
+            {isPaused ? <Play size={24} /> : <Pause size={24} />}
             {isPaused ? '再開' : '一時停止'}
           </button>
         )}
-        
-        <button
-          onClick={startGame}
-          className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg"
-        >
-          <RotateCcw size={20} />
-          リスタート
+        <button onClick={startGame} className="btn-gray">
+          <RotateCcw size={24} /> リスタート
         </button>
       </div>
 
       {/* ゲームエリア */}
       <div className="relative">
-        <div 
-          className={`relative bg-gradient-to-br from-green-200 to-green-300 rounded-2xl border-4 border-green-400 overflow-hidden shadow-inner ${
-            !isGameStarted ? 'opacity-70' : ''
-          } ${isPaused ? 'opacity-50' : ''}`}
-          style={{
-            width: `${GAME_CONFIG.AREA.width}px`,
-            height: `${GAME_CONFIG.AREA.height}px`
-          }}
-          aria-label="ゲームエリア"
+        <div
+          className={`relative bg-gradient-to-br from-sky-200 to-green-300 rounded-3xl border-8 border-green-600 shadow-2xl overflow-hidden transition-opacity ${
+            !isStarted ? 'opacity-60' : isPaused ? 'opacity-50' : ''
+          }`}
+          style={{ width: GAME_CONFIG.AREA.width, height: GAME_CONFIG.AREA.height }}
         >
-          {/* 背景パターン */}
-          <div className="absolute inset-0 opacity-20">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-6 h-6 text-green-600"
-                style={{
-                  left: `${(i % 4) * 100 + 50}px`,
-                  top: `${Math.floor(i / 4) * 150 + 75}px`
-                }}
-              >
-                🌱
-              </div>
+          {/* 背景草 */}
+          <div className="absolute inset-0 opacity-30">
+            {[...Array(12)].map((_, i) => (
+              <div key={i} className="absolute text-3xl" style={{
+                left: `${(i % 5) * 80 + 30}px`,
+                top: `${Math.floor(i / 5) * 120 + 60}px`,
+              }}>🌱</div>
             ))}
           </div>
 
           {/* キリン */}
           <div
-            className={`absolute rounded-full bg-gradient-to-br from-yellow-200 to-yellow-300 border-2 border-yellow-400 flex items-center justify-center shadow-lg transition-all duration-150 transform ${
-              isGameStarted && !isPaused ? 'hover:scale-110' : ''
-            }`}
+            className="absolute transition-all duration-150 ease-out"
             style={{
-              width: `${GAME_CONFIG.GIRAFFE_SIZE}px`,
-              height: `${GAME_CONFIG.GIRAFFE_SIZE}px`,
-              left: `${giraffePosition.x}px`,
-              top: `${giraffePosition.y}px`,
+              left: giraffePos.x,
+              top: giraffePos.y,
+              width: GAME_CONFIG.GIRAFFE_SIZE,
+              height: GAME_CONFIG.GIRAFFE_SIZE,
             }}
-            aria-label="キリン"
           >
-            <span className="text-2xl">🦒</span>
+            <div className="text-6xl drop-shadow-lg">Giraffe</div>
           </div>
 
           {/* 葉っぱ */}
-          <div
-            className={`absolute rounded-full bg-gradient-to-br from-green-300 to-green-400 border-2 border-green-500 flex items-center justify-center shadow-lg transition-all duration-300 ${
-              leafCollectedAnimation ? 'scale-150 opacity-0' : 'animate-pulse'
-            }`}
-            style={{
-              width: `${GAME_CONFIG.LEAF_SIZE}px`,
-              height: `${GAME_CONFIG.LEAF_SIZE}px`,
-              left: `${leafPosition.x}px`,
-              top: `${leafPosition.y}px`,
-            }}
-            aria-label="葉っぱ"
-          >
-            <span className="text-xl">🌿</span>
-          </div>
+          {leafPos && (
+            <div
+              key={leafId}
+              className="absolute animate-spin-slow"
+              style={{
+                left: leafPos.x,
+                top: leafPos.y,
+                width: GAME_CONFIG.LEAF_SIZE,
+                height: GAME_CONFIG.LEAF_SIZE,
+              }}
+            >
+              <div className="text-4xl drop-shadow-md">Leaf</div>
+            </div>
+          )}
 
           {/* 一時停止オーバーレイ */}
           {isPaused && (
-            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-2xl">
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-3xl">
               <div className="text-white text-center">
-                <Pause size={48} className="mx-auto mb-2" />
-                <p className="text-xl font-bold">一時停止中</p>
-                <p className="text-sm">スペースキーまたはボタンで再開</p>
+                <Pause size={80} className="mx-auto mb-4" />
+                <p className="text-3xl font-bold">一時停止中</p>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ゲームオーバー画面 */}
+      {/* ゲームオーバー */}
       {isGameOver && (
-        <div className="mt-6 text-center bg-white rounded-2xl p-6 shadow-lg border-2 border-red-200">
-          <h2 className="text-3xl font-bold mb-4 text-red-600">🎮 ゲームオーバー！</h2>
-          <div className="space-y-2 mb-4">
-            <p className="text-xl">最終スコア: <span className="font-bold text-green-600">{score}</span></p>
-            {score === bestScore && score > 0 && (
-              <p className="text-yellow-600 font-semibold animate-bounce">🎉 新記録達成！</p>
-            )}
-            <p className="text-gray-600">
-              {score >= 15 ? '素晴らしい！キリンマスター🦒' : 
-               score >= 10 ? 'とても上手です！🌟' : 
-               score >= 5 ? 'いい調子です！🌿' : 
-               'がんばりましょう！💪'}
-            </p>
-          </div>
+        <div className="mt-8 text-center bg-white rounded-3xl p-10 shadow-2xl border-4 border-red-300">
+          <h2 className="text-5xl font-bold text-red-600 mb-6">ゲームオーバー！</h2>
+          <p className="text-3xl mb-4">最終スコア: <span className="text-green-600 font-bold">{score}</span></p>
+          {score > bestScore && <p className="text-4xl text-yellow-500 font-bold animate-bounce">新記録達成！</p>}
+          <p className="text-2xl mt-4">
+            {score >= 20 ? 'キリン神！' : score >= 15 ? 'すごすぎ！' : score >= 10 ? '上手！' : '次はもっと！'}
+          </p>
         </div>
       )}
 
       {/* 操作説明 */}
-      <div className="mt-6 bg-white rounded-xl p-4 shadow-md w-full max-w-md">
-        <h3 className="font-semibold text-gray-700 mb-2">🎮 操作方法</h3>
-        <div className="text-sm text-gray-600 space-y-1">
-          <p>• <kbd className="px-2 py-1 bg-gray-200 rounded">矢印キー</kbd> または <kbd className="px-2 py-1 bg-gray-200 rounded">WASD</kbd>: キリンを移動</p>
-          <p>• <kbd className="px-2 py-1 bg-gray-200 rounded">スペース</kbd>: 一時停止/再開</p>
-          <p>• 葉っぱを集めてスコアアップ！</p>
-          <p>• 制限時間: {GAME_CONFIG.GAME_DURATION}秒</p>
-        </div>
+      <div className="mt-8 bg-white/90 backdrop-blur rounded-2xl p-6 shadow-xl w-full">
+        <h3 className="font-bold text-xl text-gray-800 mb-3">操作方法</h3>
+        <ul className="space-y-2 text-gray-700">
+          <li>• 矢印キー or WASD : 移動</li>
+          <li>• スペース : 一時停止 / 再開</li>
+          <li>• 葉っぱをたくさん集めてハイスコアを狙おう！</li>
+        </ul>
       </div>
+
+      <style jsx>{`
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow { animation: spin-slow 4s linear infinite; }
+        .btn-primary { @apply bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transform hover:scale-110 transition-all; }
+        .btn-blue { @apply bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transform hover:scale-110 transition-all; }
+        .btn-gray { @apply bg-gray-600 hover:bg-gray-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transform hover:scale-110 transition-all; }
+      `}</style>
     </div>
   );
 };
