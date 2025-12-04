@@ -1,232 +1,275 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Star, RotateCcw, Play, Pause } from 'lucide-react';
 
-const giraffeFacts = [
-  { icon: "😴", title: "睡眠", text: "キリンの睡眠時間は1日たったの20分〜2時間程度です。" },
-  { icon: "🏃‍♂️", title: "スピード", text: "走ると時速約60kmのスピードに達します。" },
-  { icon: "🦴", title: "首の骨", text: "首の骨の数は人間と同じ7個です。" },
-  { icon: "👨‍👩‍👧", title: "社会性", text: "群れで生活し、時には50頭以上の大きな群れをつくります。" },
-  { icon: "🌍", title: "保全状況", text: "IUCNレッドリストでは「危急種（Vulnerable）」に指定されています。" },
-];
+interface Position {
+  x: number;
+  y: number;
+}
 
-const externalLinks = [
-  { href: "https://ja.wikipedia.org/wiki/%E3%82%AD%E3%83%AA%E3%83%B3", text: "Wikipedia: キリン" },
-  { href: "https://www.wwf.or.jp/activities/basicinfo/3849.html", text: "WWF: キリン保護" },
-  { href: "https://www.ueno-zoo.jp/animals/mammal/giraffe", text: "上野動物園: キリン" },
-];
+const GAME_CONFIG = {
+  AREA: { width: 400, height: 384 },
+  GIRAFFE_SIZE: 48,
+  LEAF_SIZE: 32,
+  COLLISION_DISTANCE: 40,
+  MOVEMENT_SPEED: 18,
+  GAME_DURATION: 30,
+} as const;
 
-const ImageWithFallback = ({ src, alt, className, aspectRatio = "4/3" }) => {
-  const [imageStatus, setImageStatus] = useState('loading');
+const GiraffeGame = () => {
+  const [score, setScore] = useState(0);
+  const [bestScore, setBestScore] = useState(() => {
+    const saved = localStorage.getItem('giraffeBestScore');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [giraffePos, setGiraffePos] = useState<Position>({ x: 50, y: 50 });
+  const [leafPos, setLeafPos] = useState<Position | null>(null);
+  const [leafId, setLeafId] = useState(0);
+  const [isStarted, setIsStarted] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(GAME_CONFIG.GAME_DURATION);
+  const [showScoreAnim, setShowScoreAnim] = useState(false);
+  const startTimeRef = useRef<number>(0);
+
+  // ベストスコア保存
+  useEffect(() => {
+    if (score > bestScore) {
+      setBestScore(score);
+      localStorage.setItem('giraffeBestScore', score.toString());
+    }
+  }, [score, bestScore]);
+
+  // 正確なタイマー（ドリフトなし）
+  useEffect(() => {
+    if (!isStarted || isPaused || isGameOver) return;
+
+    startTimeRef.current = Date.now() - (GAME_CONFIG.GAME_DURATION - timeLeft) * 1000;
+
+    const tick = () => {
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const remaining = Math.max(0, GAME_CONFIG.GAME_DURATION - elapsed);
+      setTimeLeft(Math.ceil(remaining));
+
+      if (remaining > 0) {
+        requestAnimationFrame(tick);
+      } else {
+        setIsGameOver(true);
+      }
+    };
+
+    const id = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(id);
+  }, [isStarted, isPaused, isGameOver]);
+
+  // 葉っぱ生成
+  const generateLeaf = useCallback(() => {
+    const margin = 40;
+    const x = Math.random() * (GAME_CONFIG.AREA.width - GAME_CONFIG.LEAF_SIZE - margin * 2) + margin;
+    const y = Math.random() * (GAME_CONFIG.AREA.height - GAME_CONFIG.LEAF_SIZE - margin * 2) + margin;
+    setLeafPos({ x, y });
+    setLeafId(prev => prev + 1);
+  }, []);
+
+  // 衝突判定（安定化したuseCallback）
+  const checkCollision = useCallback((pos: Position) => {
+    if (!leafPos) return;
+
+    const dx = pos.x + GAME_CONFIG.GIRAFFE_SIZE / 2 - (leafPos.x + GAME_CONFIG.LEAF_SIZE / 2);
+    const dy = pos.y + GAME_CONFIG.GIRAFFE_SIZE / 2 - (leafPos.y + GAME_CONFIG.LEAF_SIZE / 2);
+    const distance = Math.hypot(dx, dy);
+
+    if (distance < GAME_CONFIG.COLLISION_DISTANCE) {
+      setScore(s => s + 1);
+      setShowScoreAnim(true);
+      setTimeout(() => setShowScoreAnim(false), 600);
+      generateLeaf();
+    }
+  }, [leafPos, generateLeaf]);
+
+  // キーボード操作（依存配列完全安定化）
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (!isStarted || isGameOver || isPaused) return;
+      if (e.key === ' ') {
+        e.preventDefault();
+        setIsPaused(p => !p);
+        return;
+      }
+
+      const move = { ...giraffePos };
+      const speed = GAME_CONFIG.MOVEMENT_SPEED;
+
+      switch (e.key) {
+        case 'ArrowUp': case 'w': case 'W':
+          move.y = Math.max(0, move.y - speed); break;
+        case 'ArrowDown': case 's': case 'S':
+          move.y = Math.min(GAME_CONFIG.AREA.height - GAME_CONFIG.GIRAFFE_SIZE, move.y + speed); break;
+        case 'ArrowLeft': case 'a': case 'A':
+          move.x = Math.max(0, move.x - speed); break;
+        case 'ArrowRight': case 'd': case 'D':
+          move.x = Math.min(GAME_CONFIG.AREA.width - GAME_CONFIG.GIRAFFE_SIZE, move.x + speed); break;
+        default: return;
+      }
+
+      setGiraffePos(move);
+      checkCollision(move);
+    };
+
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [giraffePos, isStarted, isGameOver, isPaused, checkCollision]);
+
+  const startGame = () => {
+    setIsStarted(true);
+    setIsGameOver(false);
+    setIsPaused(false);
+    setScore(0);
+    setTimeLeft(GAME_CONFIG.GAME_DURATION);
+    setGiraffePos({ x: 100, y: 160 });
+    generateLeaf();
+  };
 
   return (
-    <div className={`relative ${className}`} style={{ aspectRatio }}>
-      {imageStatus === 'loading' && (
-        <div className="absolute inset-0 bg-gradient-to-r from-amber-100 via-amber-200 to-amber-100 animate-pulse flex items-center justify-center">
-          <div className="text-amber-600 text-sm font-medium">読み込み中...</div>
-        </div>
-      )}
-      
-      {imageStatus === 'error' && (
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-orange-50 flex flex-col items-center justify-center p-4">
-          <div className="text-6xl mb-3">🦒</div>
-          <p className="text-amber-700 text-sm text-center">画像を読み込めませんでした</p>
-        </div>
-      )}
-      
-      <img 
-        src={src}
-        alt={alt}
-        className={`w-full h-full object-cover transition-opacity duration-500 ${
-          imageStatus === 'loaded' ? 'opacity-100' : 'opacity-0'
-        }`}
-        onLoad={() => setImageStatus('loaded')}
-        onError={() => setImageStatus('error')}
-        loading="lazy"
-      />
-    </div>
-  );
-};
+    <div className="flex flex-col items-center p-8 max-w-2xl mx-auto bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 rounded-3xl shadow-2xl">
+      <header className="text-center mb-8">
+        <h1 className="text-5xl font-bold text-green-800 mb-3 flex items-center justify-center gap-3">
+          キリンの葉っぱ大冒険
+        </h1>
+        <p className="text-green-700 text-lg">矢印キー or WASD でキリンを動かして、葉っぱをたくさん集めよう！</p>
+      </header>
 
-const FactCard = ({ fact }) => (
-  <article className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 text-center">
-    <div className="text-4xl mb-3" role="img" aria-label={fact.title}>
-      {fact.icon}
-    </div>
-    <h3 className="text-lg font-semibold text-gray-800 mb-2">{fact.title}</h3>
-    <p className="text-gray-600 text-sm leading-relaxed">{fact.text}</p>
-  </article>
-);
-
-const GiraffePage = () => {
-  const [isMainImageHovered, setIsMainImageHovered] = useState(false);
-
-  return (
-    <main className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 py-12 px-4">
-      <div className="max-w-5xl mx-auto">
-        {/* ヘッダー */}
-        <header className="text-center mb-12 animate-fadeIn">
-          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent mb-4 tracking-tight">
-            🦒 Beautiful Giraffe
-          </h1>
-          <p className="text-lg md:text-xl text-amber-700 max-w-2xl mx-auto leading-relaxed">
-            自然界で最も優雅で美しい生き物、キリンの魅力を発見しよう
+      {/* スコアボード */}
+      <div className="grid grid-cols-3 gap-6 w-full mb-8 bg-white/80 backdrop-blur rounded-2xl p-6 shadow-xl">
+        <div className="text-center">
+          <p className="text-gray-600 text-sm">現在のスコア</p>
+          <p className={`text-4xl font-bold transition-all duration-300 ${showScoreAnim ? 'scale-150 text-yellow-500' : 'text-green-700'}`}>
+            {score}
           </p>
-        </header>
+        </div>
+        <div className="text-center">
+          <p className="text-gray-600 text-sm">残り時間</p>
+          <p className={`text-4xl font-bold ${timeLeft <= 10 ? 'text-red-600 animate-pulse' : 'text-blue-700'}`}>
+            {timeLeft}s
+          </p>
+        </div>
+        <div className="text-center">
+          <p className="text-gray-600 text-sm flex items-center justify-center gap-1">
+            <Star className="text-yellow-500" /> ベスト
+          </p>
+          <p className="text-4xl font-bold text-purple-700">{bestScore}</p>
+        </div>
+      </div>
 
-        {/* メイン画像セクション */}
-        <section 
-          className="relative bg-white rounded-2xl shadow-2xl overflow-hidden mb-12 transform transition-all duration-300 hover:shadow-3xl"
-          onMouseEnter={() => setIsMainImageHovered(true)}
-          onMouseLeave={() => setIsMainImageHovered(false)}
-          aria-label="キリンのメイン画像"
+      {/* コントロール */}
+      <div className="flex gap-4 mb-8">
+        {!isStarted || isGameOver ? (
+          <button onClick={startGame} className="btn-primary">
+            <Play size={24} /> ゲームスタート
+          </button>
+        ) : (
+          <button onClick={() => setIsPaused(p => !p)} className="btn-blue">
+            {isPaused ? <Play size={24} /> : <Pause size={24} />}
+            {isPaused ? '再開' : '一時停止'}
+          </button>
+        )}
+        <button onClick={startGame} className="btn-gray">
+          <RotateCcw size={24} /> リスタート
+        </button>
+      </div>
+
+      {/* ゲームエリア */}
+      <div className="relative">
+        <div
+          className={`relative bg-gradient-to-br from-sky-200 to-green-300 rounded-3xl border-8 border-green-600 shadow-2xl overflow-hidden transition-opacity ${
+            !isStarted ? 'opacity-60' : isPaused ? 'opacity-50' : ''
+          }`}
+          style={{ width: GAME_CONFIG.AREA.width, height: GAME_CONFIG.AREA.height }}
         >
-          <div className="relative overflow-hidden">
-            <ImageWithFallback
-              src="/api/placeholder/1200/800"
-              alt="サバンナの自然環境で優雅に立つキリン。特徴的な斑点模様と長い首が印象的"
-              className={`transition-transform duration-700 ${
-                isMainImageHovered ? 'scale-110' : 'scale-100'
-              }`}
-            />
-            <div className={`absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent transition-opacity duration-300 ${
-              isMainImageHovered ? 'opacity-100' : 'opacity-0'
-            }`} />
+          {/* 背景草 */}
+          <div className="absolute inset-0 opacity-30">
+            {[...Array(12)].map((_, i) => (
+              <div key={i} className="absolute text-3xl" style={{
+                left: `${(i % 5) * 80 + 30}px`,
+                top: `${Math.floor(i / 5) * 120 + 60}px`,
+              }}>🌱</div>
+            ))}
           </div>
-          
-          <div className="p-8 bg-gradient-to-br from-white to-amber-50">
-            <h2 className="text-3xl font-bold text-gray-800 mb-4">
-              地球上で最も背の高い哺乳類
-            </h2>
-            <p className="text-gray-700 leading-relaxed mb-5 text-lg">
-              キリンは最大5.5メートルの高さに達する驚異的な生き物です。
-              その美しい斑点模様は、人間の指紋と同じように個体ごとに異なります。
-              アフリカのサバンナで優雅に暮らすキリンは、自然界の奇跡の一つです。
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <span className="bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-sm font-semibold shadow-sm">
-                🌿 野生動物
-              </span>
-              <span className="bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-semibold shadow-sm">
-                🌍 アフリカサバンナ
-              </span>
-              <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-semibold shadow-sm">
-                🥬 草食動物
-              </span>
+
+          {/* キリン */}
+          <div
+            className="absolute transition-all duration-150 ease-out"
+            style={{
+              left: giraffePos.x,
+              top: giraffePos.y,
+              width: GAME_CONFIG.GIRAFFE_SIZE,
+              height: GAME_CONFIG.GIRAFFE_SIZE,
+            }}
+          >
+            <div className="text-6xl drop-shadow-lg">Giraffe</div>
+          </div>
+
+          {/* 葉っぱ */}
+          {leafPos && (
+            <div
+              key={leafId}
+              className="absolute animate-spin-slow"
+              style={{
+                left: leafPos.x,
+                top: leafPos.y,
+                width: GAME_CONFIG.LEAF_SIZE,
+                height: GAME_CONFIG.LEAF_SIZE,
+              }}
+            >
+              <div className="text-4xl drop-shadow-md">Leaf</div>
             </div>
-          </div>
-        </section>
+          )}
 
-        {/* 画像ギャラリー */}
-        <section className="mb-12" aria-labelledby="gallery-heading">
-          <h2 id="gallery-heading" className="text-2xl font-bold text-amber-800 mb-6 flex items-center gap-2">
-            <span className="text-3xl">🖼️</span>
-            キリンのフォトギャラリー
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { id: 1, alt: "草原で親子の絆を深めるキリン" },
-              { id: 2, alt: "夕暮れのサバンナを歩く美しいキリンのシルエット" },
-              { id: 3, alt: "木の葉を器用に食べるキリンの様子" },
-            ].map((img) => (
-              <div 
-                key={img.id}
-                className="group rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
-              >
-                <ImageWithFallback
-                  src={`/api/placeholder/800/600?img=${img.id}`}
-                  alt={img.alt}
-                  className="group-hover:scale-110 transition-transform duration-500"
-                  aspectRatio="4/3"
-                />
+          {/* 一時停止オーバーレイ */}
+          {isPaused && (
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-3xl">
+              <div className="text-white text-center">
+                <Pause size={80} className="mx-auto mb-4" />
+                <p className="text-3xl font-bold">一時停止中</p>
               </div>
-            ))}
-          </div>
-        </section>
+            </div>
+          )}
+        </div>
+      </div>
 
-        {/* 豆知識 */}
-        <section className="mb-12" aria-labelledby="facts-heading">
-          <h2 id="facts-heading" className="text-2xl font-bold text-amber-800 mb-6 flex items-center gap-2">
-            <span className="text-3xl">🦒</span>
-            キリン豆知識
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {giraffeFacts.map((fact, idx) => (
-              <FactCard key={idx} fact={fact} />
-            ))}
-          </div>
-        </section>
-
-        {/* 保護活動への呼びかけ */}
-        <section className="mb-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-8 text-white shadow-xl">
-          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-            <span className="text-3xl">💚</span>
-            キリンを守ろう
-          </h2>
-          <p className="text-lg leading-relaxed mb-4">
-            キリンは生息地の減少や密猟により、個体数が減少しています。
-            私たちにできることから始めて、この美しい生き物を未来に残しましょう。
+      {/* ゲームオーバー */}
+      {isGameOver && (
+        <div className="mt-8 text-center bg-white rounded-3xl p-10 shadow-2xl border-4 border-red-300">
+          <h2 className="text-5xl font-bold text-red-600 mb-6">ゲームオーバー！</h2>
+          <p className="text-3xl mb-4">最終スコア: <span className="text-green-600 font-bold">{score}</span></p>
+          {score > bestScore && <p className="text-4xl text-yellow-500 font-bold animate-bounce">新記録達成！</p>}
+          <p className="text-2xl mt-4">
+            {score >= 20 ? 'キリン神！' : score >= 15 ? 'すごすぎ！' : score >= 10 ? '上手！' : '次はもっと！'}
           </p>
-          <div className="flex flex-wrap gap-3">
-            <a 
-              href="https://www.wwf.or.jp"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-white text-orange-600 px-6 py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors shadow-md"
-            >
-              保護活動について
-            </a>
-            <a 
-              href="https://www.worldwildlife.org/species/giraffe"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors shadow-md border-2 border-white"
-            >
-              詳しく知る
-            </a>
-          </div>
-        </section>
+        </div>
+      )}
 
-        {/* 外部リンク */}
-        <section aria-labelledby="links-heading">
-          <h2 id="links-heading" className="text-2xl font-bold text-amber-800 mb-6 flex items-center gap-2">
-            <span className="text-3xl">🔗</span>
-            もっと知りたい方へ
-          </h2>
-          <nav className="bg-white rounded-xl p-6 shadow-lg">
-            <ul className="space-y-3">
-              {externalLinks.map((link, idx) => (
-                <li key={idx}>
-                  <a 
-                    href={link.href} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="flex items-center gap-3 text-blue-600 hover:text-blue-800 font-medium transition-colors group"
-                  >
-                    <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
-                    <span className="group-hover:underline">{link.text}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </section>
-
-        {/* フッター */}
-        <footer className="mt-12 text-center text-amber-700 text-sm">
-          <p>キリンの美しさと魅力を多くの人に伝え、保護活動を応援しましょう 🦒💛</p>
-        </footer>
+      {/* 操作説明 */}
+      <div className="mt-8 bg-white/90 backdrop-blur rounded-2xl p-6 shadow-xl w-full">
+        <h3 className="font-bold text-xl text-gray-800 mb-3">操作方法</h3>
+        <ul className="space-y-2 text-gray-700">
+          <li>• 矢印キー or WASD : 移動</li>
+          <li>• スペース : 一時停止 / 再開</li>
+          <li>• 葉っぱをたくさん集めてハイスコアを狙おう！</li>
+        </ul>
       </div>
 
       <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
-        .animate-fadeIn {
-          animation: fadeIn 0.8s ease-out;
-        }
+        .animate-spin-slow { animation: spin-slow 4s linear infinite; }
+        .btn-primary { @apply bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transform hover:scale-110 transition-all; }
+        .btn-blue { @apply bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transform hover:scale-110 transition-all; }
+        .btn-gray { @apply bg-gray-600 hover:bg-gray-700 text-white font-bold py-4 px-8 rounded-2xl shadow-lg transform hover:scale-110 transition-all; }
       `}</style>
-    </main>
+    </div>
   );
 };
 
-export default GiraffePage;
+export default GiraffeGame;
