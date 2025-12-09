@@ -1,0 +1,656 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Users, MessageCircle, Target, Timer, Shuffle, ChevronRight, Star, Trophy, RefreshCw, Heart, Zap, Coffee, Code, Terminal, Database, Cloud, Cpu } from 'lucide-react';
+
+const topics = [
+  { 
+    category: '技術スタック', 
+    icon: '💻',
+    questions: [
+      'メインで使っている言語は何ですか？',
+      'エディタ/IDE何使ってます？',
+      'フロントエンド派？バックエンド派？',
+      '最近触って面白かった技術は？',
+      'AWS派？GCP派？Azure派？',
+      'Docker使ってます？Kubernetes触ってます？',
+      'TypeScript派？JavaScript派？',
+      'どんなフレームワーク使ってます？',
+      'CI/CDは何使ってます？',
+      'テストどのくらい書いてます？'
+    ] 
+  },
+  { 
+    category: 'キャリア', 
+    icon: '🚀',
+    questions: [
+      'エンジニア歴どのくらいですか？',
+      'どんな経緯でエンジニアになりました？',
+      '前職は何をされてましたか？',
+      'SIer出身？Web系出身？',
+      'マネジメントに興味あります？',
+      'スタートアップ経験あります？',
+      '副業やフリーランスしてます？',
+      '技術ブログ書いてます？',
+      'OSS活動してます？',
+      '転職何回くらいしてます？'
+    ] 
+  },
+  { 
+    category: '開発あるある', 
+    icon: '🔥',
+    questions: [
+      '本番環境でやらかしたことあります？',
+      '一番長いデバッグ何時間でした？',
+      '締め切り前の修羅場エピソードは？',
+      'レビューで一番学んだことは？',
+      'レガシーコードと戦った話あります？',
+      '「動くからヨシ！」派？リファクタ派？',
+      'ドキュメント書く派？書かない派？',
+      'ペアプロ/モブプロしてます？',
+      'コードレビュー厳しめ？優しめ？',
+      '技術的負債どう向き合ってます？'
+    ] 
+  },
+  { 
+    category: '働き方', 
+    icon: '🏠',
+    questions: [
+      'フルリモート？出社？ハイブリッド？',
+      '朝型エンジニア？夜型エンジニア？',
+      '集中するときのルーティンは？',
+      'ミーティング多い派？少ない派？',
+      'Slack通知どう管理してます？',
+      '1on1ってどんな感じでやってます？',
+      'アジャイル？ウォーターフォール？',
+      'タスク管理何使ってます？',
+      '見積もり得意ですか？',
+      'チーム何人くらいですか？'
+    ] 
+  },
+  { 
+    category: '学習・成長', 
+    icon: '📚',
+    questions: [
+      '最近読んで良かった技術書は？',
+      '勉強会やカンファレンス行きます？',
+      '資格って取ってます？',
+      'Udemy派？書籍派？公式ドキュメント派？',
+      '新しい技術のキャッチアップどうしてます？',
+      '個人開発してます？',
+      '技術情報どこで収集してます？',
+      'メンターいます？メンティーいます？',
+      '英語どのくらい使います？',
+      'ChatGPT/Copilot活用してます？'
+    ] 
+  },
+  { 
+    category: 'プライベート', 
+    icon: '🎮',
+    questions: [
+      '趣味でもコード書きます？',
+      'ゲーム何やってます？',
+      '自作キーボード興味あります？',
+      'デスク環境こだわってます？',
+      'モニター何枚派？',
+      '機械式キーボード派？',
+      '休日何してます？',
+      'インドア派？アウトドア派？',
+      '運動習慣あります？',
+      'エナジードリンク派？コーヒー派？'
+    ] 
+  },
+];
+
+const missions = [
+  { id: 1, text: '同じ言語を使っている人を見つける', points: 10, icon: '👨‍💻' },
+  { id: 2, text: '技術スタックについて3分以上話す', points: 15, icon: '🔥' },
+  { id: 3, text: 'GitHubアカウントを交換する', points: 20, icon: '🐙' },
+  { id: 4, text: '相手のおすすめ技術書を聞く', points: 10, icon: '📚' },
+  { id: 5, text: 'Twitter/Xアカウントを交換する', points: 15, icon: '🐦' },
+  { id: 6, text: '相手の本番障害エピソードを聞く', points: 20, icon: '💥' },
+  { id: 7, text: '転職/キャリアの話をする', points: 15, icon: '🚀' },
+  { id: 8, text: '次の勉強会の約束をする', points: 25, icon: '📅' },
+  { id: 9, text: 'LT登壇経験者と話す', points: 15, icon: '🎤' },
+  { id: 10, text: '違う技術領域の人と話す', points: 20, icon: '🌐' },
+  { id: 11, text: '相手にOSSを紹介してもらう', points: 15, icon: '⭐' },
+  { id: 12, text: '技術の愚痴で盛り上がる', points: 10, icon: '😤' },
+];
+
+const iceBreakers = [
+  '今日のイベント、どんな経緯で参加されました？',
+  '普段どんな技術使ってますか？',
+  'お仕事はどんな領域ですか？',
+  '最近面白かった技術ってあります？',
+  'リモートワークされてますか？',
+  'この辺の勉強会よく来られます？',
+  '今日の発表で気になったのありました？',
+  'エンジニア歴どのくらいですか？',
+];
+
+const techDebates = [
+  { topic: 'スペース vs タブ', optionA: 'スペース派', optionB: 'タブ派' },
+  { topic: 'Vim vs Emacs vs VSCode', optionA: 'Vim派', optionB: 'VSCode派' },
+  { topic: 'Mac vs Windows vs Linux', optionA: 'Mac派', optionB: 'Linux派' },
+  { topic: 'モノリス vs マイクロサービス', optionA: 'モノリス派', optionB: 'マイクロ派' },
+  { topic: 'REST vs GraphQL', optionA: 'REST派', optionB: 'GraphQL派' },
+  { topic: 'SQL vs NoSQL', optionA: 'SQL派', optionB: 'NoSQL派' },
+  { topic: 'OOP vs 関数型', optionA: 'OOP派', optionB: '関数型派' },
+  { topic: '静的型付け vs 動的型付け', optionA: '静的派', optionB: '動的派' },
+  { topic: 'フロントエンド vs バックエンド', optionA: 'フロント派', optionB: 'バック派' },
+  { topic: '新技術 vs 枯れた技術', optionA: '新技術派', optionB: '枯れた技術派' },
+];
+
+export default function EngineerBocchiBreaker() {
+  const [activeTab, setActiveTab] = useState('home');
+  const [currentTopic, setCurrentTopic] = useState(null);
+  const [currentMission, setCurrentMission] = useState(null);
+  const [completedMissions, setCompletedMissions] = useState([]);
+  const [score, setScore] = useState(0);
+  const [timerActive, setTimerActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(180);
+  const [timerDuration, setTimerDuration] = useState(180);
+  const [showIceBreaker, setShowIceBreaker] = useState(false);
+  const [currentIceBreaker, setCurrentIceBreaker] = useState('');
+  const [conversationCount, setConversationCount] = useState(0);
+  const [currentDebate, setCurrentDebate] = useState(null);
+  const [showDebate, setShowDebate] = useState(false);
+
+  useEffect(() => {
+    let interval;
+    if (timerActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0) {
+      setTimerActive(false);
+      setConversationCount((prev) => prev + 1);
+    }
+    return () => clearInterval(interval);
+  }, [timerActive, timeLeft]);
+
+  const getRandomTopic = useCallback(() => {
+    const categoryIndex = Math.floor(Math.random() * topics.length);
+    const category = topics[categoryIndex];
+    const questionIndex = Math.floor(Math.random() * category.questions.length);
+    setCurrentTopic({
+      category: category.category,
+      icon: category.icon,
+      question: category.questions[questionIndex],
+    });
+  }, []);
+
+  const getRandomMission = useCallback(() => {
+    const availableMissions = missions.filter(
+      (m) => !completedMissions.includes(m.id)
+    );
+    if (availableMissions.length > 0) {
+      const randomIndex = Math.floor(Math.random() * availableMissions.length);
+      setCurrentMission(availableMissions[randomIndex]);
+    } else {
+      setCurrentMission(null);
+    }
+  }, [completedMissions]);
+
+  const completeMission = () => {
+    if (currentMission) {
+      setCompletedMissions([...completedMissions, currentMission.id]);
+      setScore(score + currentMission.points);
+      getRandomMission();
+    }
+  };
+
+  const startTimer = () => {
+    setTimeLeft(timerDuration);
+    setTimerActive(true);
+  };
+
+  const resetTimer = () => {
+    setTimerActive(false);
+    setTimeLeft(timerDuration);
+  };
+
+  const getRandomIceBreaker = () => {
+    const randomIndex = Math.floor(Math.random() * iceBreakers.length);
+    setCurrentIceBreaker(iceBreakers[randomIndex]);
+    setShowIceBreaker(true);
+  };
+
+  const getRandomDebate = () => {
+    const randomIndex = Math.floor(Math.random() * techDebates.length);
+    setCurrentDebate(techDebates[randomIndex]);
+    setShowDebate(true);
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getLevel = () => {
+    if (score >= 150) return { name: '神エンジニア', color: 'text-yellow-500', icon: '👑' };
+    if (score >= 100) return { name: 'シニアコミュ力', color: 'text-purple-500', icon: '⭐' };
+    if (score >= 50) return { name: 'ミドルコミュ力', color: 'text-blue-500', icon: '🚀' };
+    if (score >= 20) return { name: 'ジュニアコミュ力', color: 'text-green-500', icon: '🌱' };
+    return { name: 'コミュ力インターン', color: 'text-gray-500', icon: '🐣' };
+  };
+
+  const TabButton = ({ id, icon: Icon, label }) => (
+    <button
+      onClick={() => setActiveTab(id)}
+      className={`flex flex-col items-center p-2 flex-1 transition-all ${
+        activeTab === id
+          ? 'text-emerald-600 border-b-2 border-emerald-600'
+          : 'text-gray-400 hover:text-gray-600'
+      }`}
+    >
+      <Icon size={20} />
+      <span className="text-xs mt-1">{label}</span>
+    </button>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="max-w-md mx-auto bg-gray-900 min-h-screen shadow-xl border-x border-gray-700">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold flex items-center gap-2">
+                <Terminal className="text-emerald-200" size={24} />
+                エンジニアぼっちBreaker
+              </h1>
+              <p className="text-emerald-200 text-sm font-mono">// 懇親会をデバッグしよう</p>
+            </div>
+            <div className="text-right">
+              <div className="flex items-center gap-1">
+                <span className="text-lg">{getLevel().icon}</span>
+                <span className="font-bold font-mono">{score} pt</span>
+              </div>
+              <p className={`text-xs ${getLevel().color}`}>{getLevel().name}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 pb-20">
+          {activeTab === 'home' && (
+            <div className="space-y-4">
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 text-center">
+                  <Users className="mx-auto text-emerald-400 mb-1" size={24} />
+                  <p className="text-2xl font-bold text-white font-mono">{conversationCount}</p>
+                  <p className="text-xs text-gray-400">会話した人</p>
+                </div>
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 text-center">
+                  <Target className="mx-auto text-amber-400 mb-1" size={24} />
+                  <p className="text-2xl font-bold text-white font-mono">{completedMissions.length}</p>
+                  <p className="text-xs text-gray-400">達成ミッション</p>
+                </div>
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 text-center">
+                  <Trophy className="mx-auto text-purple-400 mb-1" size={24} />
+                  <p className="text-2xl font-bold text-white font-mono">{score}</p>
+                  <p className="text-xs text-gray-400">スコア</p>
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="space-y-3">
+                <button
+                  onClick={getRandomIceBreaker}
+                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl p-4 flex items-center justify-between shadow-lg hover:shadow-emerald-500/20 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Coffee className="text-emerald-200" size={28} />
+                    <div className="text-left">
+                      <p className="font-bold">話しかけるきっかけ</p>
+                      <p className="text-emerald-200 text-sm">console.log("こんにちは")</p>
+                    </div>
+                  </div>
+                  <ChevronRight />
+                </button>
+
+                <button
+                  onClick={() => { getRandomTopic(); setActiveTab('topics'); }}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-4 flex items-center justify-between shadow-lg hover:shadow-blue-500/20 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Code className="text-blue-200" size={28} />
+                    <div className="text-left">
+                      <p className="font-bold">技術トークカード</p>
+                      <p className="text-blue-200 text-sm">ランダムで話題を生成</p>
+                    </div>
+                  </div>
+                  <ChevronRight />
+                </button>
+
+                <button
+                  onClick={getRandomDebate}
+                  className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl p-4 flex items-center justify-between shadow-lg hover:shadow-orange-500/20 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Zap className="text-orange-200" size={28} />
+                    <div className="text-left">
+                      <p className="font-bold">技術論争ガチャ</p>
+                      <p className="text-orange-200 text-sm">あなたはどっち派？</p>
+                    </div>
+                  </div>
+                  <ChevronRight />
+                </button>
+
+                <button
+                  onClick={() => { getRandomMission(); setActiveTab('mission'); }}
+                  className="w-full bg-gradient-to-r from-amber-600 to-yellow-600 text-white rounded-xl p-4 flex items-center justify-between shadow-lg hover:shadow-amber-500/20 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <Target className="text-amber-200" size={28} />
+                    <div className="text-left">
+                      <p className="font-bold">ミッションに挑戦</p>
+                      <p className="text-amber-200 text-sm">実績を解除しよう</p>
+                    </div>
+                  </div>
+                  <ChevronRight />
+                </button>
+              </div>
+
+              {/* Ice Breaker Modal */}
+              {showIceBreaker && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+                  <div className="bg-gray-800 border border-gray-600 rounded-2xl p-6 max-w-sm w-full">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-emerald-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Terminal className="text-emerald-400" size={32} />
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-2">実行コマンド</h3>
+                      <div className="bg-gray-900 rounded-xl p-4 text-left font-mono text-sm">
+                        <p className="text-gray-500">$ speak --init</p>
+                        <p className="text-emerald-400 mt-2">"{currentIceBreaker}"</p>
+                      </div>
+                      <div className="flex gap-2 mt-4">
+                        <button
+                          onClick={getRandomIceBreaker}
+                          className="flex-1 bg-gray-700 text-gray-200 rounded-xl py-3 font-medium flex items-center justify-center gap-2 hover:bg-gray-600"
+                        >
+                          <RefreshCw size={18} /> 再生成
+                        </button>
+                        <button
+                          onClick={() => setShowIceBreaker(false)}
+                          className="flex-1 bg-emerald-600 text-white rounded-xl py-3 font-medium hover:bg-emerald-500"
+                        >
+                          実行する
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tech Debate Modal */}
+              {showDebate && currentDebate && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+                  <div className="bg-gray-800 border border-gray-600 rounded-2xl p-6 max-w-sm w-full">
+                    <div className="text-center">
+                      <div className="text-4xl mb-3">⚔️</div>
+                      <h3 className="text-lg font-bold text-white mb-4">{currentDebate.topic}</h3>
+                      <div className="flex gap-3 mb-4">
+                        <div className="flex-1 bg-blue-900/50 border border-blue-500 rounded-xl p-4">
+                          <p className="text-blue-400 font-bold">{currentDebate.optionA}</p>
+                        </div>
+                        <div className="flex items-center text-gray-500 font-bold">VS</div>
+                        <div className="flex-1 bg-red-900/50 border border-red-500 rounded-xl p-4">
+                          <p className="text-red-400 font-bold">{currentDebate.optionB}</p>
+                        </div>
+                      </div>
+                      <p className="text-gray-400 text-sm mb-4">
+                        相手に聞いてみよう！意外な共通点や違いが見つかるかも
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={getRandomDebate}
+                          className="flex-1 bg-gray-700 text-gray-200 rounded-xl py-3 font-medium flex items-center justify-center gap-2 hover:bg-gray-600"
+                        >
+                          <RefreshCw size={18} /> 別のお題
+                        </button>
+                        <button
+                          onClick={() => setShowDebate(false)}
+                          className="flex-1 bg-orange-600 text-white rounded-xl py-3 font-medium hover:bg-orange-500"
+                        >
+                          聞いてくる！
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tips */}
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+                <h3 className="font-bold text-emerald-400 flex items-center gap-2 mb-2 font-mono">
+                  <span className="text-gray-500">//</span> 今日のTips
+                </h3>
+                <p className="text-gray-300 text-sm">
+                  「どんな技術スタック使ってますか？」は最強のアイスブレイク。同じ言語使いが見つかると一気に盛り上がる！
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'topics' && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
+                <Code size={20} className="text-emerald-400" />
+                技術トークカード
+              </h2>
+              
+              {currentTopic ? (
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-emerald-500/50 rounded-2xl p-6 shadow-lg shadow-emerald-500/10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-2xl">{currentTopic.icon}</span>
+                    <span className="bg-emerald-900/50 text-emerald-400 px-3 py-1 rounded-full text-sm font-mono">
+                      {currentTopic.category}
+                    </span>
+                  </div>
+                  <p className="text-xl font-bold text-white leading-relaxed">
+                    {currentTopic.question}
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6 text-center text-gray-500">
+                  <Code size={48} className="mx-auto mb-2 opacity-50" />
+                  <p>カードを生成してください</p>
+                </div>
+              )}
+
+              <button
+                onClick={getRandomTopic}
+                className="w-full bg-emerald-600 text-white rounded-xl py-4 font-bold flex items-center justify-center gap-2 hover:bg-emerald-500 transition-colors"
+              >
+                <Shuffle size={20} />
+                {currentTopic ? 'git pull --random' : 'カードを生成'}
+              </button>
+
+              {/* Category Buttons */}
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500 font-mono">// カテゴリから選択</p>
+                <div className="flex flex-wrap gap-2">
+                  {topics.map((topic) => (
+                    <button
+                      key={topic.category}
+                      onClick={() => {
+                        const randomIndex = Math.floor(Math.random() * topic.questions.length);
+                        setCurrentTopic({
+                          category: topic.category,
+                          icon: topic.icon,
+                          question: topic.questions[randomIndex],
+                        });
+                      }}
+                      className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-300 hover:border-emerald-500 hover:text-emerald-400 transition-colors flex items-center gap-1"
+                    >
+                      <span>{topic.icon}</span>
+                      {topic.category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'mission' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
+                  <Target size={20} className="text-amber-400" />
+                  ミッション
+                </h2>
+                <span className="text-sm text-gray-400 font-mono">
+                  {completedMissions.length}/{missions.length} complete
+                </span>
+              </div>
+
+              {currentMission ? (
+                <div className="bg-gradient-to-br from-amber-900/50 to-orange-900/50 border border-amber-500/50 rounded-2xl p-6 shadow-lg shadow-amber-500/10">
+                  <div className="text-4xl mb-3">{currentMission.icon}</div>
+                  <p className="text-xl font-bold text-white">{currentMission.text}</p>
+                  <div className="flex items-center gap-1 mt-3 text-amber-400">
+                    <Star size={16} />
+                    <span className="font-mono">{currentMission.points} points</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-800 border border-emerald-500 rounded-2xl p-6 text-center">
+                  <Trophy className="mx-auto text-emerald-400 mb-2" size={48} />
+                  <p className="text-emerald-400 font-bold">全ミッションコンプリート！🎉</p>
+                  <p className="text-gray-400 text-sm mt-1">あなたは立派なコミュ力エンジニアです</p>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={getRandomMission}
+                  className="flex-1 bg-gray-800 border border-gray-700 text-gray-300 rounded-xl py-3 font-medium flex items-center justify-center gap-2 hover:border-gray-500"
+                >
+                  <RefreshCw size={18} /> スキップ
+                </button>
+                <button
+                  onClick={completeMission}
+                  disabled={!currentMission}
+                  className="flex-1 bg-amber-600 text-white rounded-xl py-3 font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-amber-500"
+                >
+                  達成！✓
+                </button>
+              </div>
+
+              {/* Progress */}
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+                <p className="text-sm text-gray-500 mb-3 font-mono">// 実績一覧</p>
+                <div className="grid grid-cols-6 gap-2">
+                  {missions.map((mission) => (
+                    <div
+                      key={mission.id}
+                      className={`text-2xl text-center p-2 rounded-lg ${
+                        completedMissions.includes(mission.id) 
+                          ? 'bg-emerald-900/30 border border-emerald-500/50' 
+                          : 'bg-gray-900 opacity-40'
+                      }`}
+                      title={mission.text}
+                    >
+                      {mission.icon}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'timer' && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
+                <Timer size={20} className="text-cyan-400" />
+                会話タイマー
+              </h2>
+              <p className="text-gray-400 text-sm">
+                setTimeout()で次の会話へ移動するタイミングを設定
+              </p>
+
+              <div className="bg-gradient-to-br from-cyan-900/50 to-blue-900/50 border border-cyan-500/50 rounded-2xl p-8 text-center shadow-lg shadow-cyan-500/10">
+                <p className={`text-6xl font-bold font-mono ${
+                  timeLeft <= 30 && timerActive 
+                    ? 'animate-pulse text-red-400' 
+                    : 'text-white'
+                }`}>
+                  {formatTime(timeLeft)}
+                </p>
+                {timeLeft === 0 && (
+                  <div className="mt-3 text-cyan-300 animate-bounce">
+                    <p className="font-mono">⚡ clearInterval() - 次の人へ！</p>
+                  </div>
+                )}
+              </div>
+
+              {!timerActive ? (
+                <>
+                  <div className="space-y-2">
+                    <p className="text-sm text-gray-500 font-mono">// duration を選択</p>
+                    <div className="flex gap-2">
+                      {[60, 120, 180, 300].map((duration) => (
+                        <button
+                          key={duration}
+                          onClick={() => {
+                            setTimerDuration(duration);
+                            setTimeLeft(duration);
+                          }}
+                          className={`flex-1 py-3 rounded-xl font-mono font-medium transition-all ${
+                            timerDuration === duration
+                              ? 'bg-cyan-600 text-white border border-cyan-400'
+                              : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-500'
+                          }`}
+                        >
+                          {duration / 60}min
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <button
+                    onClick={startTimer}
+                    className="w-full bg-cyan-600 text-white rounded-xl py-4 font-bold font-mono hover:bg-cyan-500 transition-colors"
+                  >
+                    setInterval() 開始
+                  </button>
+                </>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setTimerActive(false)}
+                    className="flex-1 bg-gray-800 border border-gray-700 text-gray-300 rounded-xl py-3 font-mono font-medium hover:border-gray-500"
+                  >
+                    pause()
+                  </button>
+                  <button
+                    onClick={resetTimer}
+                    className="flex-1 bg-red-900/50 border border-red-500/50 text-red-400 rounded-xl py-3 font-mono font-medium hover:bg-red-900"
+                  >
+                    reset()
+                  </button>
+                </div>
+              )}
+
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+                <p className="text-sm text-gray-300">
+                  <span className="text-cyan-400">💡 Pro tip:</span> タイマーがあると「時間なので他の方ともお話ししてきますね」と自然に移動できる。エンジニア同士なら「タイムアウトしたので」で通じるかも？
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-gray-900 border-t border-gray-700 flex">
+          <TabButton id="home" icon={Terminal} label="Home" />
+          <TabButton id="topics" icon={Code} label="Topics" />
+          <TabButton id="mission" icon={Target} label="Mission" />
+          <TabButton id="timer" icon={Timer} label="Timer" />
+        </div>
+      </div>
+    </div>
+  );
+}

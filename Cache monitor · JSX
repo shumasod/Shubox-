@@ -1,0 +1,488 @@
+import React, { useState, useEffect } from 'react';
+import { Activity, Database, Zap, TrendingUp, AlertCircle, CheckCircle, Search, Filter, X } from 'lucide-react';
+
+export default function CacheMonitor() {
+  const [metrics, setMetrics] = useState({
+    status: 'connected',
+    clusterId: 'elasticache-cluster-01',
+    nodeType: 'cache.r6g.large',
+    engine: 'Redis 7.0',
+    uptime: 0,
+    memoryUsed: 0,
+    memoryTotal: 1024,
+    hitRate: 0,
+    missRate: 0,
+    operations: 0,
+    connections: 0,
+    responseTime: 0,
+    evictions: 0,
+    cpuUtilization: 0,
+    networkBytesIn: 0,
+    networkBytesOut: 0,
+    swapUsage: 0
+  });
+
+  const [history, setHistory] = useState({
+    hitRate: [],
+    responseTime: [],
+    memory: [],
+    cpu: [],
+    operations: []
+  });
+
+  const [metricsLog, setMetricsLog] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+
+  // シミュレーションデータの生成
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const timestamp = new Date();
+      const newMetrics = {
+        status: Math.random() > 0.95 ? 'warning' : 'connected',
+        clusterId: 'elasticache-cluster-01',
+        nodeType: 'cache.r6g.large',
+        engine: 'Redis 7.0',
+        uptime: metrics.uptime + 2,
+        memoryUsed: Math.min(metrics.memoryTotal, Math.max(200, metrics.memoryUsed + (Math.random() - 0.5) * 50)),
+        memoryTotal: 1024,
+        hitRate: Math.max(0, Math.min(100, 85 + (Math.random() - 0.5) * 10)),
+        missRate: Math.max(0, Math.min(100, 15 + (Math.random() - 0.5) * 10)),
+        operations: Math.floor(Math.random() * 10000) + 5000,
+        connections: Math.floor(Math.random() * 50) + 10,
+        responseTime: Math.max(0.1, Math.random() * 5),
+        evictions: Math.floor(Math.random() * 10),
+        cpuUtilization: Math.max(0, Math.min(100, 45 + (Math.random() - 0.5) * 20)),
+        networkBytesIn: Math.floor(Math.random() * 1000000) + 500000,
+        networkBytesOut: Math.floor(Math.random() * 1000000) + 500000,
+        swapUsage: Math.max(0, Math.random() * 50)
+      };
+
+      setMetrics(newMetrics);
+
+      // メトリクスログに追加（検索用）
+      const logEntry = {
+        timestamp: timestamp.toISOString(),
+        ...newMetrics
+      };
+      setMetricsLog(prev => [...prev.slice(-200), logEntry]); // 最新200件を保持
+
+      // 履歴データの更新(最新20件を保持)
+      setHistory(prev => ({
+        hitRate: [...prev.hitRate.slice(-19), newMetrics.hitRate],
+        responseTime: [...prev.responseTime.slice(-19), newMetrics.responseTime],
+        memory: [...prev.memory.slice(-19), (newMetrics.memoryUsed / newMetrics.memoryTotal) * 100],
+        cpu: [...prev.cpu.slice(-19), newMetrics.cpuUtilization],
+        operations: [...prev.operations.slice(-19), newMetrics.operations]
+      }));
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [metrics.uptime, metrics.memoryUsed, metrics.memoryTotal]);
+
+  const formatUptime = (seconds) => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${days}d ${hours}h ${minutes}m ${secs}s`;
+  };
+
+  // 検索とフィルタリング
+  const filteredMetrics = metricsLog.filter(log => {
+    // 日付範囲フィルター
+    if (dateRange.start && new Date(log.timestamp) < new Date(dateRange.start)) return false;
+    if (dateRange.end && new Date(log.timestamp) > new Date(dateRange.end)) return false;
+
+    // メトリクスタイプフィルター
+    if (filterType !== 'all') {
+      switch (filterType) {
+        case 'high-cpu':
+          if (log.cpuUtilization < 70) return false;
+          break;
+        case 'high-memory':
+          if ((log.memoryUsed / log.memoryTotal) * 100 < 80) return false;
+          break;
+        case 'low-hit-rate':
+          if (log.hitRate > 70) return false;
+          break;
+        case 'high-response-time':
+          if (log.responseTime < 3) return false;
+          break;
+      }
+    }
+
+    // テキスト検索
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        log.clusterId.toLowerCase().includes(query) ||
+        log.status.toLowerCase().includes(query) ||
+        log.timestamp.includes(query) ||
+        log.hitRate.toString().includes(query) ||
+        log.cpuUtilization.toString().includes(query) ||
+        log.memoryUsed.toString().includes(query) ||
+        log.operations.toString().includes(query)
+      );
+    }
+
+    return true;
+  });
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'connected': return 'text-green-600';
+      case 'warning': return 'text-yellow-600';
+      case 'error': return 'text-red-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'connected': return <CheckCircle className="w-5 h-5" />;
+      case 'warning': return <AlertCircle className="w-5 h-5" />;
+      case 'error': return <AlertCircle className="w-5 h-5" />;
+      default: return <Activity className="w-5 h-5" />;
+    }
+  };
+
+  const MetricCard = ({ title, value, unit, icon: Icon, color = 'blue' }) => (
+    <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-gray-600 text-sm font-medium">{title}</span>
+        <Icon className={`w-5 h-5 text-${color}-500`} />
+      </div>
+      <div className="text-3xl font-bold text-gray-800">
+        {typeof value === 'number' ? value.toFixed(2) : value}
+        <span className="text-lg text-gray-500 ml-1">{unit}</span>
+      </div>
+    </div>
+  );
+
+  const MiniChart = ({ data, color = 'blue' }) => {
+    if (data.length === 0) return null;
+    
+    const max = Math.max(...data);
+    const min = Math.min(...data);
+    const range = max - min || 1;
+    
+    const points = data.map((value, index) => {
+      const x = (index / (data.length - 1)) * 100;
+      const y = 100 - ((value - min) / range) * 100;
+      return `${x},${y}`;
+    }).join(' ');
+
+    return (
+      <svg className="w-full h-16" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <polyline
+          points={points}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* ヘッダー */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Database className="w-8 h-8 text-orange-600" />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800">AWS ElastiCache 監視ダッシュボード</h1>
+                <p className="text-gray-600">{metrics.clusterId} - {metrics.nodeType}</p>
+                <p className="text-sm text-gray-500">{metrics.engine}</p>
+              </div>
+            </div>
+            <div className={`flex items-center gap-2 ${getStatusColor(metrics.status)}`}>
+              {getStatusIcon(metrics.status)}
+              <span className="font-semibold uppercase">{metrics.status}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 検索・フィルターセクション */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Search className="w-5 h-5" />
+            メトリクス検索・フィルター
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {/* テキスト検索 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                検索キーワード
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="クラスターID、ステータス、数値..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* フィルタータイプ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Filter className="w-4 h-4 inline mr-1" />
+                フィルタータイプ
+              </label>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">全て</option>
+                <option value="high-cpu">高CPU使用率 (&gt;70%)</option>
+                <option value="high-memory">高メモリ使用率 (&gt;80%)</option>
+                <option value="low-hit-rate">低ヒット率 (&lt;70%)</option>
+                <option value="high-response-time">高レスポンスタイム (&gt;3ms)</option>
+              </select>
+            </div>
+
+            {/* 日付範囲 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                時刻範囲
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="datetime-local"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                  className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 検索結果サマリー */}
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>
+              {filteredMetrics.length} 件のメトリクスデータが見つかりました
+            </span>
+            {(searchQuery || filterType !== 'all' || dateRange.start) && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterType('all');
+                  setDateRange({ start: '', end: '' });
+                }}
+                className="text-blue-600 hover:text-blue-800 font-medium"
+              >
+                フィルターをクリア
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* メインメトリクス */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <MetricCard
+            title="キャッシュヒット率"
+            value={metrics.hitRate}
+            unit="%"
+            icon={TrendingUp}
+            color="green"
+          />
+          <MetricCard
+            title="CPU使用率"
+            value={metrics.cpuUtilization}
+            unit="%"
+            icon={Activity}
+            color="purple"
+          />
+          <MetricCard
+            title="レスポンスタイム"
+            value={metrics.responseTime}
+            unit="ms"
+            icon={Zap}
+            color="yellow"
+          />
+          <MetricCard
+            title="接続数"
+            value={metrics.connections}
+            unit="conn"
+            icon={Database}
+            color="blue"
+          />
+        </div>
+
+        {/* セカンダリメトリクス */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="text-sm text-gray-600 mb-1">操作数/秒</div>
+            <div className="text-2xl font-bold text-gray-800">{metrics.operations.toLocaleString()}</div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="text-sm text-gray-600 mb-1">ネットワーク受信</div>
+            <div className="text-2xl font-bold text-gray-800">{(metrics.networkBytesIn / 1024).toFixed(0)} KB/s</div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="text-sm text-gray-600 mb-1">ネットワーク送信</div>
+            <div className="text-2xl font-bold text-gray-800">{(metrics.networkBytesOut / 1024).toFixed(0)} KB/s</div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="text-sm text-gray-600 mb-1">Swap使用量</div>
+            <div className="text-2xl font-bold text-gray-800">{metrics.swapUsage.toFixed(1)} MB</div>
+          </div>
+        </div>
+
+        {/* 詳細情報 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* メモリ使用状況 */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">メモリ使用状況</h2>
+            <div className="mb-4">
+              <div className="flex justify-between text-sm text-gray-600 mb-2">
+                <span>{metrics.memoryUsed.toFixed(0)} MB 使用中</span>
+                <span>{metrics.memoryTotal} MB</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-4">
+                <div
+                  className="bg-blue-600 h-4 rounded-full transition-all duration-300"
+                  style={{ width: `${(metrics.memoryUsed / metrics.memoryTotal) * 100}%` }}
+                />
+              </div>
+              <div className="text-center text-sm text-gray-600 mt-2">
+                {((metrics.memoryUsed / metrics.memoryTotal) * 100).toFixed(1)}% 使用
+              </div>
+            </div>
+            <MiniChart data={history.memory} color="#3b82f6" />
+          </div>
+
+          {/* パフォーマンス統計 */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">パフォーマンス統計</h2>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">稼働時間</span>
+                <span className="font-semibold text-gray-800">{formatUptime(metrics.uptime)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">キャッシュヒット率</span>
+                <span className="font-semibold text-green-600">{metrics.hitRate.toFixed(2)}%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">キャッシュミス率</span>
+                <span className="font-semibold text-red-600">{metrics.missRate.toFixed(2)}%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">エビクション数</span>
+                <span className="font-semibold text-gray-800">{metrics.evictions}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 検索結果テーブル */}
+        {(searchQuery || filterType !== 'all' || dateRange.start) && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">検索結果</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">時刻</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">ステータス</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-700">ヒット率</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-700">CPU</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-700">メモリ</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-700">レスポンス</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-700">接続数</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredMetrics.slice(-20).reverse().map((log, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-gray-600">
+                        {new Date(log.timestamp).toLocaleTimeString('ja-JP')}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          log.status === 'connected' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-800">
+                        {log.hitRate.toFixed(1)}%
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-800">
+                        {log.cpuUtilization.toFixed(1)}%
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-800">
+                        {log.memoryUsed.toFixed(0)} MB
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-800">
+                        {log.responseTime.toFixed(2)} ms
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-800">
+                        {log.connections}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredMetrics.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  検索条件に一致するデータがありません
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* トレンドグラフ */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">ヒット率トレンド</h2>
+            <MiniChart data={history.hitRate} color="#10b981" />
+            <div className="text-center text-sm text-gray-600 mt-2">
+              現在: {metrics.hitRate.toFixed(1)}%
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">CPU使用率 トレンド</h2>
+            <MiniChart data={history.cpu} color="#8b5cf6" />
+            <div className="text-center text-sm text-gray-600 mt-2">
+              現在: {metrics.cpuUtilization.toFixed(1)}%
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">レスポンスタイム トレンド</h2>
+            <MiniChart data={history.responseTime} color="#f59e0b" />
+            <div className="text-center text-sm text-gray-600 mt-2">
+              現在: {metrics.responseTime.toFixed(2)} ms
+            </div>
+          </div>
+        </div>
+
+        {/* フッター */}
+        <div className="mt-6 text-center text-gray-500 text-sm">
+          <p>AWS ElastiCache メトリクスは2秒ごとに自動更新されます</p>
+          <p className="mt-1">検索機能を使用してメトリクスの履歴データを分析できます</p>
+        </div>
+      </div>
+    </div>
+  );
+}

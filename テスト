@@ -1,0 +1,54 @@
+#!/bin/bash
+
+# Lambda関数テストスクリプト
+
+set -e
+
+FUNCTION_NAME="elasticache-monitor"
+REGION="${AWS_REGION:-ap-northeast-1}"
+
+echo "======================================"
+echo "Lambda関数テスト"
+echo "======================================"
+echo ""
+
+# 関数の存在確認
+echo "Lambda関数を確認中..."
+if ! aws lambda get-function --function-name "$FUNCTION_NAME" --region "$REGION" &> /dev/null; then
+    echo "エラー: Lambda関数 '$FUNCTION_NAME' が見つかりません"
+    echo "先にデプロイを実行してください: ./deploy.sh"
+    exit 1
+fi
+
+echo "✓ Lambda関数が見つかりました"
+echo ""
+
+# 手動実行
+echo "Lambda関数を実行中..."
+aws lambda invoke \
+    --function-name "$FUNCTION_NAME" \
+    --region "$REGION" \
+    --payload '{}' \
+    response.json
+
+echo ""
+echo "実行結果:"
+cat response.json | python3 -m json.tool
+echo ""
+
+# ログの表示
+echo "======================================"
+echo "最新のログを表示:"
+echo "======================================"
+echo ""
+
+aws logs tail "/aws/lambda/$FUNCTION_NAME" \
+    --region "$REGION" \
+    --since 5m \
+    --format short
+
+echo ""
+echo "======================================"
+echo "リアルタイムログを監視する場合:"
+echo "aws logs tail /aws/lambda/$FUNCTION_NAME --region $REGION --follow"
+echo "======================================"
