@@ -1,0 +1,46 @@
+# IoTデータ収集のアーキテクチャ例
+# mqtt-broker.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mqtt-broker
+  namespace: iot-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mqtt-broker
+  template:
+    spec:
+      containers:
+      - name: emqx
+        image: emqx/emqx:5.3
+        ports:
+        - containerPort: 1883   # MQTT
+        - containerPort: 8083   # WebSocket
+        - containerPort: 8883   # MQTT over TLS
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+---
+# Kafkaでのストリーム処理
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: iot-platform
+spec:
+  serviceName: kafka-headless
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: kafka
+        image: confluentinc/cp-kafka:7.5.0
+        env:
+        - name: KAFKA_NUM_PARTITIONS
+          value: "12"  # 高スループット用
