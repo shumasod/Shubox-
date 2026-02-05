@@ -1,0 +1,332 @@
+import React, { useState, useCallback } from 'react';
+import { AlertCircle, Check, DollarSign, Users, Plus, RefreshCw, Search } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+const BankingSystem = () => {
+  const [accounts, setAccounts] = useState([]);
+  const [notification, setNotification] = useState(null);
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  const AccountCreationForm = () => {
+    const [formData, setFormData] = useState({
+      accountNumber: '',
+      ownerName: '',
+      initialBalance: ''
+    });
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      if (accounts.some(acc => acc.accountNumber === formData.accountNumber)) {
+        showNotification('この口座番号は既に使用されています。', 'error');
+        return;
+      }
+      
+      setAccounts(prev => [...prev, {
+        ...formData,
+        balance: parseFloat(formData.initialBalance),
+        transactions: [],
+        createdAt: new Date()
+      }]);
+      
+      showNotification('口座が正常に作成されました。');
+      setFormData({ accountNumber: '', ownerName: '', initialBalance: '' });
+    };
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            新規口座開設
+          </CardTitle>
+          <CardDescription>新しい銀行口座を作成します</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <input
+                type="text"
+                placeholder="口座番号"
+                className="w-full p-2 border rounded"
+                value={formData.accountNumber}
+                onChange={e => setFormData(prev => ({ ...prev, accountNumber: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <input
+                type="text"
+                placeholder="口座所有者名"
+                className="w-full p-2 border rounded"
+                value={formData.ownerName}
+                onChange={e => setFormData(prev => ({ ...prev, ownerName: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <input
+                type="number"
+                placeholder="初期残高"
+                className="w-full p-2 border rounded"
+                value={formData.initialBalance}
+                onChange={e => setFormData(prev => ({ ...prev, initialBalance: e.target.value }))}
+                required
+                min="0"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full p-2 text-white bg-green-600 rounded hover:bg-green-700"
+            >
+              口座を開設
+            </button>
+          </form>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const TransactionForm = () => {
+    const [formData, setFormData] = useState({
+      accountNumber: '',
+      amount: ''
+    });
+
+    const handleTransaction = (type) => {
+      const account = accounts.find(acc => acc.accountNumber === formData.accountNumber);
+      if (!account) {
+        showNotification('口座が見つかりません。', 'error');
+        return;
+      }
+
+      const amount = parseFloat(formData.amount);
+      if (type === 'withdraw' && account.balance < amount) {
+        showNotification('残高が不足しています。', 'error');
+        return;
+      }
+
+      setAccounts(prev => prev.map(acc => {
+        if (acc.accountNumber === formData.accountNumber) {
+          const newBalance = type === 'deposit' ? 
+            acc.balance + amount : 
+            acc.balance - amount;
+          
+          return {
+            ...acc,
+            balance: newBalance,
+            transactions: [...acc.transactions, {
+              type,
+              amount,
+              date: new Date(),
+              balance: newBalance
+            }]
+          };
+        }
+        return acc;
+      }));
+
+      showNotification(`${amount}円の${type === 'deposit' ? '入金' : '出金'}が完了しました。`);
+      setFormData({ accountNumber: '', amount: '' });
+    };
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            取引
+          </CardTitle>
+          <CardDescription>入金・出金の取引を行います</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="口座番号"
+              className="w-full p-2 border rounded"
+              value={formData.accountNumber}
+              onChange={e => setFormData(prev => ({ ...prev, accountNumber: e.target.value }))}
+            />
+            <input
+              type="number"
+              placeholder="金額"
+              className="w-full p-2 border rounded"
+              value={formData.amount}
+              onChange={e => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+              min="0"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleTransaction('deposit')}
+                className="flex-1 p-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+              >
+                入金
+              </button>
+              <button
+                onClick={() => handleTransaction('withdraw')}
+                className="flex-1 p-2 text-white bg-red-600 rounded hover:bg-red-700"
+              >
+                出金
+              </button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const AccountList = () => {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            口座一覧
+          </CardTitle>
+          <CardDescription>全ての登録口座を表示します</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {accounts.length === 0 ? (
+              <p className="text-center text-gray-500">登録されている口座はありません</p>
+            ) : (
+              accounts.map(account => (
+                <div
+                  key={account.accountNumber}
+                  className="p-4 border rounded hover:bg-gray-50"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-bold">{account.ownerName}</h3>
+                      <p className="text-sm text-gray-600">口座番号: {account.accountNumber}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold">{account.balance.toLocaleString()}円</p>
+                      <p className="text-sm text-gray-600">
+                        取引回数: {account.transactions.length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const AccountDetails = () => {
+    const [searchAccount, setSearchAccount] = useState('');
+    const account = accounts.find(acc => acc.accountNumber === searchAccount);
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="w-5 h-5" />
+            口座詳細
+          </CardTitle>
+          <CardDescription>口座の詳細情報と取引履歴を確認できます</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="口座番号を入力"
+                className="flex-1 p-2 border rounded"
+                value={searchAccount}
+                onChange={e => setSearchAccount(e.target.value)}
+              />
+            </div>
+            
+            {account && (
+              <div className="space-y-4">
+                <div className="p-4 bg-gray-50 rounded">
+                  <h3 className="font-bold text-lg">{account.ownerName}</h3>
+                  <p>口座番号: {account.accountNumber}</p>
+                  <p>現在残高: {account.balance.toLocaleString()}円</p>
+                  <p>開設日: {new Date(account.createdAt).toLocaleDateString()}</p>
+                </div>
+                
+                <div>
+                  <h4 className="font-bold mb-2">取引履歴</h4>
+                  <div className="space-y-2">
+                    {account.transactions.map((transaction, index) => (
+                      <div key={index} className="p-2 border rounded">
+                        <div className="flex justify-between">
+                          <span className={transaction.type === 'deposit' ? 'text-green-600' : 'text-red-600'}>
+                            {transaction.type === 'deposit' ? '入金' : '出金'}: 
+                            {transaction.amount.toLocaleString()}円
+                          </span>
+                          <span className="text-gray-600">
+                            残高: {transaction.balance.toLocaleString()}円
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {new Date(transaction.date).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-4">
+      <h1 className="text-3xl font-bold text-center mb-8">銀行システム</h1>
+      
+      {notification && (
+        <Alert className={`mb-4 ${notification.type === 'error' ? 'bg-red-50' : 'bg-green-50'}`}>
+          <AlertCircle className={notification.type === 'error' ? 'text-red-600' : 'text-green-600'} />
+          <AlertTitle>
+            {notification.type === 'error' ? 'エラー' : '成功'}
+          </AlertTitle>
+          <AlertDescription>
+            {notification.message}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Tabs defaultValue="create" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="create">口座開設</TabsTrigger>
+          <TabsTrigger value="transaction">取引</TabsTrigger>
+          <TabsTrigger value="list">口座一覧</TabsTrigger>
+          <TabsTrigger value="details">口座詳細</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="create">
+          <AccountCreationForm />
+        </TabsContent>
+
+        <TabsContent value="transaction">
+          <TransactionForm />
+        </TabsContent>
+
+        <TabsContent value="list">
+          <AccountList />
+        </TabsContent>
+
+        <TabsContent value="details">
+          <AccountDetails />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default BankingSystem;

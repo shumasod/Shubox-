@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="カツオを追いかけてたたくゲーム">
+    <title>カツオたたきゲーム DX</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+```
+    body {
+        font-family: 'Hiragino Sans', 'Helvetica Neue', Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        overflow: hidden;
+        position: relative;
+        user-select: none;
+    }
+
+    .game-container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .game-header {
+        position: fixed;
+        top: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 2rem;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 1rem 2rem;
+        border-radius: 2rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+    }
+
+    .score, .timer {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #333;
+    }
+
+    .difficulty-select {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin: 1rem 0;
+        z-index: 1000;
+    }
+
+    .difficulty-btn {
+        padding: 0.7rem 1.5rem;
+        border: none;
+        border-radius: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: bold;
+        font-size: 1rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .difficulty-btn.easy { 
+        background: linear-gradient(45deg, #4CAF50, #66BB6A); 
+        color: white; 
+    }
+    .difficulty-btn.normal { 
+        background: linear-gradient(45deg, #2196F3, #42A5F5); 
+        color: white; 
+    }
+    .difficulty-btn.hard { 
+        background: linear-gradient(45deg, #F44336, #EF5350); 
+        color: white; 
+    }
+    
+    .difficulty-btn.selected { 
+        transform: scale(1.1); 
+        box-shadow: 0 0 20px rgba(0,0,0,0.4); 
+    }
+
+    .difficulty-btn:hover:not(.selected) {
+        transform: scale(1.05);
+    }
+
+    .katsuo {
+        position: absolute;
+        width: 120px;
+        height: 80px;
+        background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+        border-radius: 40px 40px 20px 20px;
+        cursor: pointer;
+        transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        transform-origin: center;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .katsuo::before {
+        content: '🐟';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 3rem;
+        z-index: 2;
+    }
+
+    .katsuo::after {
+        content: '';
+        position: absolute;
+        top: -10px;
+        left: -10px;
+        right: -10px;
+        bottom: -10px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+        border-radius: inherit;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .katsuo:hover::after {
+        opacity: 1;
+    }
+
+    .katsuo:active {
+        transform: scale(0.9);
+    }
+
+    .start-screen, .game-over {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        z-index: 2000;
+        backdrop-filter: blur(10px);
+    }
+
+    .start-screen h1, .game-over h2 {
+        font-size: 3rem;
+        margin-bottom: 2rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .start-btn, .restart-btn {
+        padding: 1rem 2rem;
+        font-size: 1.5rem;
+        background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+        color: white;
+        border: none;
+        border-radius: 2rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .start-btn:hover, .restart-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .game-over {
+        display: none;
+    }
+
+    .game-over.active {
+        display: flex;
+    }
+
+    .final-score {
+        font-size: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+        line-height: 1.5;
+    }
+
+    .high-score {
+        font-size: 1.2rem;
+        color: #ffd700;
+        margin: 1rem 0;
+    }
+
+    .particle {
+        position: absolute;
+        pointer-events: none;
+        border-radius: 50%;
+        animation: particle 0.8s ease-out forwards;
+        z-index: 1500;
+    }
+
+    @keyframes particle {
+        0% {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+        }
+        100% {
+            transform: scale(0) rotate(360deg) translateY(-100px);
+            opacity: 0;
+        }
+    }
+
+    .settings {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 1rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+    }
+
+    .settings label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: bold;
+        color: #333;
+        cursor: pointer;
+    }
+
+    .miss-effect {
+        position: absolute;
+        color: #ff4757;
+        font-size: 2rem;
+        font-weight: bold;
+        pointer-events: none;
+        animation: missEffect 1s ease-out forwards;
+        z-index: 1500;
+    }
+
+    @keyframes missEffect {
+        0% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+        100% {
+            opacity: 0;
+            transform: scale(1.5) translateY(-50px);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .game-header {
+            padding: 0.5rem 1rem;
+            gap: 1rem;
+        }
+        
+        .score, .timer {
+            font-size: 1.2rem;
+        }
+        
+        .difficulty-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .katsuo {
+            width: 100px;
+            height: 70px;
+        }
+        
+        .katsuo::before {
+            font-size: 2.5rem;
+        }
+    }
+</style>
+```
+
+</head>
+<body>
+    <div class="game-container">
+        <div class="settings">
+            <label>
+                <input type="checkbox" id="sound-toggle" checked>
+                <span>🔊 音声</span>
+            </label>
+        </div>
+
+```
+    <div class="game-header">
+        <div class="score" id="score">スコア: 0</div>
+        <div class="timer" id="timer">時間: 30</div>
+    </div>
+
+    <div class="difficulty-select">
+        <button class="difficulty-btn easy" data-difficulty="easy">かんたん</button>
+        <button class="difficulty-btn normal selected" data-difficulty="normal">ふつう</button>
+        <button class="difficulty-btn hard" data-difficulty="hard">むずかしい</button>
+    </div>
+
+    <div class="katsuo" id="katsuo"></div>
+
+    <div class="start-screen" id="start-screen">
+        <h1>🐟 カツオたたきゲーム DX</h1>
+        <p style="font-size: 1.2rem; margin-bottom: 2rem; text-align: center;">
+            制限時間内にできるだけ多くのカツオをたたこう！<br>
+            難易度を選んでスタート！
+        </p>
+        <button class="start-btn" id="start-btn">ゲーム開始</button>
+    </div>
+
+    <div class="game-over" id="game-over">
+        <h2>ゲーム終了！</h2>
+        <div class="final-score" id="final-score"></div>
+        <div class="high-score" id="high-score-display"></div>
+        <button class="restart-btn" id="restart-btn">もう一度プレイ</button>
+    </div>
+</div>
+
+<script>
+    class SoundManager {
+        constructor() {
+            // Web Audio APIを使用してビープ音を生成
+            this.audioContext = null;
+            this.enabled = true;
+            this.loadSettings();
+        }
+
+        initAudioContext() {
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return this.audioContext;
+        }
+
+        loadSettings() {
+            const soundEnabled = localStorage.getItem('soundEnabled');
+            this.enabled = soundEnabled === null ? true : JSON.parse(soundEnabled);
+            document.getElementById('sound-toggle').checked = this.enabled;
+        }
+
+        toggleSound(enabled) {
+            this.enabled = enabled;
+            localStorage.setItem('soundEnabled', JSON.stringify(enabled));
+        }
+
+        play(type) {
+            if (!this.enabled) return;
+
+            try {
+                const ctx = this.initAudioContext();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                if (type === 'hit') {
+                    oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.1);
+                    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.1);
+                } else if (type === 'miss') {
+                    oscillator.frequency.setValueAtTime(200, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.2);
+                    gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                    oscillator.start(ctx.currentTime);
+                    oscillator.stop(ctx.currentTime + 0.2);
+                }
+            } catch (error) {
+                console.warn('Audio playback failed:', error);
+            }
+        }
+    }
+
+    class ParticleSystem {
+        constructor() {
+            this.particles = [];
+        }
+
+        createHitEffect(x, y) {
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57'];
+            const particleCount = 15;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                const size = Math.random() * 12 + 6;
+                const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.5;
+                const speed = Math.random() * 80 + 60;
+                
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.left = `${x - size/2}px`;
+                particle.style.top = `${y - size/2}px`;
+                
+                const velocityX = Math.cos(angle) * speed;
+                const velocityY = Math.sin(angle) * speed;
+                
+                particle.style.setProperty('--vx', `${velocityX}px`);
+                particle.style.setProperty('--vy', `${velocityY}px`);
+                
+                document.body.appendChild(particle);
+                
+                setTimeout(() => {
+                    if (document.body.contains(particle)) {
+                        document.body.removeChild(particle);
+                    }
+                }, 800);
+            }
+        }
+
+        createMissEffect(x, y) {
+            const missText = document.createElement('div');
+            missText.className = 'miss-effect';
+            missText.textContent = 'MISS!';
+            missText.style.left = `${x}px`;
+            missText.style.top = `${y}px`;
+            
+            document.body.appendChild(missText);
+            
+            setTimeout(() => {
+                if (document.body.contains(missText)) {
+                    document.body.removeChild(missText);
+                }
+            }, 1000);
+        }
+    }
+
+    class KatsuoGame {
+        constructor() {
+            this.difficulties = {
+                easy: { time: 45, speed: 0.8, scale: 1.3, moveInterval: 1800 },
+                normal: { time: 30, speed: 1, scale: 1, moveInterval: 1500 },
+                hard: { time: 20, speed: 1.4, scale: 0.7, moveInterval: 1000 }
+            };
+            
+            this.currentDifficulty = 'normal';
+            this.score = 0;
+            this.timeLeft = this.difficulties[this.currentDifficulty].time;
+            this.isPlaying = false;
+            this.gameTimer = null;
+            this.moveTimer = null;
+            this.highScores = this.loadHighScores();
+
+            this.soundManager = new SoundManager();
+            this.particleSystem = new ParticleSystem();
+
+            this.setupElements();
+            this.setupEventListeners();
+            this.initializeKatsuo();
+        }
+
+        loadHighScores() {
+            const scores = localStorage.getItem('katsuoHighScores');
+            return scores ? JSON.parse(scores) : {
+                easy: 0,
+                normal: 0,
+                hard: 0
+            };
+        }
+
+        saveHighScore() {
+            if (this.score > this.highScores[this.currentDifficulty]) {
+                this.highScores[this.currentDifficulty] = this.score;
+                localStorage.setItem('katsuoHighScores', JSON.stringify(this.highScores));
+                return true;
+            }
+            return false;
+        }
+
+        setupElements() {
+            this.elements = {
+                katsuo: document.getElementById('katsuo'),
+                scoreDisplay: document.getElementById('score'),
+                timerDisplay: document.getElementById('timer'),
+                startScreen: document.getElementById('start-screen'),
+                gameOver: document.getElementById('game-over'),
+                finalScore: document.getElementById('final-score'),
+                highScoreDisplay: document.getElementById('high-score-display'),
+                startBtn: document.getElementById('start-btn'),
+                restartBtn: document.getElementById('restart-btn'),
+                soundToggle: document.getElementById('sound-toggle')
+            };
+
+            this.difficultyButtons = document.querySelectorAll('.difficulty-btn');
+            this.setupDifficultySelection();
+        }
+
+        setupDifficultySelection() {
+            this.difficultyButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    if (this.isPlaying) return;
+                    
+                    this.difficultyButtons.forEach(btn => btn.classList.remove('selected'));
+                    button.classList.add('selected');
+                    
+                    this.currentDifficulty = button.dataset.difficulty;
+                    this.timeLeft = this.difficulties[this.currentDifficulty].time;
+                    this.updateDisplay();
+                });
+            });
+        }
+
+        setupEventListeners() {
+            this.elements.katsuo.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.hitKatsuo(e);
+            });
+
+            document.addEventListener('click', (e) => {
+                if (this.isPlaying && e.target !== this.elements.katsuo) {
+                    this.miss(e.clientX, e.clientY);
+                }
+            });
+
+            this.elements.startBtn.addEventListener('click', () => {
+                this.startGame();
+            });
+
+            this.elements.restartBtn.addEventListener('click', () => {
+                this.restartGame();
+            });
+
+            this.elements.soundToggle.addEventListener('change', (e) => {
+                this.soundManager.toggleSound(e.target.checked);
+            });
+
+            // タッチイベントの対応
+            document.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+        }
+
+        initializeKatsuo() {
+            this.moveKatsuo();
+            this.updateDisplay();
+        }
+
+        startGame() {
+            this.isPlaying = true;
+            this.score = 0;
+            this.timeLeft = this.difficulties[this.currentDifficulty].time;
+            
+            this.elements.startScreen.style.display = 'none';
+            this.elements.gameOver.classList.remove('active');
+            
+            this.updateDisplay();
+            this.moveKatsuo();
+            this.startTimer();
+            this.startAutoMove();
+
+            // 音声コンテキストの初期化（ユーザーインタラクション後）
+            this.soundManager.initAudioContext();
+        }
+
+        startTimer() {
+            this.gameTimer = setInterval(() => {
+                this.timeLeft--;
+                this.updateDisplay();
+                
+                if (this.timeLeft <= 0) {
+                    this.endGame();
+                }
+            }, 1000);
+        }
+
+        startAutoMove() {
+            const moveInterval = this.difficulties[this.currentDifficulty].moveInterval;
+            this.moveTimer = setInterval(() => {
+                if (this.isPlaying) {
+                    this.moveKatsuo();
+                }
+            }, moveInterval);
+        }
+
+        hitKatsuo(event) {
+            if (!this.isPlaying) return;
+            
+            this.score++;
+            this.updateDisplay();
+            
+            const rect = this.elements.katsuo.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            
+            this.particleSystem.createHitEffect(x, y);
+            this.soundManager.play('hit');
+            
+            // 即座に新しい位置に移動
+            this.moveKatsuo();
+        }
+
+        miss(x, y) {
+            if (!this.isPlaying) return;
+            
+            this.particleSystem.createMissEffect(x, y);
+            this.soundManager.play('miss');
+        }
+
+        moveKatsuo() {
+            const containerWidth = window.innerWidth;
+            const containerHeight = window.innerHeight;
+            const katsuoSize = 120 * this.difficulties[this.currentDifficulty].scale;
+            
+            const margin = katsuoSize;
+            const maxX = containerWidth - katsuoSize - margin;
+            const maxY = containerHeight - katsuoSize - margin;
+            
+            // ヘッダーとボタンを避ける
+            const minY = 160;
+            
+            const x = Math.random() * Math.max(0, maxX - margin) + margin;
+            const y = Math.random() * Math.max(0, maxY - minY) + minY;
+            
+            const scale = this.difficulties[this.currentDifficulty].scale;
+            const flipX = Math.random() < 0.5 ? -1 : 1;
+            
+            this.elements.katsuo.style.left = `${x}px`;
+            this.elements.katsuo.style.top = `${y}px`;
+            this.elements.katsuo.style.transform = 
+                `scaleX(${flipX}) scale(${scale})`;
+        }
+
+        updateDisplay() {
+            this.elements.scoreDisplay.textContent = `スコア: ${this.score}`;
+            this.elements.timerDisplay.textContent = `時間: ${this.timeLeft}`;
+        }
+
+        endGame() {
+            this.isPlaying = false;
+            
+            clearInterval(this.gameTimer);
+            clearInterval(this.moveTimer);
+            
+            const isNewRecord = this.saveHighScore();
+            const difficultyNames = {
+                easy: 'かんたん',
+                normal: 'ふつう', 
+                hard: 'むずかしい'
+            };
+            
+            this.elements.finalScore.innerHTML = `
+                <div>難易度: ${difficultyNames[this.currentDifficulty]}</div>
+                <div>スコア: ${this.score}点</div>
+            `;
+            
+            this.elements.highScoreDisplay.innerHTML = `
+                ${isNewRecord ? '🎉 新記録達成！ 🎉<br>' : ''}
+                ハイスコア: ${this.highScores[this.currentDifficulty]}点
+            `;
+            
+            this.elements.gameOver.classList.add('active');
+        }
+
+        restartGame() {
+            clearInterval(this.gameTimer);
+            clearInterval(this.moveTimer);
+            this.startGame();
+        }
+    }
+
+    // ゲーム開始
+    document.addEventListener('DOMContentLoaded', () => {
+        const game = new KatsuoGame();
+    });
+</script>
+```
+
+</body>
+</html>

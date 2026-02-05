@@ -1,20 +1,61 @@
-AWSTemplateFormatVersion: ''
-Description: S3 static website with CloudFront and automatic cache invalidation
+AWSTemplateFormatVersion: '2010-09-09'
+Description: S3 static website with CloudFront, WAF, and automatic cache invalidation
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Environment name for resource naming and tagging
+
+  AllowedIPRange:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: IP range allowed to access the CloudFront distribution (CIDR notation)
+
+Mappings:
+  EnvironmentConfig:
+    dev:
+      CloudFrontPriceClass: PriceClass_100
+      S3VersioningStatus: Suspended
+    staging:
+      CloudFrontPriceClass: PriceClass_200
+      S3VersioningStatus: Enabled
+    prod:
+      CloudFrontPriceClass: PriceClass_All
+      S3VersioningStatus: Enabled
 
 Resources:
   MyBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${AWS::StackName}-my-bucket-${AWS::AccountId}'
+      BucketName: !Sub '${EnvironmentName}-${AWS::StackName}-bucket-${AWS::AccountId}'
       AccessControl: Private
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: !FindInMap [EnvironmentConfig, !Ref EnvironmentName, S3VersioningStatus]
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: CleanupOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: error.html
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
 
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -27,10 +68,10 @@ Resources:
             Principal:
               Service: cloudfront.amazonaws.com
             Action: s3:GetObject
-            Resource: !Sub '${n}/*'
+            Resource: !Sub '${MyBucket.Arn}/*'
             Condition:
               StringEquals:
-                AWS:SourceArn: !Sub '
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${MyDistribution}'
 
   IndexHtml:
     Type: AWS::S3::Object
@@ -41,14 +82,26 @@ Resources:
       Source: 
         Fn::Sub: 
           - |
-            <html>
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Welcome to Our S3 Hosted Site</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+                    h1 { color: #0066cc; }
+                </style>
+            </head>
             <body>
-              <h1>Hello, world!</h1>
-              <p>This is a sample page hosted on S3 and served through CloudFront.</p>
-              <p>Stack ID: ${StackId}</p>
+                <h1>Hello, World!</h1>
+                <p>This is a sample page hosted on S3 and served through CloudFront.</p>
+                <p>Environment: ${EnvironmentName}</p>
+                <p>Stack ID: ${StackId}</p>
+                <p>Last Updated: ${Timestamp}</p>
             </body>
             </html>
-          - { StackId: !Ref 'AWS::StackId' }
+          - { EnvironmentName: !Ref EnvironmentName, StackId: !Ref 'AWS::StackId', Timestamp: !Ref 'AWS::Timestamp' }
 
   ErrorHtml:
     Type: AWS::S3::Object
@@ -57,10 +110,21 @@ Resources:
       Key: error.html
       ContentType: text/html
       Source: |
-        <html>
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>404 - Page Not Found</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; text-align: center; }
+                h1 { color: #cc0000; }
+            </style>
+        </head>
         <body>
-          <h1>404 - Page Not Found</h1>
-          <p>The requested page could not be found.</p>
+            <h1>404 - Page Not Found</h1>
+            <p>The requested page could not be found. Please check the URL and try again.</p>
+            <p><a href="/">Return to Homepage</a></p>
         </body>
         </html>
 
@@ -93,13 +157,57 @@ Resources:
         Origins:
           - DomainName: !GetAtt MyBucket.RegionalDomainName
             Id: S3Origin
-            S3OriginConfig: {}
-        PriceClass: PriceClass_100
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
+        PriceClass: !FindInMap [EnvironmentConfig, !Ref EnvironmentName, CloudFrontPriceClass]
+        WebACLId: !Ref MyWebACL
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub 'OAI for ${AWS::StackName}'
+
+  MyWebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub '${AWS::StackName}-WebACL'
+      Scope: CLOUDFRONT
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub '${AWS::StackName}-WebACL-Metric'
+        SampledRequestsEnabled: true
+      Rules:
+        - Name: IPSetRule
+          Priority: 1
+          Action:
+            Allow: {}
+          VisibilityConfig:
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub '${AWS::StackName}-IPSetRule-Metric'
+            SampledRequestsEnabled: true
+          Statement:
+            IPSetReferenceStatement:
+              Arn: !Ref MyIPSet
+
+  MyIPSet:
+    Type: AWS::WAFv2::IPSet
+    Properties:
+      Addresses:
+        - !Ref AllowedIPRange
+      IPAddressVersion: IPV4
+      Scope: CLOUDFRONT
+      Name: !Sub '${AWS::StackName}-AllowedIPSet'
 
   MyEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: !Sub '${AWS::StackName}-s3-event-rule'
+      Name: !Sub '${EnvironmentName}-${AWS::StackName}-s3-event-rule'
       Description: "Rule to trigger Lambda when objects are created or updated in S3"
       EventPattern:
         source:
@@ -111,11 +219,15 @@ Resources:
           bucket:
             name:
               - !Ref MyBucket
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt MyFunction.Arn
+          Id: "S3ToLambda"
 
   MyFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-cache-invalidator'
+      FunctionName: !Sub '${EnvironmentName}-${AWS::StackName}-cache-invalidator'
       Runtime: python3.9
       Handler: index.handler
       Role: !GetAtt LambdaRole.Arn
@@ -124,27 +236,44 @@ Resources:
           import boto3
           import os
           import time
+          import logging
+          
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
           
           def handler(event, context):
               distribution_id = os.environ['DISTRIBUTION_ID']
               client = boto3.client('cloudfront')
               
-              response = client.create_invalidation(
-                  DistributionId=distribution_id,
-                  InvalidationBatch={
-                      'Paths': {
-                          'Quantity': 1,
-                          'Items': ['/*']
-                      },
-                      'CallerReference': str(time.time())
+              try:
+                  response = client.create_invalidation(
+                      DistributionId=distribution_id,
+                      InvalidationBatch={
+                          'Paths': {
+                              'Quantity': 1,
+                              'Items': ['/*']
+                          },
+                          'CallerReference': str(time.time())
+                      }
+                  )
+                  
+                  logger.info(f"Invalidation created: {response['Invalidation']['Id']}")
+                  return {
+                      'statusCode': 200,
+                      'body': f"Invalidation created: {response['Invalidation']['Id']}"
                   }
-              )
-              
-              print(f"Invalidation created: {response['Invalidation']['Id']}")
-              return response
+              except Exception as e:
+                  logger.error(f"Error creating invalidation: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'body': f"Error creating invalidation: {str(e)}"
+                  }
       Environment:
         Variables:
           DISTRIBUTION_ID: !Ref MyDistribution
+      Tags:
+        - Key: Environment
+          Value: !Ref EnvironmentName
 
   LambdaRole:
     Type: AWS::IAM::Role
@@ -172,7 +301,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - 'cloudfront:CreateInvalidation'
-                Resource: '*'
+                Resource: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${MyDistribution}'
 
   LambdaPermission:
     Type: AWS::Lambda::Permission
@@ -182,24 +311,6 @@ Resources:
       Principal: 'events.amazonaws.com'
       SourceArn: !GetAtt MyEventRule.Arn
 
-  MyEventTarget:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: "CloudWatch Events Rule to trigger Lambda function"
-      EventPattern:
-        source:
-          - "aws.s3"
-        detail-type:
-          - "Object Created"
-        detail:
-          bucket:
-            name:
-              - !Ref MyBucket
-      State: "ENABLED"
-      Targets:
-        - Arn: !GetAtt MyFunction.Arn
-          Id: "S3ToLambda"
-
 Outputs:
   WebsiteURL:
     Value: !GetAtt MyDistribution.DomainName
@@ -207,3 +318,6 @@ Outputs:
   S3BucketName:
     Value: !Ref MyBucket
     Description: Name of the S3 bucket
+  DistributionId:
+    Value: !Ref MyDistribution
+    Description: CloudFront Distribution ID

@@ -1,0 +1,528 @@
+import React, { useState } from 'react';
+
+const NotionSumoApp = () => {
+  const [wrestlers, setWrestlers] = useState([
+    { id: 1, name: '照ノ富士', rank: '横綱', wins: 12, losses: 3, status: '出場' },
+    { id: 2, name: '琴櫻', rank: '大関', wins: 10, losses: 5, status: '出場' },
+    { id: 3, name: '豊昇龍', rank: '大関', wins: 11, losses: 4, status: '出場' },
+    { id: 4, name: '大の里', rank: '大関', wins: 13, losses: 2, status: '出場' },
+    { id: 5, name: '阿炎', rank: '関脇', wins: 9, losses: 6, status: '出場' },
+    { id: 6, name: '若元春', rank: '関脇', wins: 8, losses: 7, status: '出場' },
+    { id: 7, name: '大栄翔', rank: '小結', wins: 7, losses: 8, status: '出場' },
+    { id: 8, name: '平戸海', rank: '小結', wins: 10, losses: 5, status: '出場' },
+  ]);
+
+  const [matches, setMatches] = useState([
+    { id: 1, day: 1, east: '照ノ富士', west: '阿炎', winner: '照ノ富士', technique: '寄り切り' },
+    { id: 2, day: 1, east: '琴櫻', west: '大栄翔', winner: '琴櫻', technique: '押し出し' },
+    { id: 3, day: 1, east: '豊昇龍', west: '若元春', winner: '豊昇龍', technique: '上手投げ' },
+    { id: 4, day: 2, east: '大の里', west: '照ノ富士', winner: '大の里', technique: '押し出し' },
+    { id: 5, day: 2, east: '阿炎', west: '琴櫻', winner: '阿炎', technique: '突き出し' },
+  ]);
+
+  const [activeView, setActiveView] = useState('wrestlers');
+  const [showAddWrestler, setShowAddWrestler] = useState(false);
+  const [showAddMatch, setShowAddMatch] = useState(false);
+  const [newWrestler, setNewWrestler] = useState({ name: '', rank: '前頭', wins: 0, losses: 0, status: '出場' });
+  const [newMatch, setNewMatch] = useState({ day: 1, east: '', west: '', winner: '', technique: '' });
+  const [filterRank, setFilterRank] = useState('all');
+  const [sortBy, setSortBy] = useState('rank');
+
+  const ranks = ['横綱', '大関', '関脇', '小結', '前頭'];
+  const techniques = ['寄り切り', '押し出し', '上手投げ', '下手投げ', '突き出し', '叩き込み', '引き落とし', '送り出し', '吊り出し', '掬い投げ'];
+  const statuses = ['出場', '休場', '引退'];
+
+  const rankOrder = { '横綱': 1, '大関': 2, '関脇': 3, '小結': 4, '前頭': 5 };
+
+  const getRankColor = (rank) => {
+    const colors = {
+      '横綱': 'bg-purple-100 text-purple-800',
+      '大関': 'bg-red-100 text-red-800',
+      '関脇': 'bg-orange-100 text-orange-800',
+      '小結': 'bg-yellow-100 text-yellow-800',
+      '前頭': 'bg-gray-100 text-gray-800',
+    };
+    return colors[rank] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      '出場': 'bg-green-100 text-green-800',
+      '休場': 'bg-red-100 text-red-800',
+      '引退': 'bg-gray-300 text-gray-600',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getWinRate = (wins, losses) => {
+    const total = wins + losses;
+    if (total === 0) return '0%';
+    return `${Math.round((wins / total) * 100)}%`;
+  };
+
+  const filteredWrestlers = wrestlers
+    .filter(w => filterRank === 'all' || w.rank === filterRank)
+    .sort((a, b) => {
+      if (sortBy === 'rank') return rankOrder[a.rank] - rankOrder[b.rank];
+      if (sortBy === 'wins') return b.wins - a.wins;
+      if (sortBy === 'name') return a.name.localeCompare(b.name, 'ja');
+      return 0;
+    });
+
+  const addWrestler = () => {
+    if (!newWrestler.name) return;
+    setWrestlers([...wrestlers, { ...newWrestler, id: Date.now() }]);
+    setNewWrestler({ name: '', rank: '前頭', wins: 0, losses: 0, status: '出場' });
+    setShowAddWrestler(false);
+  };
+
+  const addMatch = () => {
+    if (!newMatch.east || !newMatch.west || !newMatch.winner) return;
+    setMatches([...matches, { ...newMatch, id: Date.now() }]);
+    setNewMatch({ day: 1, east: '', west: '', winner: '', technique: '' });
+    setShowAddMatch(false);
+  };
+
+  const deleteWrestler = (id) => {
+    setWrestlers(wrestlers.filter(w => w.id !== id));
+  };
+
+  const updateWrestler = (id, field, value) => {
+    setWrestlers(wrestlers.map(w => 
+      w.id === id ? { ...w, [field]: field === 'wins' || field === 'losses' ? parseInt(value) || 0 : value } : w
+    ));
+  };
+
+  return (
+    <div className="min-h-screen bg-white font-sans">
+      {/* Sidebar */}
+      <div className="fixed left-0 top-0 h-full w-60 bg-stone-50 border-r border-stone-200 p-3">
+        <div className="flex items-center gap-2 px-2 py-3 mb-4">
+          <div className="w-6 h-6 bg-gradient-to-br from-red-500 to-red-700 rounded flex items-center justify-center text-white text-xs font-bold">
+            相
+          </div>
+          <span className="font-medium text-stone-800">相撲データベース</span>
+        </div>
+        
+        <nav className="space-y-1">
+          <button
+            onClick={() => setActiveView('wrestlers')}
+            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${
+              activeView === 'wrestlers' ? 'bg-stone-200 text-stone-900' : 'text-stone-600 hover:bg-stone-100'
+            }`}
+          >
+            <span>👤</span>
+            <span>力士一覧</span>
+          </button>
+          <button
+            onClick={() => setActiveView('matches')}
+            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${
+              activeView === 'matches' ? 'bg-stone-200 text-stone-900' : 'text-stone-600 hover:bg-stone-100'
+            }`}
+          >
+            <span>⚔️</span>
+            <span>取組結果</span>
+          </button>
+          <button
+            onClick={() => setActiveView('ranking')}
+            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${
+              activeView === 'ranking' ? 'bg-stone-200 text-stone-900' : 'text-stone-600 hover:bg-stone-100'
+            }`}
+          >
+            <span>🏆</span>
+            <span>番付表</span>
+          </button>
+        </nav>
+
+        <div className="absolute bottom-4 left-3 right-3">
+          <div className="text-xs text-stone-400 px-2">
+            令和7年 初場所
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="ml-60 p-8">
+        {activeView === 'wrestlers' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-3xl font-bold text-stone-800">力士一覧</h1>
+              <button
+                onClick={() => setShowAddWrestler(true)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-stone-800 text-white rounded hover:bg-stone-700 transition-colors"
+              >
+                <span>+</span>
+                <span>新規追加</span>
+              </button>
+            </div>
+
+            {/* Filters */}
+            <div className="flex gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-stone-500">番付:</span>
+                <select
+                  value={filterRank}
+                  onChange={(e) => setFilterRank(e.target.value)}
+                  className="text-sm border border-stone-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                >
+                  <option value="all">すべて</option>
+                  {ranks.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-stone-500">並び替え:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="text-sm border border-stone-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                >
+                  <option value="rank">番付順</option>
+                  <option value="wins">勝ち数順</option>
+                  <option value="name">名前順</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="border border-stone-200 rounded-lg overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-stone-50">
+                  <tr className="text-left text-xs text-stone-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 font-medium">四股名</th>
+                    <th className="px-4 py-3 font-medium">番付</th>
+                    <th className="px-4 py-3 font-medium">勝</th>
+                    <th className="px-4 py-3 font-medium">敗</th>
+                    <th className="px-4 py-3 font-medium">勝率</th>
+                    <th className="px-4 py-3 font-medium">状態</th>
+                    <th className="px-4 py-3 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {filteredWrestlers.map(wrestler => (
+                    <tr key={wrestler.id} className="hover:bg-stone-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <input
+                          type="text"
+                          value={wrestler.name}
+                          onChange={(e) => updateWrestler(wrestler.id, 'name', e.target.value)}
+                          className="font-medium text-stone-800 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-stone-300 rounded px-1 -ml-1"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={wrestler.rank}
+                          onChange={(e) => updateWrestler(wrestler.id, 'rank', e.target.value)}
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${getRankColor(wrestler.rank)} border-none focus:outline-none focus:ring-2 focus:ring-stone-300`}
+                        >
+                          {ranks.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          value={wrestler.wins}
+                          onChange={(e) => updateWrestler(wrestler.id, 'wins', e.target.value)}
+                          className="w-12 text-center bg-transparent border border-stone-200 rounded focus:outline-none focus:ring-2 focus:ring-stone-300"
+                          min="0"
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <input
+                          type="number"
+                          value={wrestler.losses}
+                          onChange={(e) => updateWrestler(wrestler.id, 'losses', e.target.value)}
+                          className="w-12 text-center bg-transparent border border-stone-200 rounded focus:outline-none focus:ring-2 focus:ring-stone-300"
+                          min="0"
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-stone-600">
+                        {getWinRate(wrestler.wins, wrestler.losses)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={wrestler.status}
+                          onChange={(e) => updateWrestler(wrestler.id, 'status', e.target.value)}
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${getStatusColor(wrestler.status)} border-none focus:outline-none focus:ring-2 focus:ring-stone-300`}
+                        >
+                          {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => deleteWrestler(wrestler.id)}
+                          className="text-stone-400 hover:text-red-500 transition-colors"
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Add Wrestler Modal */}
+            {showAddWrestler && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+                  <h2 className="text-xl font-bold mb-4">新規力士追加</h2>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm text-stone-600 mb-1">四股名</label>
+                      <input
+                        type="text"
+                        value={newWrestler.name}
+                        onChange={(e) => setNewWrestler({...newWrestler, name: e.target.value})}
+                        className="w-full border border-stone-200 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                        placeholder="例: 白鵬"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-stone-600 mb-1">番付</label>
+                      <select
+                        value={newWrestler.rank}
+                        onChange={(e) => setNewWrestler({...newWrestler, rank: e.target.value})}
+                        className="w-full border border-stone-200 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                      >
+                        {ranks.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-stone-600 mb-1">勝</label>
+                        <input
+                          type="number"
+                          value={newWrestler.wins}
+                          onChange={(e) => setNewWrestler({...newWrestler, wins: parseInt(e.target.value) || 0})}
+                          className="w-full border border-stone-200 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-stone-600 mb-1">敗</label>
+                        <input
+                          type="number"
+                          value={newWrestler.losses}
+                          onChange={(e) => setNewWrestler({...newWrestler, losses: parseInt(e.target.value) || 0})}
+                          className="w-full border border-stone-200 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-6">
+                    <button
+                      onClick={() => setShowAddWrestler(false)}
+                      className="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded transition-colors"
+                    >
+                      キャンセル
+                    </button>
+                    <button
+                      onClick={addWrestler}
+                      className="px-4 py-2 bg-stone-800 text-white rounded hover:bg-stone-700 transition-colors"
+                    >
+                      追加
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeView === 'matches' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-3xl font-bold text-stone-800">取組結果</h1>
+              <button
+                onClick={() => setShowAddMatch(true)}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-stone-800 text-white rounded hover:bg-stone-700 transition-colors"
+              >
+                <span>+</span>
+                <span>取組追加</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {[...new Set(matches.map(m => m.day))].sort((a, b) => b - a).map(day => (
+                <div key={day} className="border border-stone-200 rounded-lg overflow-hidden">
+                  <div className="bg-stone-50 px-4 py-2 font-medium text-stone-700">
+                    {day}日目
+                  </div>
+                  <div className="divide-y divide-stone-100">
+                    {matches.filter(m => m.day === day).map(match => (
+                      <div key={match.id} className="px-4 py-3 flex items-center justify-between hover:bg-stone-50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <span className={`font-medium ${match.winner === match.east ? 'text-red-600' : 'text-stone-600'}`}>
+                            {match.east}
+                            {match.winner === match.east && <span className="ml-1">○</span>}
+                          </span>
+                          <span className="text-stone-400">vs</span>
+                          <span className={`font-medium ${match.winner === match.west ? 'text-red-600' : 'text-stone-600'}`}>
+                            {match.winner === match.west && <span className="mr-1">○</span>}
+                            {match.west}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-stone-500 bg-stone-100 px-2 py-0.5 rounded">
+                            {match.technique}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add Match Modal */}
+            {showAddMatch && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+                  <h2 className="text-xl font-bold mb-4">取組追加</h2>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm text-stone-600 mb-1">日目</label>
+                      <input
+                        type="number"
+                        value={newMatch.day}
+                        onChange={(e) => setNewMatch({...newMatch, day: parseInt(e.target.value) || 1})}
+                        className="w-full border border-stone-200 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                        min="1"
+                        max="15"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-stone-600 mb-1">東方</label>
+                      <select
+                        value={newMatch.east}
+                        onChange={(e) => setNewMatch({...newMatch, east: e.target.value})}
+                        className="w-full border border-stone-200 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                      >
+                        <option value="">選択してください</option>
+                        {wrestlers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-stone-600 mb-1">西方</label>
+                      <select
+                        value={newMatch.west}
+                        onChange={(e) => setNewMatch({...newMatch, west: e.target.value})}
+                        className="w-full border border-stone-200 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                      >
+                        <option value="">選択してください</option>
+                        {wrestlers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-stone-600 mb-1">勝者</label>
+                      <select
+                        value={newMatch.winner}
+                        onChange={(e) => setNewMatch({...newMatch, winner: e.target.value})}
+                        className="w-full border border-stone-200 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                      >
+                        <option value="">選択してください</option>
+                        {newMatch.east && <option value={newMatch.east}>{newMatch.east}</option>}
+                        {newMatch.west && <option value={newMatch.west}>{newMatch.west}</option>}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-stone-600 mb-1">決まり手</label>
+                      <select
+                        value={newMatch.technique}
+                        onChange={(e) => setNewMatch({...newMatch, technique: e.target.value})}
+                        className="w-full border border-stone-200 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-stone-300"
+                      >
+                        <option value="">選択してください</option>
+                        {techniques.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-6">
+                    <button
+                      onClick={() => setShowAddMatch(false)}
+                      className="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded transition-colors"
+                    >
+                      キャンセル
+                    </button>
+                    <button
+                      onClick={addMatch}
+                      className="px-4 py-2 bg-stone-800 text-white rounded hover:bg-stone-700 transition-colors"
+                    >
+                      追加
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeView === 'ranking' && (
+          <div>
+            <h1 className="text-3xl font-bold text-stone-800 mb-6">番付表</h1>
+            
+            <div className="bg-gradient-to-b from-amber-50 to-amber-100 border-4 border-amber-800 rounded-lg p-8">
+              <div className="text-center mb-8">
+                <div className="text-2xl font-bold text-amber-900 tracking-widest">令和七年初場所</div>
+                <div className="text-amber-700 mt-1">番付表</div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-8">
+                {/* East Side */}
+                <div className="text-right">
+                  <div className="text-lg font-bold text-red-800 mb-4 tracking-widest">東</div>
+                  {ranks.map(rank => {
+                    const eastWrestlers = wrestlers.filter(w => w.rank === rank);
+                    return eastWrestlers.length > 0 ? (
+                      <div key={`east-${rank}`} className="mb-4">
+                        <div className="text-xs text-amber-700 mb-1">{rank}</div>
+                        {eastWrestlers.slice(0, Math.ceil(eastWrestlers.length / 2)).map(w => (
+                          <div key={w.id} className="text-lg font-medium text-stone-800 py-1">
+                            {w.name}
+                            <span className="text-sm text-stone-500 ml-2">
+                              {w.wins}-{w.losses}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+
+                {/* West Side */}
+                <div className="text-left">
+                  <div className="text-lg font-bold text-blue-800 mb-4 tracking-widest">西</div>
+                  {ranks.map(rank => {
+                    const westWrestlers = wrestlers.filter(w => w.rank === rank);
+                    return westWrestlers.length > 0 ? (
+                      <div key={`west-${rank}`} className="mb-4">
+                        <div className="text-xs text-amber-700 mb-1">{rank}</div>
+                        {westWrestlers.slice(Math.ceil(westWrestlers.length / 2)).map(w => (
+                          <div key={w.id} className="text-lg font-medium text-stone-800 py-1">
+                            <span className="text-sm text-stone-500 mr-2">
+                              {w.wins}-{w.losses}
+                            </span>
+                            {w.name}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-8 pt-4 border-t border-amber-300 text-center">
+                <div className="text-sm text-amber-700">
+                  幕内力士 {wrestlers.length}名
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default NotionSumoApp;

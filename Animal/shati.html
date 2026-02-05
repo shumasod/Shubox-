@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>忍者シャチ銀行システム</title>
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #001f3f;
+            color: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: #003366;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.1);
+        }
+        h1, h2 {
+            color: #7FDBFF;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        form {
+            margin-bottom: 20px;
+            background: #004080;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #7FDBFF;
+            border-radius: 4px;
+            background: #002b55;
+            color: #fff;
+        }
+        button {
+            display: inline-block;
+            background: #0074D9;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        #accountList, #message, #transactionHistory {
+            margin-top: 20px;
+            background: #004080;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .error {
+            color: #FF4136;
+            font-weight: bold;
+        }
+        .success {
+            color: #2ECC40;
+            font-weight: bold;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: #004080;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background: #0074D9;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #7FDBFF;
+        }
+        th {
+            background-color: #002b55;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .ninja-animation {
+            animation: ninjaFlash 0.5s;
+        }
+        @keyframes ninjaFlash {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 1; }
+        }
+        .session-note {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            font-size: 0.9em;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🥷🐳 忍者シャチ銀行システム 🐳🥷</h1>
+        
+        <div class="session-note">
+            ※ このシステムはセッション中のみデータが保持されます。ページを更新するとデータがリセットされます。
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="accounts">口座管理</div>
+            <div class="tab" data-tab="transactions">取引</div>
+            <div class="tab" data-tab="history">取引履歴</div>
+        </div>
+        
+        <div id="accountsTab" class="tab-content active">
+            <form id="createAccountForm">
+                <h2>新規忍者シャチ口座開設</h2>
+                <input type="text" id="newAccountNumber" placeholder="忍者シャチコード (5-10文字)" pattern="[A-Za-z0-9]{5,10}" required>
+                <input type="text" id="newOwnerName" placeholder="忍者シャチ名" required>
+                <input type="number" id="initialBalance" placeholder="初期魚ポイント" min="0" step="1" required>
+                <button type="submit" id="createAccountBtn">口座を開設</button>
+            </form>
+
+            <form id="balanceForm">
+                <h2>魚ポイント照会</h2>
+                <input type="text" id="balanceAccountNumber" placeholder="忍者シャチコード" required>
+                <button type="submit">魚ポイントを確認</button>
+            </form>
+
+            <button id="listAccountsBtn">全忍者シャチ口座一覧</button>
+            <div id="accountList"></div>
+        </div>
+
+        <div id="transactionsTab" class="tab-content">
+            <form id="transactionForm">
+                <h2>忍術シャチジャンプ取引</h2>
+                <input type="text" id="accountNumber" placeholder="忍者シャチコード" required>
+                <input type="number" id="amount" placeholder="魚ポイント" min="1" step="1" required>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" id="depositBtn" style="flex: 1;">魚ポイント獲得</button>
+                    <button type="button" id="withdrawBtn" style="flex: 1;">魚ポイント使用</button>
+                </div>
+            </form>
+
+            <form id="transferForm">
+                <h2>忍術シャチ間転送</h2>
+                <input type="text" id="fromAccount" placeholder="送信元忍者シャチコード" required>
+                <input type="text" id="toAccount" placeholder="送信先忍者シャチコード" required>
+                <input type="number" id="transferAmount" placeholder="転送魚ポイント" min="1" step="1" required>
+                <button type="submit">魚ポイント転送</button>
+            </form>
+        </div>
+
+        <div id="historyTab" class="tab-content">
+            <h2>取引履歴</h2>
+            <input type="text" id="historyAccountNumber" placeholder="忍者シャチコード (空欄ですべての履歴)">
+            <button id="viewHistoryBtn">履歴を表示</button>
+            <div id="transactionHistory"></div>
+        </div>
+
+        <div id="message" class="ninja-animation"></div>
+    </div>
+
+    <script>
+        // メモリ内データ（ページリロードでリセットされます）
+        let accounts = [];
+        let transactions = [];
+        
+        // メッセージ表示関数
+        function showMessage(msg, type = 'info') {
+            const messageEl = document.getElementById('message');
+            messageEl.innerHTML = `<p class="${type}">🌊 ${msg} 🌊</p>`;
+            messageEl.classList.remove('ninja-animation');
+            void messageEl.offsetWidth; // DOMの再描画を強制
+            messageEl.classList.add('ninja-animation');
+        }
+        
+        // タブ切り替え機能
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // タブのアクティブ状態を切り替え
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // コンテンツの表示を切り替え
+                const tabName = this.getAttribute('data-tab');
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(tabName + 'Tab').classList.add('active');
+            });
+        });
+        
+        // 口座作成フォーム
+        document.getElementById('createAccountForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const createAccountBtn = document.getElementById('createAccountBtn');
+            createAccountBtn.disabled = true;
+            
+            setTimeout(() => {
+                const accountNumber = document.getElementById('newAccountNumber').value.trim();
+                const ownerName = document.getElementById('newOwnerName').value.trim();
+                const balance = Math.floor(parseFloat(document.getElementById('initialBalance').value));
+                
+                // 入力検証
+                if (accountNumber.length < 5 || accountNumber.length > 10) {
+                    showMessage('忍者シャチコードは5〜10文字である必要があります', 'error');
+                    createAccountBtn.disabled = false;
+                    return;
+                }
+                
+                if (balance < 0 || isNaN(balance)) {
+                    showMessage('有効な魚ポイントを入力してください', 'error');
+                    createAccountBtn.disabled = false;
+                    return;
+                }
+                
+                // 口座番号の重複チェック
+                if (accounts.some(a => a.accountNumber === accountNumber)) {
+                    showMessage('この忍者シャチコードはすでに使用されています', 'error');
+                    createAccountBtn.disabled = false;
+                    return;
+                }
+                
+                // 口座作成
+                const timestamp = new Date().toISOString();
+                accounts.push({
+                    accountNumber, 
+                    ownerName, 
+                    balance,
+                    createdAt: timestamp,
+                    updatedAt: timestamp
+                });
+                
+                // 取引履歴に記録
+                transactions.push({
+                    type: 'create',
+                    accountNumber,
+                    amount: balance,
+                    balance,
+                    description: '口座開設',
+                    timestamp
+                });
+                
+                showMessage(`新規忍者シャチ口座が開設されました。忍者シャチコード: ${accountNumber}`, 'success');
+                this.reset();
+                createAccountBtn.disabled = false;
+            }, 500); // 処理感を演出
+        });
+
+        // 入金処理
+        document.getElementById('depositBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            const button = this;
+            button.disabled = true;
+            
+            setTimeout(() => {
+                transaction('deposit');
+                button.disabled = false;
+            }, 500);
+        });
+
+        // 出金処理
+        document.getElementById('withdrawBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            const button = this;
+            button.disabled = true;
+            
+            setTimeout(() => {
+                transaction('withdraw');
+                button.disabled = false;
+            }, 500);
+        });
+
+        // 取引処理関数
+        function transaction(type) {
+            const accountNumber = document.getElementById('accountNumber').value.trim();
+            const amount = Math.floor(parseFloat(document.getElementById('amount').value));
+            
+            // 入力検証
+            if (isNaN(amount) || amount <= 0) {
+                showMessage('有効な魚ポイントを入力してください', 'error');
+                return;
+            }
+            
+            // 口座検索
+            const accountIndex = accounts.findIndex(a => a.accountNumber === accountNumber);
+            if (accountIndex === -1) {
+                showMessage('忍者シャチが見つかりません。深海に潜んでいるかもしれません。', 'error');
+                return;
+            }
+            
+            const account = accounts[accountIndex];
+            const timestamp = new Date().toISOString();
+            let description;
+            
+            if (type === 'deposit') {
+                // 入金処理
+                account.balance += amount;
+                description = '魚ポイント獲得';
+                showMessage(`${amount}魚ポイントが獲得されました。新しい魚ポイント: ${account.balance}`, 'success');
+            } else {
+                // 出金処理
+                if (account.balance >= amount) {
+                    account.balance -= amount;
+                    description = '魚ポイント使用';
+                    showMessage(`${amount}魚ポイントが使用されました。新しい魚ポイント: ${account.balance}`, 'success');
+                } else {
+                    showMessage('魚ポイントが不足しています。もっと魚を捕まえてください！', 'error');
+                    return;
+                }
+            }
+            
+            // 取引記録
+            transactions.push({
+                type,
+                accountNumber,
+                amount,
+                balance: account.balance,
+                description,
+                timestamp
+            });
+            
+            // 口座更新日時
+            account.updatedAt = timestamp;
+            accounts[accountIndex] = account;
+            
+            document.getElementById('transactionForm').reset();
+        }
+
+        // 残高照会処理
+        document.getElementById('balanceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const button = this.querySelector('button');
+            button.disabled = true;
+            
+            setTimeout(() => {
+                const accountNumber = document.getElementById('balanceAccountNumber').value.trim();
+                const account = accounts.find(a => a.accountNumber === accountNumber);
+                
+                if (account) {
+                    showMessage(`忍者シャチ名: ${account.ownerName}<br>魚ポイント: ${account.balance}`, 'success');
+                } else {
+                    showMessage('忍者シャチが見つかりません。海中忍術で姿を隠しているかもしれません。', 'error');
+                }
+                
+                this.reset();
+                button.disabled = false;
+            }, 500);
+        });
+
+        // 口座一覧表示処理
+        document.getElementById('listAccountsBtn').addEventListener('click', function() {
+            const button = this;
+            button.disabled = true;
+            
+            setTimeout(() => {
+                const list = document.getElementById('accountList');
+                
+                if (accounts.length === 0) {
+                    list.innerHTML = '<h2>忍者シャチ口座一覧</h2><p>口座がありません。最初の忍者シャチ口座を開設しましょう！</p>';
+                    button.disabled = false;
+                    return;
+                }
+                
+                list.innerHTML = `
+                    <h2>忍者シャチ口座一覧</h2>
+                    <table>
+                        <tr>
+                            <th>忍者シャチコード</th>
+                            <th>忍者シャチ名</th>
+                            <th>魚ポイント</th>
+                            <th>作成日時</th>
+                        </tr>
+                        ${accounts.map(account => `
+                            <tr>
+                                <td>${account.accountNumber}</td>
+                                <td>${account.ownerName}</td>
+                                <td>${account.balance}</td>
+                                <td>${new Date(account.createdAt).toLocaleString('ja-JP')}</td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                `;
+                
+                button.disabled = false;
+            }, 500);
+        });
+
+        // 転送処理
+        document.getElementById('transferForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const button = this.querySelector('button');
+            button.disabled = true;
+            
+            setTimeout(() => {
+                const fromAccountNumber = document.getElementById('fromAccount').value.trim();
+                const toAccountNumber = document.getElementById('toAccount').value.trim();
+                const amount = Math.floor(parseFloat(document.getElementById('transferAmount').value));
+                
+                // 入力検証
+                if (isNaN(amount) || amount <= 0) {
+                    showMessage('有効な魚ポイントを入力してください', 'error');
+                    button.disabled = false;
+                    return;
+                }
+                
+                if (fromAccountNumber === toAccountNumber) {
+                    showMessage('同じ忍者シャチには転送できません', 'error');
+                    button.disabled = false;
+                    return;
+                }
+                
+                // 送信元口座検索
+                const fromAccountIndex = accounts.findIndex(a => a.accountNumber === fromAccountNumber);
+                if (fromAccountIndex === -1) {
+                    showMessage('送信元忍者シャチが見つかりません', 'error');
+                    button.disabled = false;
+                    return;
+                }
+                
+                // 送信先口座検索
+                const toAccountIndex = accounts.findIndex(a => a.accountNumber === toAccountNumber);
+                if (toAccountIndex === -1) {
+                    showMessage('送信先忍者シャチが見つかりません', 'error');
+                    button.disabled = false;
+                    return;
+                }
+                
+                const fromAccount = accounts[fromAccountIndex];
+                const toAccount = accounts[toAccountIndex];
+                
+                // 残高確認
+                if (fromAccount.balance < amount) {
+                    showMessage('魚ポイントが不足しています', 'error');
+                    button.disabled = false;
+                    return;
+                }
+                
+                const timestamp = new Date().toISOString();
+                
+                // 出金処理
+                fromAccount.balance -= amount;
+                fromAccount.updatedAt = timestamp;
+                accounts[fromAccountIndex] = fromAccount;
+                
+                // 入金処理
+                toAccount.balance += amount;
+                toAccount.updatedAt = timestamp;
+                accounts[toAccountIndex] = toAccount;
+                
+                // 取引記録（送信元）
+                transactions.push({
+                    type: 'transfer_out',
+                    accountNumber: fromAccountNumber,
+                    targetAccount: toAccountNumber,
+                    amount,
+                    balance: fromAccount.balance,
+                    description: `${toAccount.ownerName}への転送`,
+                    timestamp
+                });
+                
+                // 取引記録（送信先）
+                transactions.push({
+                    type: 'transfer_in',
+                    accountNumber: toAccountNumber,
+                    sourceAccount: fromAccountNumber,
+                    amount,
+                    balance: toAccount.balance,
+                    description: `${fromAccount.ownerName}からの転送`,
+                    timestamp
+                });
+                
+                showMessage(`${amount}魚ポイントが ${fromAccount.ownerName} から ${toAccount.ownerName} に転送されました`, 'success');
+                this.reset();
+                button.disabled = false;
+            }, 500);
+        });
+
+        // 取引履歴表示処理
+        document.getElementById('viewHistoryBtn').addEventListener('click', function() {
+            const button = this;
+            button.disabled = true;
+            
+            setTimeout(() => {
+                const accountNumber = document.getElementById('historyAccountNumber').value.trim();
+                const historyDiv = document.getElementById('transactionHistory');
+                
+                let filteredTransactions;
+                if (accountNumber) {
+                    filteredTransactions = transactions.filter(t => 
+                        t.accountNumber === accountNumber || 
+                        t.sourceAccount === accountNumber || 
+                        t.targetAccount === accountNumber
+                    );
+                    
+                    if (filteredTransactions.length === 0) {
+                        historyDiv.innerHTML = '<p>この忍者シャチの取引履歴はありません</p>';
+                        button.disabled = false;
+                        return;
+                    }
+                } else {
+                    filteredTransactions = [...transactions];
+                    
+                    if (filteredTransactions.length === 0) {
+                        historyDiv.innerHTML = '<p>取引履歴はありません</p>';
+                        button.disabled = false;
+                        return;
+                    }
+                }
+                
+                // 日付の降順でソート
+                filteredTransactions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                // 最大50件まで表示
+                filteredTransactions = filteredTransactions.slice(0, 50);
+                
+                historyDiv.innerHTML = `
+                    <table>
+                        <tr>
+                            <th>日時</th>
+                            <th>種類</th>
+                            <th>忍者シャチコード</th>
+                            <th>内容</th>
+                            <th>魚ポイント</th>
+                            <th>残高</th>
+                        </tr>
+                        ${filteredTransactions.map(t => {
+                            let typeText;
+                            switch(t.type) {
+                                case 'create': typeText = '開設'; break;
+                                case 'deposit': typeText = '獲得'; break;
+                                case 'withdraw': typeText = '使用'; break;
+                                case 'transfer_out': typeText = '転送出'; break;
+                                case 'transfer_in': typeText = '転送入'; break;
+                                default: typeText = t.type;
+                            }
+                            
+                            return `
+                                <tr>
+                                    <td>${new Date(t.timestamp).toLocaleString('ja-JP')}</td>
+                                    <td>${typeText}</td>
+                                    <td>${t.accountNumber}</td>
+                                    <td>${t.description}</td>
+                                    <td>${t.type === 'withdraw' || t.type === 'transfer_out' ? '-' : '+'}${t.amount}</td>
+                                    <td>${t.balance}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </table>
+                `;
+                
+                button.disabled = false;
+            }, 500);
+        });
+        
+        // 初期データをセットアップ（デモ用）
+        function setupInitialData() {
+            // デモ用の初期口座を作成
+            const demoAccount1 = {
+                accountNumber: "ninja001",
+                ownerName: "忍者シャチA",
+                balance: 1000,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            const demoAccount2 = {
+                accountNumber: "ninja002",
+                ownerName: "忍者シャチB",
+                balance: 500,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            accounts.push(demoAccount1);
+            accounts.push(demoAccount2);
+            
+            // 初期取引を記録
+            transactions.push({
+                type: 'create',
+                accountNumber: "ninja001",
+                amount: 1000,
+                balance: 1000,
+                description: '口座開設',
+                timestamp: demoAccount1.createdAt
+            });
+            
+            transactions.push({
+                type: 'create',
+                accountNumber: "ninja002",
+                amount: 500,
+                balance: 500,
+                description: '口座開設',
+                timestamp: demoAccount2.createdAt
+            });
+            
+            // 口座一覧を表示
+            document.getElementById('listAccountsBtn').click();
+        }
+        
+        // ページロード時にデモデータをセットアップ
+        setupInitialData();
+    </script>
+</body>
+</html>

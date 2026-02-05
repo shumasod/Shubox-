@@ -1,0 +1,146 @@
+import React, { useState } from 'react';
+
+const giraffeFacts = [
+  { icon: "Sleep", title: "Sleep", text: "キリンの睡眠時間は1日たったの20分〜2時間程度です。" },
+  { icon: "Speed", title: "Speed", text: "走ると時速約60kmのスピードに達します。" },
+  { icon: "Neck Bones", title: "Neck Bones", text: "首の骨の数は人間と同じ7個です。" },
+  { icon: "Social", title: "Social", text: "群れで生活し、時には50頭以上の大きな群れをつくります。" },
+  { icon: "Conservation", title: "Conservation", text: "IUCNレッドリストでは「危急種（Vulnerable）」に指定されています。" },
+] as const;
+
+const externalLinks = [
+  { href: "https://ja.wikipedia.org/wiki/%E3%82%AD%E3%83%AA%E3%83%B3", text: "Wikipedia: キリン" },
+  { href: "https://www.wwf.or.jp/activities/basicinfo/3849.html", text: "WWF: キリン保護" },
+  { href: "https://www.ueno-zoo.jp/animals/mammal/giraffe", text: "上野動物園: キリン" },
+] as const;
+
+const galleryImages = [
+  { src: "/api/placeholder/800/600?img=1", alt: "キリンの親子" },
+  { src: "/api/placeholder/800/600?img=2", alt: "サバンナを歩くキリン" },
+  { src: "/api/placeholder/800/600?img=3", alt: "木の葉を食べるキリン" },
+  { src: "/api/placeholder/800/600?img=4", alt: "夕陽とキリンのシルエット" },
+  { src: "/api/placeholder/800/600?img=5", alt: "水を飲むキリン" },
+  { src: "/api/placeholder/800/600?img=6", alt: "赤ちゃんキリンと母キリン" },
+] as const;
+
+const GiraffePage = () => {
+  const [mainImageLoaded, setMainImageLoaded] = useState(false);
+  const [mainImageError, setMainImageError] = useState(false);
+  const [mainImageRetryCount, setMainImageRetryCount] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const mainImageSrc = `/api/placeholder/1200/800?text=Giraffe+${mainImageRetryCount}`;
+
+  const handleImageLoad = () => {
+    setMainImageLoaded(true);
+    setMainImageError(false);
+  };
+
+  const handleImageError = () => {
+    setMainImageError(true);
+    setMainImageLoaded(false);
+  };
+
+  const handleRetry = () => {
+    setMainImageRetryCount(prev => prev + 1);
+    setMainImageError(false);
+    setMainImageLoaded(false);
+  };
+
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50 py-12 px-4">
+      <div className="max-w-5xl mx-auto">
+        {/* ヘッダー */}
+        <header className="text-center mb-12">
+          <h1 className="text-5xl md:text-6xl font-bold text-amber-800 mb-4 tracking-tight">
+            Beautiful Giraffe
+          </h1>
+          <p className="text-xl text-amber-700 max-w-2xl mx-auto leading-relaxed">
+            自然が作り出した最も優雅で美しい生き物の一つ
+          </p>
+        </header>
+
+        {/* メイン画像カード */}
+        <article
+          className="relative bg-white rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 hover:shadow-3xl"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          <div className="relative aspect-[16/10] bg-gray-100 overflow-hidden">
+            {/* ローディングスケルトン */}
+            {!mainImageLoaded && !mainImageError && (
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse" />
+            )}
+
+            {/* エラー時フォールバック */}
+            {mainImageError && (
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center">
+                <div className="text-center p-8">
+                  <div className="text-8xl mb-6">Giraffe</div>
+                  <p className="text-gray-700 text-lg mb-6">画像の読み込みに失敗しました</p>
+                  <button
+                    onClick={handleRetry}
+                    className="bg-amber-600 text-white px-8 py-3 rounded-xl font-medium hover:bg-amber-700 transition-colors focus:outline-none focus:ring-4 focus:ring-amber-300"
+                    aria-label="メイン画像を再読み込み"
+                  >
+                    再読み込みする
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* メイン画像 */}
+            <img
+              src={mainImageSrc}
+              alt="サバンナに佇む優雅なキリン。長い首と美しい斑模様が特徴的"
+              className={`
+                absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-out
+                ${mainImageLoaded ? 'opacity-100' : 'opacity-0'}
+                ${isHovered ? 'scale-110' : 'scale-100'}
+              `}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              loading="eager"
+              decoding="async"
+            />
+
+            {/* ホバー時のオーバーレイ */}
+            <div
+              className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+              aria-hidden="true"
+            />
+          </div>
+
+          <div className="p-8 bg-white">
+            <h2 className="text-3xl font-bold text-gray-800 mb-4">
+              地球上でもっとも背の高い哺乳類
+            </h2>
+            <p className="text-gray-600 leading-relaxed text-lg mb-6">
+              キリンは最大で5.5mを超える高さに達します。その斑模様は指紋のように個体ごとに異なり、
+              まるで自然が描いたアート作品のようです。
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {["野生動物", "アフリカ", "草食動物", "絶滅危惧"].map(tag => (
+                <span
+                  key={tag}
+                  className="bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-sm font-medium"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        </article>
+
+        {/* フォトギャラリー */}
+        <section className="mt-16" aria-labelledby="gallery-heading">
+          <h2 id="gallery-heading" className="text-3xl font-bold text-amber-800 mb-8 text-center">
+            キリンのフォトギャラリー
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            {galleryImages.map((img) => (
+              <figure key={img.src} className="group relative overflow-hidden rounded-2xl shadow-lg">
+                <img
+                  src={img.src}
+                  alt={img.alt}
+                  className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"

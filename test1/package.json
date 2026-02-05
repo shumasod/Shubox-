@@ -1,0 +1,22 @@
+{
+  "name": "note-auto-post",
+  "version": "1.0.0",
+  "description": "noteの新規投稿を自動的にSNSに投稿するシステム",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "twitter-api-v2": "^1.24.0",
+    "rss-parser": "^3.13.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "keywords": ["note", "twitter", "discord", "rss", "automation"],
+  "author": "Your Name",
+  "license": "MIT"
+}

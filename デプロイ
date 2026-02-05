@@ -1,0 +1,159 @@
+#!/bin/bash
+
+# ElastiCache監視システム デプロイスクリプト
+# 使い方: ./deploy.sh [sam|terraform]
+
+set -e
+
+DEPLOY_METHOD="${1:-sam}"
+
+echo "======================================"
+echo "ElastiCache監視システム デプロイ"
+echo "======================================"
+echo ""
+
+# 環境変数の確認
+check_env() {
+    echo "環境変数の確認..."
+    
+    if [ -z "$CLUSTER_ID" ]; then
+        read -p "ElastiCache Cluster ID: " CLUSTER_ID
+    fi
+    
+    if [ -z "$SLACK_WEBHOOK_URL" ]; then
+        read -p "Slack Webhook URL (オプション): " SLACK_WEBHOOK_URL
+    fi
+    
+    if [ -z "$TEAMS_WEBHOOK_URL" ]; then
+        read -p "Teams Webhook URL (オプション): " TEAMS_WEBHOOK_URL
+    fi
+    
+    if [ -z "$AWS_REGION" ]; then
+        read -p "AWS Region [ap-northeast-1]: " AWS_REGION
+        AWS_REGION="${AWS_REGION:-ap-northeast-1}"
+    fi
+    
+    echo ""
+    echo "設定内容:"
+    echo "  Cluster ID: $CLUSTER_ID"
+    echo "  AWS Region: $AWS_REGION"
+    echo "  Slack Webhook: ${SLACK_WEBHOOK_URL:0:30}..."
+    echo "  Teams Webhook: ${TEAMS_WEBHOOK_URL:0:30}..."
+    echo ""
+    
+    read -p "この設定でデプロイしますか? (y/n): " confirm
+    if [ "$confirm" != "y" ]; then
+        echo "デプロイを中止しました"
+        exit 1
+    fi
+}
+
+# SAM デプロイ
+deploy_sam() {
+    echo "AWS SAM でデプロイします..."
+    echo ""
+    
+    # SAM CLIの確認
+    if ! command -v sam &> /dev/null; then
+        echo "エラー: AWS SAM CLI がインストールされていません"
+        echo "インストール: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html"
+        exit 1
+    fi
+    
+    # ビルド
+    echo "Lambda関数をビルド中..."
+    sam build
+    
+    # デプロイ
+    echo "デプロイ中..."
+    sam deploy \
+        --parameter-overrides \
+            ClusterId="$CLUSTER_ID" \
+            SlackWebhookUrl="$SLACK_WEBHOOK_URL" \
+            TeamsWebhookUrl="$TEAMS_WEBHOOK_URL" \
+        --region "$AWS_REGION" \
+        --stack-name elasticache-monitor \
+        --capabilities CAPABILITY_IAM \
+        --resolve-s3
+    
+    echo ""
+    echo "✅ SAMデプロイ完了!"
+}
+
+# Terraform デプロイ
+deploy_terraform() {
+    echo "Terraform でデプロイします..."
+    echo ""
+    
+    # Terraformの確認
+    if ! command -v terraform &> /dev/null; then
+        echo "エラー: Terraform がインストールされていません"
+        echo "インストール: https://www.terraform.io/downloads"
+        exit 1
+    fi
+    
+    # terraform.tfvars作成
+    cat > terraform.tfvars <<EOF
+aws_region        = "$AWS_REGION"
+cluster_id        = "$CLUSTER_ID"
+slack_webhook_url = "$SLACK_WEBHOOK_URL"
+teams_webhook_url = "$TEAMS_WEBHOOK_URL"
+EOF
+    
+    # 初期化
+    echo "Terraform初期化中..."
+    terraform init
+    
+    # プラン
+    echo "デプロイ内容を確認中..."
+    terraform plan
+    
+    # 適用
+    echo ""
+    read -p "デプロイを実行しますか? (y/n): " confirm
+    if [ "$confirm" != "y" ]; then
+        echo "デプロイを中止しました"
+        exit 1
+    fi
+    
+    terraform apply -auto-approve
+    
+    echo ""
+    echo "✅ Terraformデプロイ完了!"
+}
+
+# メイン処理
+main() {
+    check_env
+    
+    case "$DEPLOY_METHOD" in
+        sam)
+            deploy_sam
+            ;;
+        terraform)
+            deploy_terraform
+            ;;
+        *)
+            echo "エラー: 不明なデプロイ方法: $DEPLOY_METHOD"
+            echo "使用方法: ./deploy.sh [sam|terraform]"
+            exit 1
+            ;;
+    esac
+    
+    echo ""
+    echo "======================================"
+    echo "デプロイ完了!"
+    echo "======================================"
+    echo ""
+    echo "次のステップ:"
+    echo "1. CloudWatch Logs で動作確認"
+    echo "   aws logs tail /aws/lambda/elasticache-monitor --follow"
+    echo ""
+    echo "2. 手動実行でテスト"
+    echo "   aws lambda invoke --function-name elasticache-monitor response.json"
+    echo ""
+    echo "3. Slack/Teams で通知を確認"
+    echo ""
+}
+
+main

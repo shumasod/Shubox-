@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Account management system for managing user accounts">
-    <title>Account Management System</title>
+    <title>アカウント管理システム</title>
     <link href="{{ mix('css/app.css') }}" rel="stylesheet">
 </head>
 <body class="bg-gray-100 font-sans">
@@ -16,10 +16,10 @@
         <main>
             <div class="mb-6 flex space-x-4">
                 <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300" onclick="createAccount()">
-                    Create Account
+                    アカウント作成
                 </button>
                 <button class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300" onclick="deleteAccount()">
-                    Delete Account
+                    アカウント削除
                 </button>
             </div>
 

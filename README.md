@@ -1,113 +1,219 @@
-# Laravel Sail 開発環境構築ガイド（Windows 11, WSL2, Ubuntu, Docker Desktop）
+# クレジットカード・キックバック管理システム
 
-このガイドでは、Windows 11上でWSL2、Ubuntu、Docker Desktopを使用してLaravel Sailの開発環境をセットアップする手順を詳細に説明します。
+DynamoDB を基盤とした、クレジットカードのキックバック（ポイント/マイル/キャッシュバック）管理システム。
 
-## 目次
-1. [前提条件](#前提条件)
-2. [WSL2とUbuntuの設定](#1-wsl2とubuntuの設定)
-3. [Docker Desktopのインストール](#2-docker-desktopのインストール)
-4. [PHPとComposerのインストール](#3-phpとcomposerのインストール)
-5. [Laravel Sailのインストールとプロジェクト作成](#4-laravel-sailのインストールとプロジェクト作成)
-6. [開発環境の起動と確認](#5-開発環境の起動と確認)
-7. [プロジェクトへのアクセス](#6-プロジェクトへのアクセス)
-8. [追加情報とトラブルシューティング](#7-追加情報とトラブルシューティング)
+## 目標
 
-## 前提条件
+- ユーザー別・期間別の高速照会（< 100ms）
+- カテゴリ/カード別の効率分析
+- AI駆動の最適カード推薦とレポート生成
 
-- **Windows 11**: 最新のアップデートが適用されていること
-- **WSL2**: Windows Subsystem for Linux 2が有効化されていること
-- **Ubuntu**: WSL2上にUbuntu (推奨バージョン: 22.04 LTS以降) がインストールされていること
-- **Docker Desktop**: Windows用の最新版がインストールされていること
-- **テキストエディタ**: Visual Studio Code (推奨) または任意のコードエディタ
+## アーキテクチャ概要
 
-## 1. WSL2とUbuntuの設定
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────────┐
+│   Client    │────▶│  API Gateway │────▶│ Lambda (FastAPI)│
+└─────────────┘     └─────────────┘     └────────┬────────┘
+                                                  │
+                    ┌─────────────────────────────┼─────────────────────────────┐
+                    │                             ▼                             │
+                    │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐ │
+                    │  │  DynamoDB   │────▶│   Streams   │────▶│   Kinesis   │ │
+                    │  └─────────────┘     └─────────────┘     └──────┬──────┘ │
+                    │        │                                        │        │
+                    │        ▼                                        ▼        │
+                    │  ┌─────────────┐                         ┌─────────────┐ │
+                    │  │     DAX     │                         │   Bedrock   │ │
+                    │  └─────────────┘                         └─────────────┘ │
+                    └──────────────────────────────────────────────────────────┘
+```
 
-### 1.1 WSL2の有効化
+## データモデル
 
-1. **管理者権限**でPowerShellを開き、以下のコマンドを実行:
-   ```powershell
-   wsl --install
-   ```
-2. コンピュータを**再起動**します。
+### テーブル設計
 
-### 1.2 Ubuntuのインストールと設定
+| キー | パターン | 説明 |
+|------|----------|------|
+| PK | `USER#{userId}` | ユーザー識別子 |
+| SK | `TRANSACTION#{date}#{transactionId}` | ISO日付 + UUID |
+| TTL | `expirationTime` | Epoch秒（任意） |
 
-1. **Microsoft Store**で「Ubuntu」を検索し、最新版をインストール。
-2. インストール完了後、Ubuntuを起動。
-3. 新しいUNIXユーザー名とパスワードを設定。
-4. 以下のコマンドでシステムを更新:
-   ```bash
-   sudo apt update && sudo apt upgrade -y
-   ```
+### GSI
 
-## 2. Docker Desktopのインストール
+| インデックス | PK | SK | 用途 |
+|-------------|----|----|------|
+| CategoryIndex | `CATEGORY#{category}` | `{date}` | カテゴリ別集計 |
+| CardIndex | `CARD#{cardId}` | `{date}` | カード別効率分析 |
+| TimeIndex | `DATE#{date}` | `USER#{userId}#{txnId}` | 日次/月次集計 |
 
-1. [Docker公式サイト](https://www.docker.com/products/docker-desktop/)からDocker Desktop for Windowsをダウンロード。
-2. インストーラーを実行し、指示に従ってインストール。
-3. インストール完了後、Docker Desktopを起動。
-4. 設定で「Use the WSL 2 based engine」にチェックが入っていることを確認。
-5. 「Resources」>「WSL Integration」で使用するUbuntuディストリビューションを有効化。
+### アイテム例
 
-## 3. PHPとComposerのインストール
+```json
+{
+  "PK": "USER#user123",
+  "SK": "TRANSACTION#2025-08-22#txn001",
+  "GSI1PK": "CATEGORY#GROCERY",
+  "GSI1SK": "2025-08-22",
+  "GSI2PK": "CARD#card456",
+  "GSI2SK": "2025-08-22",
+  "GSI3PK": "DATE#2025-08-22",
+  "GSI3SK": "USER#user123#txn001",
+  "userId": "user123",
+  "transactionId": "txn001",
+  "transactionDate": "2025-08-22",
+  "cardId": "card456",
+  "cardName": "プラチナカード",
+  "merchantName": "スーパーマーケットA",
+  "category": "GROCERY",
+  "transactionAmount": 5000,
+  "kickbackAmount": 50,
+  "kickbackType": "POINT",
+  "kickbackRate": 0.01,
+  "createdAt": "2025-08-22T12:34:56Z",
+  "expirationTime": 1756675200
+}
+```
 
-1. UbuntuターミナルでPHPとその依存関係をインストール:
-   ```bash
-   sudo apt install php-cli php-xml php-curl php-zip unzip -y
-   ```
-2. Composerのインストール:
-   ```bash
-   curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
-   ```
+## アクセスパターン
 
-## 4. Laravel Sailのインストールとプロジェクト作成
+### ユーザー履歴取得
 
-1. プロジェクトを作成するディレクトリに移動:
-   ```bash
-   cd /mnt/c/Users/YourUsername/Projects
-   ```
-2. Laravelプロジェクトを作成:
-   ```bash
-   composer create-project laravel/laravel my-project
-   ```
-3. プロジェクトディレクトリに移動:
-   ```bash
-   cd my-project
-   ```
-4. Laravel Sailをインストール:
-   ```bash
-   composer require laravel/sail --dev
-   ```
-5. Sailの設定ファイルを公開:
-   ```bash
-   php artisan sail:install
-   ```
+```javascript
+const params = {
+  TableName: 'CreditCardKickbacks',
+  KeyConditionExpression: 'PK = :userId',
+  ExpressionAttributeValues: { ':userId': 'USER#user123' },
+  ScanIndexForward: false,
+  ProjectionExpression: 'transactionDate, kickbackAmount, category, cardName'
+};
+```
 
-## 5. 開発環境の起動と確認
+### 期間指定取得
 
-1. Sailを使用してDockerコンテナを起動:
-   ```bash
-   ./vendor/bin/sail up -d
-   ```
-2. ブラウザで `http://localhost` を開き、Laravelのウェルカムページが表示されることを確認。
+```javascript
+const params = {
+  TableName: 'CreditCardKickbacks',
+  KeyConditionExpression: 'PK = :userId AND SK BETWEEN :start AND :end',
+  ExpressionAttributeValues: {
+    ':userId': 'USER#user123',
+    ':start': 'TRANSACTION#2025-08-01#',
+    ':end': 'TRANSACTION#2025-08-31#~'
+  }
+};
+```
 
-## 6. プロジェクトへのアクセス
+### カテゴリ別集計
 
-### 6.1 WSL2からのアクセス
+```javascript
+const params = {
+  TableName: 'CreditCardKickbacks',
+  IndexName: 'CategoryIndex',
+  KeyConditionExpression: 'GSI1PK = :category AND GSI1SK BETWEEN :start AND :end',
+  ExpressionAttributeValues: {
+    ':category': 'CATEGORY#GROCERY',
+    ':start': '2025-08-01',
+    ':end': '2025-08-31'
+  }
+};
+```
 
-- WSL2のUbuntuターミナルから直接プロジェクトディレクトリにアクセス可能。
+## API
 
-### 6.2 Visual Studio Codeからのアクセス
+| メソッド | エンドポイント | 説明 |
+|---------|---------------|------|
+| POST | `/transactions` | トランザクション登録 |
+| GET | `/users/{userId}/kickbacks` | ユーザー履歴取得 |
+| GET | `/analytics/category/{category}` | カテゴリ別分析 |
+| GET | `/analytics/card/{cardId}` | カード別効率分析 |
+| GET | `/analytics/predictions/{userId}` | AI予測・推薦 |
 
-1. VS Codeを起動し、「File」>「Open Folder」を選択。
-2. `/mnt/c/Users/YourUsername/Projects/my-project` を開く。
-3. 必要に応じて、WSL拡張機能をインストールして、WSL2内のファイルに直接アクセス。
+## インフラストラクチャ
 
-## 7. 追加情報とトラブルシューティング
+AWS CDK（TypeScript）でデプロイ。詳細は `infra/` ディレクトリ参照。
 
-- **コンテナの停止**: 作業終了時は `./vendor/bin/sail down` を実行。
-- **データベース接続**: デフォルトでMySQLが設定されています。接続情報は `.env` ファイルを確認。
-- **Xdebugの設定**: デバッグが必要な場合、Sailの設定ファイルでXdebugを有効化できます。
-- **パフォーマンスの最適化**: 大規模プロジェクトの場合、WSL2のメモリ使用量を `.wslconfig` ファイルで調整することを検討。
+### 主要コンポーネント
 
-詳細な情報やトラブルシューティングについては、[Laravel Sail公式ドキュメント](https://laravel.com/docs/sail)を参照してください。
+- **DynamoDB**: メインデータストア（Standard-IAクラス）
+- **DAX**: マイクロ秒レベルのキャッシュ
+- **Lambda + FastAPI**: API実装
+- **Kinesis**: ストリーム処理
+- **Bedrock**: AI予測・推薦
+- **Athena + Iceberg**: 分析クエリ
 
+## セキュリティ
+
+- KMSによるデータ暗号化（At-Rest / In-Transit）
+- IAM最小権限 + Verified Permissions
+- CloudTrail + Config によるコンプライアンス監視
+- Macie によるPII検出
+
+## パフォーマンス最適化
+
+| 課題 | 対策 |
+|------|------|
+| ホットパーティション | Contributor Insightsで検出、必要に応じてシャーディング |
+| 読み取りレイテンシ | DAX導入 |
+| 集計クエリ | ElastiCacheでキャッシュ |
+| 書き込みスループット | BatchWriter + 指数バックオフ + jitter |
+
+## 分析クエリ例
+
+### カテゴリ別ランキング
+
+```sql
+SELECT 
+  category,
+  SUM(kickbackAmount) AS total,
+  COUNT(*) AS count,
+  RANK() OVER (ORDER BY SUM(kickbackAmount) DESC) AS rank
+FROM iceberg_kickbacks
+WHERE year = 2025 AND month = 8
+GROUP BY category;
+```
+
+### カード効率スコア
+
+```sql
+SELECT 
+  cardId,
+  cardName,
+  SUM(kickbackAmount) AS total_kickback,
+  AVG(kickbackRate) AS avg_rate,
+  (SUM(kickbackAmount) * 0.4 + COUNT(*) * 0.3 + AVG(kickbackRate) * 1000 * 0.3) AS score
+FROM iceberg_kickbacks
+WHERE year = 2025 AND month = 8
+GROUP BY cardId, cardName
+ORDER BY score DESC
+LIMIT 10;
+```
+
+## ディレクトリ構成
+
+```
+.
+├── infra/          # CDKスタック
+├── src/
+│   ├── api/        # FastAPI実装
+│   ├── models/     # Pydanticモデル
+│   └── services/   # ビジネスロジック
+├── tests/
+└── docs/
+```
+
+## 開発
+
+```bash
+# 依存関係インストール
+npm install
+pip install -r requirements.txt
+
+# ローカル実行
+sam local start-api
+
+# デプロイ
+cdk deploy
+```
+
+## ライセンス
+
+MIT

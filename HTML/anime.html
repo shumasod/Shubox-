@@ -1,50 +1,131 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>スタイリッシュな背景とテキストの同期</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Noto Sans JP', sans-serif;
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: white;
-            text-align: center;
-            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-        }
+import React, { useState, useEffect } from ‘react’;
 
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
+const StylishGradientText = () => {
+const [isVisible, setIsVisible] = useState(true);
 
-        .text {
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-            opacity: 0;
-            transform: scale(0.9);
-            animation: textReveal 10s infinite;
-        }
+useEffect(() => {
+const interval = setInterval(() => {
+setIsVisible(prev => !prev);
+}, 10000);
 
-        @keyframes textReveal {
-            0%, 100% { opacity: 0; transform: scale(0.9); }
-            10%, 90% { opacity: 1; transform: scale(1); }
-        }
-    </style>
-</head>
-<body>
-    <div class="text">正義は私たちの手に</div>
-</body>
-</html>
+```
+return () => clearInterval(interval);
+```
+
+}, []);
+
+return (
+<div className="relative w-full h-screen overflow-hidden flex items-center justify-center">
+{/* アニメーション背景 */}
+<div
+className=“absolute inset-0 animate-gradient”
+style={{
+background: ‘linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab)’,
+backgroundSize: ‘400% 400%’,
+}}
+/>
+
+```
+  {/* 装飾的な光の粒子 */}
+  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    {[...Array(20)].map((_, i) => (
+      <div
+        key={i}
+        className="absolute w-2 h-2 bg-white rounded-full opacity-30 animate-float"
+        style={{
+          left: `${Math.random() * 100}%`,
+          top: `${Math.random() * 100}%`,
+          animationDelay: `${Math.random() * 5}s`,
+          animationDuration: `${5 + Math.random() * 10}s`,
+        }}
+      />
+    ))}
+  </div>
+
+  {/* メインテキストコンテナ */}
+  <main 
+    className={`relative z-10 transition-all duration-1000 ${
+      isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-5'
+    }`}
+    role="banner"
+    aria-label="メインメッセージ"
+  >
+    <div className="px-8 py-6 sm:px-12 sm:py-10 backdrop-blur-xl bg-black/50 rounded-2xl shadow-2xl border border-white/20 max-w-[90vw]">
+      <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white text-center leading-relaxed tracking-wide">
+        正義は私たちの手に
+      </h1>
+      
+      {/* サブテキスト（オプション） */}
+      <p className="mt-4 text-base sm:text-lg text-white/80 text-center font-light tracking-wider">
+        Justice in Our Hands
+      </p>
+      
+      {/* 装飾的な下線 */}
+      <div className="mt-6 h-1 w-24 bg-gradient-to-r from-transparent via-white to-transparent mx-auto rounded-full animate-pulse" />
+    </div>
+
+    {/* 浮遊する装飾エフェクト */}
+    <div className="absolute -top-4 -left-4 w-24 h-24 bg-white/10 rounded-full blur-2xl animate-pulse" />
+    <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-white/10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
+  </main>
+
+  {/* CSS アニメーション */}
+  <style jsx>{`
+    @keyframes gradient {
+      0%, 100% { 
+        background-position: 0% 50%; 
+      }
+      25% {
+        background-position: 100% 0%;
+      }
+      50% { 
+        background-position: 100% 50%; 
+      }
+      75% {
+        background-position: 0% 100%;
+      }
+    }
+    
+    @keyframes float {
+      0%, 100% { 
+        transform: translateY(0) translateX(0); 
+        opacity: 0.3;
+      }
+      25% {
+        transform: translateY(-30px) translateX(20px);
+        opacity: 0.6;
+      }
+      50% { 
+        transform: translateY(-60px) translateX(-20px); 
+        opacity: 0.3;
+      }
+      75% {
+        transform: translateY(-30px) translateX(-40px);
+        opacity: 0.5;
+      }
+    }
+    
+    .animate-gradient {
+      animation: gradient 15s ease infinite;
+    }
+    
+    .animate-float {
+      animation: float ease-in-out infinite;
+    }
+    
+    @media (prefers-reduced-motion: reduce) {
+      .animate-gradient {
+        animation-duration: 60s;
+      }
+      .animate-float {
+        animation: none;
+      }
+    }
+  `}</style>
+</div>
+```
+
+);
+};
+
+export default StylishGradientText;

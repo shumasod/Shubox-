@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ログイン </title>
+  <style>
+    body {
+      background-color: #ece9d8;
+      font-family: "MS UI Gothic", sans-serif;
+      font-size: 12px;
+      color: #000;
+      margin: 0;
+      padding: 0;
+    }
+    .login-window {
+      width: 400px;
+      margin: 100px auto;
+      background: #f0f0f0;
+      border: 2px outset #c0c0c0;
+      box-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    .title-bar {
+      background: linear-gradient(to bottom, #0054e3, #0041c7);
+      color: #fff;
+      padding: 5px;
+      font-weight: bold;
+      font-size: 11px;
+    }
+    .login-form {
+      padding: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .input-container {
+      position: relative;
+      margin-bottom: 10px;
+    }
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 4px;
+      font-size: 11px;
+      border: 1px inset #c0c0c0;
+      box-sizing: border-box;
+    }
+    input.error {
+      border-color: #ff0000;
+      background-color: #ffe6e6;
+    }
+    input.valid {
+      border-color: #00aa00;
+      background-color: #e6ffe6;
+    }
+    .password-toggle {
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #e0e0e0;
+      border: 1px outset #c0c0c0;
+      font-size: 9px;
+      padding: 2px 4px;
+      cursor: pointer;
+    }
+    .password-toggle:hover {
+      background: #f8f8f8;
+    }
+    .btn {
+      padding: 5px 10px;
+      font-size: 11px;
+      background: #e0e0e0;
+      border: 1px outset #c0c0c0;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #f8f8f8;
+    }
+    .btn:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    .error-message {
+      color: #ff0000;
+      font-size: 10px;
+      margin-top: 2px;
+      display: none;
+    }
+    .success-message {
+      color: #00aa00;
+      font-size: 10px;
+      margin-top: 10px;
+      display: none;
+    }
+    .footer-link {
+      font-size: 10px;
+      margin-top: 10px;
+      display: block;
+      text-align: right;
+    }
+    .footer-link a {
+      color: #0066cc;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .loading {
+      display: none;
+      margin-left: 10px;
+      font-size: 10px;
+      color: #666;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #ccc;
+      border-top: 2px solid #666;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-window">
+    <div class="title-bar">mixi ログイン </div>
+    <div class="login-form">
+      <form id="loginForm">
+        <label for="username">ユーザー名</label>
+        <div class="input-container">
+          <input type="text" id="username" name="username" placeholder="ユーザー名を入力してください">
+          <div class="error-message" id="usernameError"></div>
+        </div>
+        
+        <label for="password">パスワード</label>
+        <div class="input-container">
+          <input type="password" id="password" name="password" placeholder="パスワードを入力してください">
+          <button type="button" class="password-toggle" id="passwordToggle">表示</button>
+          <div class="error-message" id="passwordError"></div>
+        </div>
+        
+        <button class="btn" type="submit" id="loginBtn">ログイン</button>
+        <span class="loading" id="loading">
+          <div class="spinner"></div>ログイン中...
+        </span>
+        
+        <div class="success-message" id="successMessage">
+          ログインに成功しました！
+        </div>
+      </form>
+      <div class="footer-link">
+        <a href="#" id="forgotPassword">パスワードを忘れた場合</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DOM要素の取得
+    const form = document.getElementById('loginForm');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const passwordToggle = document.getElementById('passwordToggle');
+    const loginBtn = document.getElementById('loginBtn');
+    const loading = document.getElementById('loading');
+    const successMessage = document.getElementById('successMessage');
+    const forgotPasswordLink = document.getElementById('forgotPassword');
+
+    // パスワード表示/非表示切り替え
+    passwordToggle.addEventListener('click', function() {
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        passwordToggle.textContent = '非表示';
+      } else {
+        passwordInput.type = 'password';
+        passwordToggle.textContent = '表示';
+      }
+    });
+
+    // リアルタイムバリデーション
+    function validateUsername() {
+      const username = usernameInput.value.trim();
+      const errorDiv = document.getElementById('usernameError');
+      
+      if (username.length === 0) {
+        showError('username', 'ユーザー名を入力してください');
+        return false;
+      } else if (username.length < 3) {
+        showError('username', 'ユーザー名は3文字以上で入力してください');
+        return false;
+      } else {
+        showValid('username');
+        return true;
+      }
+    }
+
+    function validatePassword() {
+      const password = passwordInput.value;
+      const errorDiv = document.getElementById('passwordError');
+      
+      if (password.length === 0) {
+        showError('password', 'パスワードを入力してください');
+        return false;
+      } else if (password.length < 6) {
+        showError('password', 'パスワードは6文字以上で入力してください');
+        return false;
+      } else {
+        showValid('password');
+        return true;
+      }
+    }
+
+    function showError(field, message) {
+      const input = document.getElementById(field);
+      const errorDiv = document.getElementById(field + 'Error');
+      
+      input.classList.remove('valid');
+      input.classList.add('error');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+    }
+
+    function showValid(field) {
+      const input = document.getElementById(field);
+      const errorDiv = document.getElementById(field + 'Error');
+      
+      input.classList.remove('error');
+      input.classList.add('valid');
+      errorDiv.style.display = 'none';
+    }
+
+    // イベントリスナー
+    usernameInput.addEventListener('blur', validateUsername);
+    usernameInput.addEventListener('input', function() {
+      if (usernameInput.value.trim().length > 0) {
+        validateUsername();
+      }
+    });
+
+    passwordInput.addEventListener('blur', validatePassword);
+    passwordInput.addEventListener('input', function() {
+      if (passwordInput.value.length > 0) {
+        validatePassword();
+      }
+    });
+
+    // フォーム送信処理
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const isUsernameValid = validateUsername();
+      const isPasswordValid = validatePassword();
+      
+      if (isUsernameValid && isPasswordValid) {
+        // ログイン処理のシミュレーション
+        loginBtn.disabled = true;
+        loading.style.display = 'inline';
+        successMessage.style.display = 'none';
+        
+        setTimeout(function() {
+          loginBtn.disabled = false;
+          loading.style.display = 'none';
+          successMessage.style.display = 'block';
+          
+          // 3秒後にフォームをリセット
+          setTimeout(function() {
+            form.reset();
+            usernameInput.classList.remove('valid', 'error');
+            passwordInput.classList.remove('valid', 'error');
+            successMessage.style.display = 'none';
+          }, 3000);
+        }, 2000);
+      }
+    });
+
+    // パスワード忘れの処理
+    forgotPasswordLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      alert('パスワードリセットのメールを送信しました。\nメールボックスをご確認ください。');
+    });
+
+    // Enterキーでのログイン
+    document.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter' && (usernameInput === document.activeElement || passwordInput === document.activeElement)) {
+        form.dispatchEvent(new Event('submit'));
+      }
+    });
+  </script>
+</body>
+</html>
