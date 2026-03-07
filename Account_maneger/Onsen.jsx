@@ -11,7 +11,7 @@ const ONSEN_TYPES = {
   CARBONATED: '炭酸泉'
 };
 
-// 状態管理をReducerで統合（複雑な状態管理の改善）
+// 状態管理をReducerで統合
 const initialState = {
   name: '',
   address: '',
