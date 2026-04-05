@@ -213,80 +213,43 @@ export const convertDataForChart = (data, chartType) => {
   }
 };
 
-// 日足を週足に変換
-const convertToWeekly = (data) => {
-  const weeklyData = [];
-  let currentWeek = null;
-  let weekData = null;
-  
-  data.forEach(day => {
-    const date = new Date(day.date);
-    const yearWeek = `${date.getFullYear()}-${Math.floor(date.getDate() / 7)}`;
-    
-    if (yearWeek !== currentWeek) {
-      if (weekData) {
-        weeklyData.push(weekData);
-      }
-      
-      currentWeek = yearWeek;
-      weekData = {
-        date: day.date,
-        open: day.open,
-        high: day.high,
-        low: day.low,
-        close: day.close,
-        volume: day.volume
-      };
-    } else {
-      weekData.high = Math.max(weekData.high, day.high);
-      weekData.low = Math.min(weekData.low, day.low);
-      weekData.close = day.close;
-      weekData.volume += day.volume;
-    }
-  });
-  
-  if (weekData) {
-    weeklyData.push(weekData);
-  }
-  
-  return weeklyData;
+// ISO週番号を取得する (1-53)
+const getISOWeek = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const yearStart = new Date(d.getFullYear(), 0, 4);
+  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
 };
 
-// 日足を月足に変換
-const convertToMonthly = (data) => {
-  const monthlyData = [];
-  let currentMonth = null;
-  let monthData = null;
-  
+// OHLCVデータを指定されたキー関数でグループ化して集約する共通ヘルパー
+const aggregateOHLCV = (data, getGroupKey) => {
+  const result = [];
+  let currentKey = null;
+  let current = null;
+
   data.forEach(day => {
-    const date = new Date(day.date);
-    const yearMonth = `${date.getFullYear()}-${date.getMonth()}`;
-    
-    if (yearMonth !== currentMonth) {
-      if (monthData) {
-        monthlyData.push(monthData);
-      }
-      
-      currentMonth = yearMonth;
-      monthData = {
-        date: day.date,
-        open: day.open,
-        high: day.high,
-        low: day.low,
-        close: day.close,
-        volume: day.volume
-      };
+    const key = getGroupKey(new Date(day.date));
+    if (key !== currentKey) {
+      if (current) result.push(current);
+      currentKey = key;
+      current = { date: day.date, open: day.open, high: day.high, low: day.low, close: day.close, volume: day.volume };
     } else {
-      monthData.high = Math.max(monthData.high, day.high);
-      monthData.low = Math.min(monthData.low, day.low);
-      monthData.close = day.close;
-      monthData.volume += day.volume;
+      current.high = Math.max(current.high, day.high);
+      current.low = Math.min(current.low, day.low);
+      current.close = day.close;
+      current.volume += day.volume;
     }
   });
-  
-  if (monthData) {
-    monthlyData.push(monthData);
-  }
-  
-  return monthlyData;
+
+  if (current) result.push(current);
+  return result;
 };
+
+// 日足を週足に変換
+const convertToWeekly = (data) =>
+  aggregateOHLCV(data, date => `${date.getFullYear()}-W${getISOWeek(date)}`);
+
+// 日足を月足に変換
+const convertToMonthly = (data) =>
+  aggregateOHLCV(data, date => `${date.getFullYear()}-${date.getMonth()}`);

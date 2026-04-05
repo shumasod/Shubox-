@@ -3,11 +3,15 @@ import csv
 import os
 import hashlib
 import json
+import secrets
 from datetime import datetime
 
 # アカウント情報を保存するファイル
 ACCOUNTS_FILE = "accounts.json"
 CSV_EXPORT_FILE = "accounts_export.csv"
+
+MIN_PASSWORD_LENGTH = 8
+MIN_USER_ID_LENGTH = 3
 
 def initialize_accounts_file():
     """アカウントファイルが存在しない場合は作成する"""
@@ -15,9 +19,30 @@ def initialize_accounts_file():
         with open(ACCOUNTS_FILE, 'w') as f:
             json.dump([], f)
 
-def hash_password(password):
-    """パスワードをハッシュ化する"""
-    return hashlib.sha256(password.encode()).hexdigest()
+def hash_password(password: str) -> str:
+    """パスワードをsalt付きでハッシュ化する (PBKDF2-HMAC-SHA256)"""
+    salt = secrets.token_hex(32)
+    key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 260000)
+    return f"{salt}:{key.hex()}"
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """パスワードを検証する"""
+    if ':' not in stored_hash:
+        # 旧形式のハッシュ (sha256のみ) との後方互換
+        return stored_hash == hashlib.sha256(password.encode()).hexdigest()
+    salt, key_hex = stored_hash.split(':', 1)
+    key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 260000)
+    return secrets.compare_digest(key.hex(), key_hex)
+
+def validate_input(user_id: str, username: str, password: str) -> tuple[bool, str]:
+    """入力値を検証する"""
+    if len(user_id) < MIN_USER_ID_LENGTH:
+        return False, f"ユーザーIDは{MIN_USER_ID_LENGTH}文字以上で入力してください"
+    if len(username.strip()) == 0:
+        return False, "ユーザー名を入力してください"
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return False, f"パスワードは{MIN_PASSWORD_LENGTH}文字以上で入力してください"
+    return True, ""
 
 def load_accounts():
     """アカウント情報を読み込む"""
@@ -33,18 +58,21 @@ def save_accounts(accounts):
     with open(ACCOUNTS_FILE, 'w') as f:
         json.dump(accounts, f, indent=2)
 
-def create_account(user_id, username, password):
+def create_account(user_id: str, username: str, password: str) -> tuple[bool, str]:
     """新しいアカウントを作成する"""
+    valid, error = validate_input(user_id, username, password)
+    if not valid:
+        return False, error
+
     accounts = load_accounts()
-    
+
     # 既存のユーザーIDやユーザー名をチェック
     for account in accounts:
         if account['user_id'] == user_id:
-            return False, "ユーザーID「{}」は既に使用されています".format(user_id)
+            return False, f"ユーザーID「{user_id}」は既に使用されています"
         if account['username'] == username:
-            return False, "ユーザー名「{}」は既に使用されています".format(username)
-    
-    # 新しいアカウントを追加
+            return False, f"ユーザー名「{username}」は既に使用されています"
+
     new_account = {
         'user_id': user_id,
         'username': username,
@@ -52,49 +80,45 @@ def create_account(user_id, username, password):
         'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'last_login': None
     }
-    
+
     accounts.append(new_account)
     save_accounts(accounts)
     return True, "アカウントが正常に作成されました"
 
-def delete_account(user_id):
+def delete_account(user_id: str) -> tuple[bool, str]:
     """指定されたユーザーIDのアカウントを削除する"""
     accounts = load_accounts()
-    
-    # 削除対象のアカウントを探す
+
     for i, account in enumerate(accounts):
         if account['user_id'] == user_id:
             del accounts[i]
             save_accounts(accounts)
-            return True, "ユーザーID「{}」のアカウントが削除されました".format(user_id)
-    
-    return False, "ユーザーID「{}」が見つかりません".format(user_id)
+            return True, f"ユーザーID「{user_id}」のアカウントが削除されました"
 
-def export_account_list_to_csv():
+    return False, f"ユーザーID「{user_id}」が見つかりません"
+
+def export_account_list_to_csv() -> tuple[bool, str]:
     """アカウント情報をCSVファイルにエクスポートする"""
     accounts = load_accounts()
-    
+
     if not accounts:
         return False, "エクスポートするアカウントがありません"
-    
+
     try:
         with open(CSV_EXPORT_FILE, 'w', newline='') as csvfile:
             fieldnames = ['user_id', 'username', 'created_at', 'last_login']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            
             writer.writeheader()
             for account in accounts:
-                # パスワードは含めない
                 writer.writerow({
                     'user_id': account['user_id'],
                     'username': account['username'],
                     'created_at': account['created_at'],
                     'last_login': account['last_login'] or 'なし'
                 })
-        
-        return True, "{}件のアカウント情報を{}にエクスポートしました".format(len(accounts), CSV_EXPORT_FILE)
+        return True, f"{len(accounts)}件のアカウント情報を{CSV_EXPORT_FILE}にエクスポートしました"
     except Exception as e:
-        return False, "エクスポート中にエラーが発生しました: {}".format(str(e))
+        return False, f"エクスポート中にエラーが発生しました: {e}"
 
 def list_accounts():
     """登録されているアカウント一覧を表示する"""
@@ -117,17 +141,16 @@ def list_accounts():
     
     return result
 
-def login(user_id, password):
+def login(user_id: str, password: str) -> tuple[bool, str]:
     """ユーザーログイン処理"""
     accounts = load_accounts()
-    
+
     for i, account in enumerate(accounts):
-        if account['user_id'] == user_id and account['password'] == hash_password(password):
-            # 最終ログイン日時を更新
+        if account['user_id'] == user_id and verify_password(password, account['password']):
             accounts[i]['last_login'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             save_accounts(accounts)
             return True, "ログインに成功しました"
-    
+
     return False, "ユーザーIDまたはパスワードが正しくありません"
 
 def display_menu():

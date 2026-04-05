@@ -1,26 +1,33 @@
 import { Character } from '../types/character';
 
+const MIN_DAMAGE = 5;
+const EXP_GAIN = 20;
+const EXP_THRESHOLD = 100;
+const LEVEL_UP_HP_BONUS = 20;
+const LEVEL_UP_ATTACK_BONUS = 5;
+const LEVEL_UP_DEFENSE_BONUS = 3;
+
 export const calculateDamage = (attack: number, defense: number): number => {
-  return Math.max(5, attack - defense);
+  return Math.max(MIN_DAMAGE, attack - defense);
 };
 
 export const gainExperience = (player: Character): Character => {
-  if (!player.exp || !player.level) return player;
-  
-  const expGain = 20;
-  const newExp = player.exp + expGain;
-  
-  if (newExp >= 100) {
+  if (player.exp === undefined || player.level === undefined) return player;
+
+  const newExp = player.exp + EXP_GAIN;
+
+  if (newExp >= EXP_THRESHOLD) {
+    const newMaxHp = player.maxHp + LEVEL_UP_HP_BONUS;
     return {
       ...player,
       level: player.level + 1,
-      hp: player.maxHp + 20,
-      maxHp: player.maxHp + 20,
-      attack: player.attack + 5,
-      defense: (player.defense || 0) + 3,
+      hp: newMaxHp,
+      maxHp: newMaxHp,
+      attack: player.attack + LEVEL_UP_ATTACK_BONUS,
+      defense: (player.defense ?? 0) + LEVEL_UP_DEFENSE_BONUS,
       exp: 0
     };
   }
-  
+
   return { ...player, exp: newExp };
 };

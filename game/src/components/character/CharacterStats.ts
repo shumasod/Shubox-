@@ -34,7 +34,7 @@ export const CharacterStats: React.FC<CharacterStatsProps> = ({
             <Sword className="w-4 h-4 mr-1" />
             <span>{character.attack}</span>
           </div>
-          {character.defense && (
+          {character.defense !== undefined && (
             <div className="flex items-center">
               <Shield className="w-4 h-4 mr-1" />
               <span>{character.defense}</span>
