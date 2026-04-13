@@ -1,0 +1,1084 @@
+openapi: 3.1.0
+info:
+  title: 経費精算システム API
+  description: |
+    中小〜中規模企業向け経費精算システムのREST API仕様。
+    マルチテナント対応、RBAC認可、多段階承認フローを実装。
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@expense.example.com
+
+servers:
+  - url: https://api.expense.example.com/api/v1
+    description: 本番環境
+  - url: https://staging-api.expense.example.com/api/v1
+    description: ステージング環境
+  - url: http://localhost:8000/api/v1
+    description: 開発環境
+
+tags:
+  - name: Auth
+    description: 認証・認可
+  - name: Expenses
+    description: 経費申請管理
+  - name: Receipts
+    description: 領収書管理
+  - name: Comments
+    description: コメント
+  - name: ApprovalFlows
+    description: 承認フロー管理
+  - name: Categories
+    description: カテゴリ管理
+  - name: Users
+    description: ユーザー管理（管理者）
+  - name: Notifications
+    description: 通知
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+
+  parameters:
+    ExpenseId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: 経費申請ID
+
+  schemas:
+    # ===== Auth =====
+    LoginRequest:
+      type: object
+      required: [email, password, tenant_slug]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "yamada@example.com"
+        password:
+          type: string
+          format: password
+          example: "P@ssw0rd!"
+        tenant_slug:
+          type: string
+          example: "acme-corp"
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: "Bearer"
+        expires_in:
+          type: integer
+          example: 86400
+        user:
+          $ref: '#/components/schemas/AuthUser'
+
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "山田 太郎"
+        email:
+          type: string
+          format: email
+        tenant_id:
+          type: string
+          format: uuid
+        role_id:
+          type: string
+          format: uuid
+        department:
+          type: string
+          nullable: true
+          example: "営業部"
+
+    # ===== Expense =====
+    ExpenseStatus:
+      type: string
+      enum:
+        - draft
+        - pending
+        - partially_approved
+        - approved
+        - rejected
+        - cancelled
+        - paid
+      description: |
+        - draft: 下書き
+        - pending: 申請中
+        - partially_approved: 一部承認
+        - approved: 承認済み
+        - rejected: 却下
+        - cancelled: 取り消し
+        - paid: 支払済み
+
+    CreateExpenseRequest:
+      type: object
+      required: [title, items]
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          example: "大阪出張交通費"
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: "2024年1月15日 東京-大阪往復"
+        currency:
+          type: string
+          enum: [JPY, USD, EUR]
+          default: JPY
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ExpenseItemInput'
+
+    ExpenseItemInput:
+      type: object
+      required: [category_id, description, amount, expense_date]
+      properties:
+        category_id:
+          type: string
+          format: uuid
+        description:
+          type: string
+          maxLength: 500
+          example: "新幹線 東京→大阪"
+        amount:
+          type: integer
+          minimum: 1
+          maximum: 99999999
+          example: 14060
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+        expense_date:
+          type: string
+          format: date
+          example: "2024-01-15"
+        vendor:
+          type: string
+          maxLength: 200
+          nullable: true
+          example: "JR東海"
+        purpose:
+          type: string
+          maxLength: 500
+          nullable: true
+          example: "顧客訪問"
+
+    Expense:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        expense_number:
+          type: string
+          example: "EXP-2401-000001"
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        total_amount:
+          type: integer
+          example: 28120
+        total_amount_formatted:
+          type: string
+          example: "¥28,120"
+        currency:
+          type: string
+          example: "JPY"
+        status:
+          $ref: '#/components/schemas/ExpenseStatus'
+        status_label:
+          type: string
+          example: "申請中"
+        current_step:
+          type: integer
+          example: 1
+        applied_at:
+          type: string
+          format: date-time
+          nullable: true
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+        applicant:
+          $ref: '#/components/schemas/UserSummary'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpenseItem'
+        can_edit:
+          type: boolean
+        can_submit:
+          type: boolean
+        can_cancel:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ExpenseItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        category:
+          $ref: '#/components/schemas/CategorySummary'
+        description:
+          type: string
+        amount:
+          type: integer
+        quantity:
+          type: integer
+        line_total:
+          type: integer
+        line_total_formatted:
+          type: string
+        expense_date:
+          type: string
+          format: date
+        vendor:
+          type: string
+          nullable: true
+        purpose:
+          type: string
+          nullable: true
+        receipts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Receipt'
+
+    Receipt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        original_filename:
+          type: string
+        mime_type:
+          type: string
+        file_size:
+          type: integer
+        file_size_formatted:
+          type: string
+          example: "2.4 MB"
+        url:
+          type: string
+          description: "S3署名付きURL（60分有効）"
+        ocr:
+          type: object
+          nullable: true
+          properties:
+            text:
+              type: string
+            amount:
+              type: integer
+            date:
+              type: string
+              format: date
+            vendor:
+              type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ApprovalRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          enum: [approved, rejected, delegated]
+        action_label:
+          type: string
+          example: "承認"
+        comment:
+          type: string
+          nullable: true
+        approver:
+          $ref: '#/components/schemas/UserSummary'
+        acted_at:
+          type: string
+          format: date-time
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        body:
+          type: string
+        is_edited:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/UserSummary'
+        replies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        created_at:
+          type: string
+          format: date-time
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        department:
+          type: string
+          nullable: true
+
+    CategorySummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+          nullable: true
+
+    ApprovalFlow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_default:
+          type: boolean
+        min_amount:
+          type: integer
+          nullable: true
+        max_amount:
+          type: integer
+          nullable: true
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApprovalStep'
+
+    ApprovalStep:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        step_number:
+          type: integer
+        step_name:
+          type: string
+        approver_type:
+          type: string
+          enum: [specific_user, role, manager, department_head]
+        approver_id:
+          type: string
+          format: uuid
+          nullable: true
+        required_count:
+          type: integer
+          default: 1
+        allow_delegation:
+          type: boolean
+        deadline_days:
+          type: integer
+          nullable: true
+
+    # ===== Common =====
+    PaginatedMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+        per_page:
+          type: integer
+        current_page:
+          type: integer
+        last_page:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ===== Auth =====
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: ログイン
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: "yamada@example.com"
+              password: "P@ssw0rd!"
+              tenant_slug: "acme-corp"
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '422':
+          description: 認証失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: ログアウト
+      responses:
+        '200':
+          description: ログアウト成功
+
+  /me:
+    get:
+      tags: [Auth]
+      summary: ログインユーザー情報取得
+      responses:
+        '200':
+          description: ユーザー情報
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AuthUser'
+                  - type: object
+                    properties:
+                      role:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          permissions:
+                            type: array
+                            items:
+                              type: string
+
+  # ===== Expenses =====
+  /expenses:
+    get:
+      tags: [Expenses]
+      summary: 経費申請一覧取得
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ExpenseStatus'
+        - name: applicant_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: amount_min
+          in: query
+          schema:
+            type: integer
+        - name: amount_max
+          in: query
+          schema:
+            type: integer
+        - name: keyword
+          in: query
+          schema:
+            type: string
+          description: タイトル・説明の全文検索
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [created_at, applied_at, total_amount, expense_number]
+            default: created_at
+        - name: sort_dir
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: 一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Expense'
+                  meta:
+                    $ref: '#/components/schemas/PaginatedMeta'
+
+    post:
+      tags: [Expenses]
+      summary: 経費申請作成（下書き）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExpenseRequest'
+            example:
+              title: "大阪出張交通費"
+              description: "2024年1月15日 東京-大阪往復"
+              currency: "JPY"
+              items:
+                - category_id: "uuid-here"
+                  description: "新幹線 東京→大阪"
+                  amount: 14060
+                  expense_date: "2024-01-15"
+                  vendor: "JR東海"
+                  purpose: "顧客訪問"
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '422':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expenses/export:
+    get:
+      tags: [Expenses]
+      summary: 経費データCSVエクスポート
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ExpenseStatus'
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: CSVファイル
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
+  /expenses/{id}:
+    get:
+      tags: [Expenses]
+      summary: 経費申請詳細取得
+      parameters:
+        - $ref: '#/components/parameters/ExpenseId'
+      responses:
+        '200':
+          description: 詳細取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '404':
+          description: 見つかりません
+
+    put:
+      tags: [Expenses]
+      summary: 経費申請更新（下書き・却下のみ）
+      parameters:
+        - $ref: '#/components/parameters/ExpenseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExpenseRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+
+    delete:
+      tags: [Expenses]
+      summary: 経費申請削除（下書きのみ）
+      parameters:
+        - $ref: '#/components/parameters/ExpenseId'
+      responses:
+        '204':
+          description: 削除成功
+
+  /expenses/{id}/submit:
+    post:
+      tags: [Expenses]
+      summary: 申請提出（下書き → 申請中）
+      parameters:
+        - $ref: '#/components/parameters/ExpenseId'
+      responses:
+        '200':
+          description: 提出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '422':
+          description: 提出不可
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expenses/{id}/approve:
+    post:
+      tags: [Expenses]
+      summary: 承認
+      parameters:
+        - $ref: '#/components/parameters/ExpenseId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '200':
+          description: 承認成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+        '422':
+          description: 承認不可
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /expenses/{id}/reject:
+    post:
+      tags: [Expenses]
+      summary: 却下
+      parameters:
+        - $ref: '#/components/parameters/ExpenseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comment]
+              properties:
+                comment:
+                  type: string
+                  minLength: 10
+                  maxLength: 2000
+                  description: "却下理由（必須、10文字以上）"
+      responses:
+        '200':
+          description: 却下成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Expense'
+
+  /expenses/{id}/cancel:
+    post:
+      tags: [Expenses]
+      summary: 申請取り消し
+      parameters:
+        - $ref: '#/components/parameters/ExpenseId'
+      responses:
+        '200':
+          description: 取り消し成功
+
+  /expenses/{id}/history:
+    get:
+      tags: [Expenses]
+      summary: 承認履歴
+      parameters:
+        - $ref: '#/components/parameters/ExpenseId'
+      responses:
+        '200':
+          description: 承認履歴
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApprovalRecord'
+
+  /expenses/{id}/comments:
+    get:
+      tags: [Comments]
+      summary: コメント一覧
+      parameters:
+        - $ref: '#/components/parameters/ExpenseId'
+      responses:
+        '200':
+          description: コメント一覧
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+
+    post:
+      tags: [Comments]
+      summary: コメント追加
+      parameters:
+        - $ref: '#/components/parameters/ExpenseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:
+                  type: string
+                  maxLength: 2000
+                parent_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: "返信先コメントID"
+      responses:
+        '201':
+          description: コメント作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+
+  /expenses/{expenseId}/items/{itemId}/receipts:
+    post:
+      tags: [Receipts]
+      summary: 領収書アップロード
+      parameters:
+        - name: expenseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "JPEG/PNG/PDF (最大10MB)"
+      responses:
+        '201':
+          description: アップロード成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '422':
+          description: ファイル形式または容量エラー
+
+  /approval-flows:
+    get:
+      tags: [ApprovalFlows]
+      summary: 承認フロー一覧
+      responses:
+        '200':
+          description: 承認フロー一覧
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApprovalFlow'
+
+    post:
+      tags: [ApprovalFlows]
+      summary: 承認フロー作成
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, steps]
+              properties:
+                name:
+                  type: string
+                is_default:
+                  type: boolean
+                min_amount:
+                  type: integer
+                  nullable: true
+                max_amount:
+                  type: integer
+                  nullable: true
+                steps:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [step_number, step_name, approver_type]
+                    properties:
+                      step_number:
+                        type: integer
+                      step_name:
+                        type: string
+                      approver_type:
+                        type: string
+                        enum: [specific_user, role, manager, department_head]
+                      approver_id:
+                        type: string
+                        format: uuid
+                        nullable: true
+      responses:
+        '201':
+          description: 作成成功
+
+  /categories:
+    get:
+      tags: [Categories]
+      summary: カテゴリ一覧
+      responses:
+        '200':
+          description: カテゴリ一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/CategorySummary'
+                    - type: object
+                      properties:
+                        parent_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        max_amount:
+                          type: integer
+                          nullable: true
+                        requires_receipt:
+                          type: boolean
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: 通知一覧
+      responses:
+        '200':
+          description: 通知一覧
+
+  /notifications/{id}/read:
+    put:
+      tags: [Notifications]
+      summary: 通知既読
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 既読成功
+
+  /admin/users:
+    get:
+      tags: [Users]
+      summary: ユーザー一覧（管理者）
+      responses:
+        '200':
+          description: ユーザー一覧
+
+    post:
+      tags: [Users]
+      summary: ユーザー作成（管理者）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, role_id]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                role_id:
+                  type: string
+                  format: uuid
+                employee_code:
+                  type: string
+                  nullable: true
+                department:
+                  type: string
+                  nullable: true
+                manager_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        '201':
+          description: 作成成功
+
+  /admin/audit-logs:
+    get:
+      tags: [Users]
+      summary: 監査ログ（管理者）
+      parameters:
+        - name: event_type
+          in: query
+          schema:
+            type: string
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 監査ログ
