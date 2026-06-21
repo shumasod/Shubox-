@@ -12,14 +12,15 @@ class CommentResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
-            'body' => $this->body,
-            'is_edited' => $this->is_edited,
-            'user' => [
-                'id' => $this->user->id,
-                'name' => $this->user->name,
+            'id'         => $this->id,
+            'body'       => $this->body,
+            'parent_id'  => $this->parent_id,
+            'author'     => [
+                'id'         => $this->author->id,
+                'name'       => $this->author->name,
+                'department' => $this->author->department,
             ],
-            'replies' => self::collection($this->whenLoaded('replies')),
+            'replies'    => CommentResource::collection($this->whenLoaded('replies')),
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
         ];
