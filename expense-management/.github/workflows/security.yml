@@ -1,0 +1,157 @@
+name: Security Scanning
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 毎日 JST 11:00
+  push:
+    branches: [main, claude/expense-management-system-FfaVv]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # -------------------------------------------------------
+  # Trivy: コンテナイメージ脆弱性スキャン
+  # -------------------------------------------------------
+  trivy-image:
+    name: Trivy Image Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -f expense-management/docker/Dockerfile.php \
+            -t expense-management:${{ github.sha }} \
+            expense-management
+
+      - name: Run Trivy (image)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: expense-management:${{ github.sha }}
+          format: sarif
+          output: trivy-image.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-image
+
+  # -------------------------------------------------------
+  # Trivy: ファイルシステム（依存関係）スキャン
+  # -------------------------------------------------------
+  trivy-fs:
+    name: Trivy Filesystem Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy (filesystem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: expense-management/backend
+          format: sarif
+          output: trivy-fs.sarif
+          severity: CRITICAL,HIGH
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+  # -------------------------------------------------------
+  # CodeQL: PHP ソースコード静的解析
+  # -------------------------------------------------------
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language: [php, javascript]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: codeql-${{ matrix.language }}
+
+  # -------------------------------------------------------
+  # PHP セキュリティ監査 (composer audit)
+  # -------------------------------------------------------
+  composer-audit:
+    name: Composer Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Run composer audit
+        working-directory: expense-management/backend
+        run: composer audit --no-dev --format=json > composer-audit.json || true
+
+      - name: Print audit summary
+        working-directory: expense-management/backend
+        run: |
+          if [ -s composer-audit.json ]; then
+            cat composer-audit.json | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+advisories = data.get('advisories', {})
+if advisories:
+    print(f'Found {len(advisories)} vulnerabilities:')
+    for pkg, info in advisories.items():
+        for adv in info:
+            print(f'  [{adv.get(\"severity\", \"unknown\").upper()}] {pkg}: {adv.get(\"title\", \"\")}')
+    sys.exit(1)
+else:
+    print('No vulnerabilities found')
+"
+          fi
+
+  # -------------------------------------------------------
+  # npm audit: フロントエンド依存関係
+  # -------------------------------------------------------
+  npm-audit:
+    name: npm Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: expense-management/frontend/package.json
+
+      - name: Install dependencies
+        working-directory: expense-management/frontend
+        run: npm ci
+
+      - name: Run npm audit
+        working-directory: expense-management/frontend
+        run: npm audit --audit-level=high
