@@ -9,19 +9,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TenantModel extends Model
 {
-    protected $table = 'tenants';
+    protected $table      = 'tenants';
+    protected $keyType    = 'string';
+    public    $incrementing = false;
 
     protected $fillable = [
-        'id', 'name', 'slug', 'settings', 'plan', 'is_active',
+        'id', 'name', 'slug', 'plan', 'is_active', 'settings',
     ];
 
     protected $casts = [
-        'settings' => 'array',
         'is_active' => 'boolean',
+        'settings'  => 'array',
     ];
-
-    public $incrementing = false;
-    protected $keyType = 'string';
 
     public function users(): HasMany
     {
