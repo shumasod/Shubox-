@@ -1,3 +1,4 @@
+# ── Auto Scaling Target ───────────────────────────────────────────────────────────
 resource "aws_appautoscaling_target" "ecs" {
   max_capacity       = var.ecs_max_capacity
   min_capacity       = var.ecs_min_capacity
@@ -5,12 +6,12 @@ resource "aws_appautoscaling_target" "ecs" {
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 
-  depends_on = [aws_ecs_service.app]
+  tags = var.common_tags
 }
 
-# Scale out when average CPU > 70%
+# ── CPU Tracking Policy ───────────────────────────────────────────────────────────
 resource "aws_appautoscaling_policy" "ecs_cpu" {
-  name               = "${var.project_name}-ecs-cpu-tracking"
+  name               = "${var.project}-${var.environment}-ecs-cpu-tracking"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs.scalable_dimension
@@ -27,9 +28,9 @@ resource "aws_appautoscaling_policy" "ecs_cpu" {
   }
 }
 
-# Scale out when average Memory > 80%
+# ── Memory Tracking Policy ────────────────────────────────────────────────────────
 resource "aws_appautoscaling_policy" "ecs_memory" {
-  name               = "${var.project_name}-ecs-memory-tracking"
+  name               = "${var.project}-${var.environment}-ecs-memory-tracking"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs.scalable_dimension
@@ -46,34 +47,52 @@ resource "aws_appautoscaling_policy" "ecs_memory" {
   }
 }
 
-# Scheduled scale-up for business hours (JST 08:00 = UTC 23:00 prev day)
-resource "aws_appautoscaling_scheduled_action" "scale_up_business_hours" {
-  count = var.enable_scheduled_scaling ? 1 : 0
-
-  name               = "${var.project_name}-ecs-scale-up-business-hours"
-  service_namespace  = aws_appautoscaling_target.ecs.service_namespace
+# ── Scheduled Scale-Out for Business Hours ─────────────────────────────────
+resource "aws_appautoscaling_scheduled_action" "scale_out_morning" {
+  name               = "${var.project}-${var.environment}-scale-out-morning"
   resource_id        = aws_appautoscaling_target.ecs.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs.scalable_dimension
-  schedule           = "cron(0 23 ? * SUN-THU *)"
+  service_namespace  = aws_appautoscaling_target.ecs.service_namespace
+  schedule           = "cron(0 9 ? * MON-FRI *)" # 09:00 JST (UTC+9 = 00:00 UTC)
 
   scalable_target_action {
-    min_capacity = var.ecs_business_hours_min
+    min_capacity = var.ecs_business_hours_min_capacity
     max_capacity = var.ecs_max_capacity
   }
 }
 
-# Scheduled scale-down for off-hours (JST 20:00 = UTC 11:00)
-resource "aws_appautoscaling_scheduled_action" "scale_down_off_hours" {
-  count = var.enable_scheduled_scaling ? 1 : 0
-
-  name               = "${var.project_name}-ecs-scale-down-off-hours"
-  service_namespace  = aws_appautoscaling_target.ecs.service_namespace
+resource "aws_appautoscaling_scheduled_action" "scale_in_evening" {
+  name               = "${var.project}-${var.environment}-scale-in-evening"
   resource_id        = aws_appautoscaling_target.ecs.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs.scalable_dimension
-  schedule           = "cron(0 11 ? * MON-FRI *)"
+  service_namespace  = aws_appautoscaling_target.ecs.service_namespace
+  schedule           = "cron(0 20 ? * MON-FRI *)" # 20:00 JST (11:00 UTC)
 
   scalable_target_action {
     min_capacity = var.ecs_min_capacity
     max_capacity = var.ecs_max_capacity
   }
+}
+
+# ── CloudWatch Alarm ───────────────────────────────────────────────────────────
+resource "aws_cloudwatch_metric_alarm" "ecs_max_capacity_reached" {
+  alarm_name          = "${var.project}-${var.environment}-ecs-at-max-capacity"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 2
+  metric_name         = "RunningTaskCount"
+  namespace           = "ECS/ContainerInsights"
+  period              = 60
+  statistic           = "Average"
+  threshold           = var.ecs_max_capacity
+  alarm_description   = "ECS service has reached maximum desired task count"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    ClusterName = var.ecs_cluster_name
+    ServiceName = var.ecs_service_name
+  }
+
+  alarm_actions = [var.sns_alert_topic_arn]
+
+  tags = var.common_tags
 }
