@@ -1,41 +1,46 @@
-variable "db_name" {
-  description = "Aurora database name"
+variable "aurora_db_name" {
+  description = "Name of the default database to create"
   type        = string
-  default     = "expense_management"
+  default     = "expense_db"
 }
 
-variable "db_username" {
+variable "aurora_master_username" {
   description = "Aurora master username"
   type        = string
-  sensitive   = true
+  default     = "admin"
 }
 
-variable "db_password" {
-  description = "Aurora master password (managed via lifecycle ignore_changes)"
-  type        = string
-  sensitive   = true
+variable "aurora_backup_retention_days" {
+  description = "Aurora automated backup retention period in days"
+  type        = number
+  default     = 7
+}
+
+variable "aurora_deletion_protection" {
+  description = "Enable deletion protection for the Aurora cluster"
+  type        = bool
+  default     = true
 }
 
 variable "aurora_min_acu" {
-  description = "Minimum Aurora Serverless v2 ACU capacity"
+  description = "Minimum Aurora Capacity Units for Serverless v2"
   type        = number
   default     = 0.5
 }
 
 variable "aurora_max_acu" {
-  description = "Maximum Aurora Serverless v2 ACU capacity"
+  description = "Maximum Aurora Capacity Units for Serverless v2"
   type        = number
   default     = 16
 }
 
 variable "aurora_reader_count" {
-  description = "Number of Aurora read replicas"
+  description = "Number of Aurora reader instances"
   type        = number
   default     = 1
 }
 
-variable "aurora_deletion_protection" {
-  description = "Enable deletion protection on the Aurora cluster"
-  type        = bool
-  default     = true
+variable "ecs_security_group_id" {
+  description = "Security group ID of ECS tasks (allowed to connect to Aurora)"
+  type        = string
 }
