@@ -1,5 +1,5 @@
-variable "security_alert_email" {
-  description = "Email address for GuardDuty high-severity finding alerts (leave empty to skip subscription)"
-  type        = string
-  default     = ""
+variable "guardduty_alert_severity_threshold" {
+  description = "Minimum GuardDuty finding severity to alert on (4=MEDIUM, 7=HIGH, 8.9=CRITICAL)"
+  type        = number
+  default     = 7
 }

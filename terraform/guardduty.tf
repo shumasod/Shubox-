@@ -1,7 +1,3 @@
-# ---------------------------------------------------------------------------
-# GuardDuty — threat detection with findings alerts
-# ---------------------------------------------------------------------------
-
 resource "aws_guardduty_detector" "main" {
   enable = true
 
@@ -23,102 +19,81 @@ resource "aws_guardduty_detector" "main" {
     }
   }
 
-  finding_publishing_frequency = "SIX_HOURS"
-
-  tags = {
-    Project     = var.project
-    Environment = var.environment
-  }
+  tags = var.common_tags
 }
 
-# SNS topic for high-severity findings
-resource "aws_sns_topic" "guardduty_alerts" {
-  name              = "${var.project}-${var.environment}-guardduty-alerts"
-  kms_master_key_id = "alias/aws/sns"
-
-  tags = {
-    Project     = var.project
-    Environment = var.environment
-  }
-}
-
-# Email subscription for security team
-resource "aws_sns_topic_subscription" "guardduty_email" {
-  count     = var.security_alert_email != "" ? 1 : 0
-  topic_arn = aws_sns_topic.guardduty_alerts.arn
-  protocol  = "email"
-  endpoint  = var.security_alert_email
-}
-
-# EventBridge rule — HIGH and CRITICAL severity findings only
+# ──────────────────────────────────────────────
+# EventBridge rule: forward HIGH/CRITICAL findings to SNS
+# ──────────────────────────────────────────────
 resource "aws_cloudwatch_event_rule" "guardduty_findings" {
-  name        = "${var.project}-${var.environment}-guardduty-high-severity"
-  description = "Route GuardDuty HIGH/CRITICAL findings to SNS"
+  name        = "${var.project}-${var.environment}-guardduty-findings"
+  description = "Forward GuardDuty HIGH/CRITICAL findings to SNS"
 
   event_pattern = jsonencode({
     source      = ["aws.guardduty"]
     detail-type = ["GuardDuty Finding"]
     detail = {
-      severity = [{ numeric = [">=", 7] }]
+      severity = [{ numeric = [">", var.guardduty_alert_severity_threshold] }]
     }
   })
 
-  tags = {
-    Project     = var.project
-    Environment = var.environment
-  }
+  tags = var.common_tags
 }
 
-resource "aws_cloudwatch_event_target" "guardduty_to_sns" {
+resource "aws_cloudwatch_event_target" "guardduty_sns" {
   rule      = aws_cloudwatch_event_rule.guardduty_findings.name
-  target_id = "guardduty-to-sns"
-  arn       = aws_sns_topic.guardduty_alerts.arn
+  target_id = "GuardDutyFindingsToSNS"
+  arn       = var.sns_ops_alerts_arn
 
   input_transformer {
     input_paths = {
       severity    = "$.detail.severity"
       type        = "$.detail.type"
+      description = "$.detail.description"
       region      = "$.region"
       account     = "$.account"
-      description = "$.detail.description"
       time        = "$.time"
     }
-    input_template = <<-EOT
-      "GuardDuty ALERT [severity: <severity>]\n"
-      "Type: <type>\n"
-      "Region: <region> | Account: <account>\n"
-      "Time: <time>\n"
-      "Description: <description>"
-    EOT
+    input_template = jsonencode({
+      subject = "[GuardDuty] <severity> severity finding in <region>"
+      message = "Type: <type>\nSeverity: <severity>\nAccount: <account>\nRegion: <region>\nTime: <time>\n\n<description>"
+    })
   }
 }
 
-# SNS topic policy — allow EventBridge to publish
-resource "aws_sns_topic_policy" "guardduty_alerts" {
-  arn = aws_sns_topic.guardduty_alerts.arn
+# Allow EventBridge to publish to the SNS topic
+data "aws_iam_policy_document" "guardduty_sns_publish" {
+  statement {
+    effect    = "Allow"
+    actions   = ["SNS:Publish"]
+    resources = [var.sns_ops_alerts_arn]
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid       = "AllowEventBridgePublish"
-      Effect    = "Allow"
-      Principal = { Service = "events.amazonaws.com" }
-      Action    = "SNS:Publish"
-      Resource  = aws_sns_topic.guardduty_alerts.arn
-    }]
-  })
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+  }
 }
 
-# CloudWatch metric filter — count of GuardDuty findings for dashboarding
-resource "aws_cloudwatch_log_metric_filter" "guardduty_finding_count" {
-  count          = 0  # enable if CloudWatch Logs GuardDuty export is configured
-  name           = "guardduty-finding-count"
-  pattern        = "{ $.detail-type = \"GuardDuty Finding\" }"
-  log_group_name = "/aws/events/guardduty"
+# ──────────────────────────────────────────────
+# GuardDuty filter: suppress known-safe test findings
+# ──────────────────────────────────────────────
+resource "aws_guardduty_filter" "suppress_test_findings" {
+  count       = var.environment != "production" ? 1 : 0
+  detector_id = aws_guardduty_detector.main.id
+  name        = "suppress-test-findings"
+  action      = "ARCHIVE"
+  rank        = 1
 
-  metric_transformation {
-    name      = "GuardDutyFindingCount"
-    namespace = "Security/${var.project}"
-    value     = "1"
+  finding_criteria {
+    criterion {
+      field  = "type"
+      equals = ["UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.OutsideAWS"]
+    }
   }
+}
+
+output "guardduty_detector_id" {
+  description = "GuardDuty detector ID"
+  value       = aws_guardduty_detector.main.id
 }
