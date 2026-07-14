@@ -2,74 +2,51 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class AuditLog extends Model
 {
-    public const UPDATED_AT = null;
-
     protected $fillable = [
-        'tenant_id',
-        'user_id',
-        'event',
-        'auditable_type',
-        'auditable_id',
-        'old_values',
-        'new_values',
-        'ip_address',
-        'user_agent',
-        'url',
+        'tenant_id', 'user_id', 'auditable_type', 'auditable_id',
+        'event', 'old_values', 'new_values', 'ip_address', 'user_agent', 'tags',
     ];
 
     protected $casts = [
         'old_values' => 'array',
         'new_values' => 'array',
-        'created_at' => 'datetime',
+        'tags'       => 'array',
     ];
-
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
 
     public function auditable(): MorphTo
     {
         return $this->morphTo();
     }
 
-    public function scopeForTenant(Builder $query, int $tenantId): Builder
+    public function user(): BelongsTo
     {
-        return $query->where('tenant_id', $tenantId);
-    }
-
-    public function scopeForModel(Builder $query, string $type, int $id): Builder
-    {
-        return $query->where('auditable_type', $type)->where('auditable_id', $id);
+        return $this->belongsTo(User::class);
     }
 
     public static function record(
         string $event,
-        Model $auditable,
+        Model $model,
         array $oldValues = [],
         array $newValues = [],
+        ?int $tenantId = null,
+        ?int $userId = null
     ): self {
-        $user = auth()->user();
-        $request = request();
-
         return static::create([
-            'tenant_id'      => $user?->tenant_id ?? $auditable->tenant_id,
-            'user_id'        => $user?->id,
+            'tenant_id'      => $tenantId ?? auth()->user()?->tenant_id,
+            'user_id'        => $userId ?? auth()->id(),
+            'auditable_type' => get_class($model),
+            'auditable_id'   => $model->getKey(),
             'event'          => $event,
-            'auditable_type' => get_class($auditable),
-            'auditable_id'   => $auditable->getKey(),
             'old_values'     => $oldValues ?: null,
             'new_values'     => $newValues ?: null,
-            'ip_address'     => $request->ip(),
-            'user_agent'     => substr($request->userAgent() ?? '', 0, 512),
-            'url'            => substr($request->fullUrl(), 0, 2048),
+            'ip_address'     => request()->ip(),
+            'user_agent'     => request()->userAgent(),
         ]);
     }
 }
