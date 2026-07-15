@@ -1,17 +1,17 @@
-variable "backup_daily_retention_days" {
-  description = "Retention period for daily backups in days"
-  type        = number
-  default     = 14
+variable "backup_secondary_region" {
+  description = "AWS region for cross-region backup copies"
+  type        = string
+  default     = "ap-northeast-3"
 }
 
-variable "backup_weekly_retention_days" {
-  description = "Retention period for weekly backups in days"
+variable "backup_cold_storage_days" {
+  description = "Days after which daily backups are moved to cold storage"
   type        = number
-  default     = 60
+  default     = 30
 }
 
-variable "backup_monthly_retention_days" {
-  description = "Retention period for monthly backups in days (moved to cold storage after 30d)"
+variable "backup_retention_days" {
+  description = "Days after which daily backups are deleted"
   type        = number
-  default     = 365
+  default     = 90
 }
