@@ -1,188 +1,194 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../lib/api';
 
-interface Notification {
+type Notification = {
   id: number;
   type: string;
   title: string;
   body: string;
-  data: Record<string, unknown>;
   read_at: string | null;
   created_at: string;
-}
-
-interface NotificationResponse {
-  data: Notification[];
-  unread_count: number;
-}
-
-const TYPE_ICONS: Record<string, string> = {
-  'expense.approved':  '✅',
-  'expense.rejected':  '❌',
-  'expense.submitted': '📋',
-  'export.ready':      '📥',
-  'budget.alert':      '⚠️',
-  'budget.exceeded':   '🚨',
-  default:             '🔔',
+  data: Record<string, unknown>;
 };
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+const TYPE_ICON: Record<string, string> = {
+  expense_approved:          '✅',
+  expense_rejected:          '❌',
+  approval_requested:        '🔔',
+  budget_alert:              '⚠️',
+  report_ready:              '📊',
+  payment_processed:         '💰',
+  expense_submitted:         '📤',
+};
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1)  return 'たった今';
+  if (m < 60) return `${m}分前`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}時間前`;
+  return `${Math.floor(h / 24)}日前`;
 }
 
-function NotificationItem({
-  notification,
-  onMarkRead,
-}: {
+interface NotificationItemProps {
   notification: Notification;
   onMarkRead: (id: number) => void;
-}) {
-  const icon = TYPE_ICONS[notification.type] ?? TYPE_ICONS.default;
-  const isUnread = !notification.read_at;
+}
+
+function NotificationItem({ notification: n, onMarkRead }: NotificationItemProps) {
+  const icon = TYPE_ICON[n.type] ?? '📨';
+  const isUnread = n.read_at === null;
 
   return (
-    <div
-      className={`flex gap-3 px-4 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50 ${
-        isUnread ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
+    <li
+      className={`flex gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
+        isUnread ? 'bg-blue-50/60 dark:bg-blue-900/20' : ''
       }`}
     >
-      <span className="mt-0.5 text-lg" aria-hidden>
-        {icon}
-      </span>
+      <span className="mt-0.5 text-xl flex-shrink-0" aria-hidden="true">{icon}</span>
       <div className="min-w-0 flex-1">
-        <p className={`text-sm font-medium ${
-          isUnread ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'
-        }`}>
-          {notification.title}
+        <p className={`text-sm leading-snug ${isUnread ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+          {n.title}
         </p>
-        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-500 line-clamp-2">
-          {notification.body}
-        </p>
-        <p className="mt-1 text-xs text-gray-400 dark:text-gray-600">{timeAgo(notification.created_at)}</p>
+        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{n.body}</p>
+        <time className="mt-1 text-xs text-gray-400" dateTime={n.created_at}>
+          {timeAgo(n.created_at)}
+        </time>
       </div>
       {isUnread && (
         <button
-          onClick={() => onMarkRead(notification.id)}
-          className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500"
-          aria-label="Mark as read"
-        />
+          type="button"
+          onClick={() => onMarkRead(n.id)}
+          aria-label="既読にする"
+          className="flex-shrink-0 self-start rounded p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+        >
+          <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <circle cx="10" cy="10" r="8" />
+          </svg>
+        </button>
       )}
-    </div>
+    </li>
   );
 }
 
-export default function NotificationCenter() {
+export function NotificationCenter() {
+  const popoverId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
 
-  const { data } = useQuery<NotificationResponse>({
+  const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ['notifications'],
-    queryFn: () => fetch('/api/notifications').then((r) => r.json()),
+    queryFn: () => api.get('/notifications').then(r => r.data),
     refetchInterval: 30_000,
   });
 
-  const markRead = useMutation({
-    mutationFn: (id: number) =>
-      fetch(`/api/notifications/${id}/read`, { method: 'PATCH' }).then((r) => r.json()),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  const unreadCount = notifications.filter(n => n.read_at === null).length;
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: number) => api.patch(`/notifications/${id}/read`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   });
 
-  const markAllRead = useMutation({
-    mutationFn: () =>
-      fetch('/api/notifications/read-all', { method: 'POST' }).then((r) => r.json()),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  const markAllReadMutation = useMutation({
+    mutationFn: () => api.post('/notifications/mark-all-read'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   });
 
+  const handleMarkRead = useCallback(
+    (id: number) => markReadMutation.mutate(id),
+    [markReadMutation]
+  );
+
+  // Close on outside click
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (
+        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     }
-    if (open) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  // Close on Escape
   useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false);
+    if (!open) return;
+    function handler(e: KeyboardEvent) {
+      if (e.key === 'Escape') { setOpen(false); triggerRef.current?.focus(); }
     }
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
-  }, []);
-
-  const unread = data?.unread_count ?? 0;
-  const notifications = data?.data ?? [];
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open]);
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
-        className="relative rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
-        aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ''}`}
+        ref={triggerRef}
+        type="button"
+        aria-label={`通知${unreadCount > 0 ? `、未読${unreadCount}件` : ''}`}
         aria-expanded={open}
-        aria-haspopup="true"
+        aria-controls={popoverId}
+        onClick={() => setOpen(v => !v)}
+        className="relative rounded-full p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-400"
       >
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V5a1 1 0 00-2 0v.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
-        {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-            {unread > 9 ? '9+' : unread}
+        {unreadCount > 0 && (
+          <span
+            aria-hidden="true"
+            className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+          >
+            {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
         <div
+          id={popoverId}
+          ref={popoverRef}
           role="dialog"
-          aria-label="Notifications"
-          className="absolute right-0 top-full z-50 mt-2 w-96 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800"
+          aria-label="通知センター"
+          aria-modal="false"
+          className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl bg-white dark:bg-gray-800 shadow-xl ring-1 ring-gray-200 dark:ring-gray-700 overflow-hidden"
         >
-          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-            <h2 className="font-semibold text-gray-900 dark:text-gray-100">Notifications</h2>
-            {unread > 0 && (
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 px-4 py-3">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">通知</h2>
+            {unreadCount > 0 && (
               <button
-                onClick={() => markAllRead.mutate()}
-                className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                type="button"
+                onClick={() => markAllReadMutation.mutate()}
+                disabled={markAllReadMutation.isPending}
+                className="text-xs text-blue-600 hover:underline dark:text-blue-400 disabled:opacity-50"
               >
-                Mark all read
+                すべて既読にする
               </button>
             )}
           </div>
 
-          <div className="max-h-[480px] divide-y divide-gray-100 overflow-y-auto dark:divide-gray-700">
-            {notifications.length === 0 ? (
-              <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                No notifications
-              </div>
-            ) : (
-              notifications.map((n) => (
-                <NotificationItem
-                  key={n.id}
-                  notification={n}
-                  onMarkRead={(id) => markRead.mutate(id)}
-                />
-              ))
-            )}
-          </div>
-
-          <div className="border-t border-gray-200 px-4 py-2 dark:border-gray-700">
-            <a
-              href="/notifications"
-              className="block text-center text-xs text-blue-600 hover:underline dark:text-blue-400"
-            >
-              View all notifications
-            </a>
-          </div>
+          {/* List */}
+          {notifications.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+              通知はありません
+            </p>
+          ) : (
+            <ul className="max-h-96 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+              {notifications.map(n => (
+                <NotificationItem key={n.id} notification={n} onMarkRead={handleMarkRead} />
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>
