@@ -1,279 +1,279 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useId, useState } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../lib/api';
+import { ExpenseTimeline } from '../components/ExpenseTimeline';
 
-interface ApprovalStep {
-  id: number;
-  step_order: number;
-  approver_name: string;
-  status: 'pending' | 'approved' | 'rejected' | 'skipped';
-  comment: string | null;
-  acted_at: string | null;
-}
-
-interface Receipt {
-  id: number;
-  filename: string;
-  url: string;
-  mime_type: string;
-  size_bytes: number;
-}
-
-interface Expense {
+type Expense = {
   id: number;
   title: string;
   amount: number;
   currency: string;
-  status: 'draft' | 'submitted' | 'approved' | 'rejected';
-  category: string;
+  expense_date: string;
+  status: string;
   description: string | null;
-  project_code: string | null;
-  submitted_at: string | null;
-  approved_at: string | null;
+  category: { id: number; name: string } | null;
+  project: { id: number; name: string } | null;
+  user: { id: number; name: string; email: string };
+  receipts: Array<{ id: number; name: string; url: string; mime_type: string }>;
+  approvals: Array<{ id: number; approver: { name: string }; status: string; comment: string | null; acted_at: string | null }>;
   created_at: string;
-  updated_at: string;
-  submitted_by: { id: number; name: string; email: string } | null;
-  receipts: Receipt[];
-  approval_steps: ApprovalStep[];
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-  submitted: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  approved: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-  rejected: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
 };
 
-const STEP_STATUS_ICON: Record<string, string> = {
-  approved: '✔',
-  rejected: '✘',
-  pending: '○',
-  skipped: '‒',
+type Comment = {
+  id: number;
+  body: string;
+  is_internal: boolean;
+  user_name: string;
+  reply_count: number;
+  created_at: string;
 };
 
-function formatCurrency(amount: number, currency = 'JPY') {
+const STATUS_MAP: Record<string, { label: string; color: string }> = {
+  draft:     { label: '下書き', color: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200' },
+  submitted: { label: '申請中', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+  approved:  { label: '承認済', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+  rejected:  { label: '却下',   color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+  paid:      { label: '支払済', color: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200' },
+  cancelled: { label: 'キャンセル', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
+};
+
+function formatCurrency(amount: number, currency: string) {
   return new Intl.NumberFormat('ja-JP', { style: 'currency', currency }).format(amount);
 }
 
-function ReceiptThumbnail({ receipt }: { receipt: Receipt }) {
-  const isImage = receipt.mime_type.startsWith('image/');
-  const [open, setOpen] = useState(false);
-
-  return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className="group relative w-24 h-24 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden hover:border-blue-400 transition-colors"
-      >
-        {isImage ? (
-          <img src={receipt.url} alt={receipt.filename} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-gray-50 dark:bg-gray-800">
-            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span className="text-xs text-gray-500">PDF</span>
-          </div>
-        )}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-      </button>
-
-      {open && isImage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-          onClick={() => setOpen(false)}
-        >
-          <img
-            src={receipt.url}
-            alt={receipt.filename}
-            className="max-w-full max-h-full rounded-lg shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
-      )}
-    </>
-  );
-}
-
-export default function ExpenseDetail() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+function CommentBox({ expenseId }: { expenseId: number }) {
+  const textareaId = useId();
+  const [body, setBody] = useState('');
   const queryClient = useQueryClient();
-  const [approvalComment, setApprovalComment] = useState('');
 
-  const { data: expense, isLoading } = useQuery<Expense>({
-    queryKey: ['expense', id],
-    queryFn: () => fetch(`/api/expenses/${id}`).then(r => {
-      if (!r.ok) throw new Error('Not found');
-      return r.json();
-    }),
+  const { data: comments = [] } = useQuery<Comment[]>({
+    queryKey: ['comments', expenseId],
+    queryFn: () => api.get(`/expenses/${expenseId}/comments`).then(r => r.data),
   });
 
-  const approveMutation = useMutation({
-    mutationFn: (action: 'approve' | 'reject') =>
-      fetch(`/api/expenses/${id}/${action}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ comment: approvalComment }),
-      }).then(r => r.json()),
+  const mutation = useMutation({
+    mutationFn: (text: string) => api.post(`/expenses/${expenseId}/comments`, { body: text }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expense', id] });
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      setApprovalComment('');
+      setBody('');
+      queryClient.invalidateQueries({ queryKey: ['comments', expenseId] });
     },
   });
 
+  return (
+    <section aria-label="コメント">
+      <h3 className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">コメント</h3>
+      <ul className="mb-4 space-y-3">
+        {comments.map(c => (
+          <li key={c.id} className={`rounded-lg p-3 text-sm ${
+            c.is_internal
+              ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+              : 'bg-gray-50 dark:bg-gray-700/50'
+          }`}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-medium text-gray-800 dark:text-gray-100">{c.user_name}</span>
+              {c.is_internal && <span className="text-xs text-yellow-600 dark:text-yellow-400">内部メモ</span>}
+              <time className="ml-auto text-xs text-gray-400" dateTime={c.created_at}>
+                {new Intl.DateTimeFormat('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(c.created_at))}
+              </time>
+            </div>
+            <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-200">{c.body}</p>
+          </li>
+        ))}
+      </ul>
+      <div>
+        <label htmlFor={textareaId} className="sr-only">コメントを入力</label>
+        <textarea
+          id={textareaId}
+          rows={3}
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          placeholder="コメントを入力..."
+          className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        />
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => body.trim() && mutation.mutate(body.trim())}
+            disabled={!body.trim() || mutation.isPending}
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {mutation.isPending ? '送信中...' : '送信'}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function ExpenseDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const { data: expense, isLoading, isError } = useQuery<Expense>({
+    queryKey: ['expenses', id],
+    queryFn: () => api.get(`/expenses/${id}`).then(r => r.data),
+    enabled: Boolean(id),
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: () => api.post(`/expenses/${id}/submit`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expenses', id] }),
+  });
+
   const deleteMutation = useMutation({
-    mutationFn: () => fetch(`/api/expenses/${id}`, { method: 'DELETE' }),
+    mutationFn: () => api.delete(`/expenses/${id}`),
     onSuccess: () => navigate('/expenses'),
   });
 
   if (isLoading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-4">
-        {[80, 120, 200, 160].map((h, i) => (
-          <div key={i} className="rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" style={{ height: h }} />
-        ))}
+      <div className="mx-auto max-w-3xl px-4 py-8 space-y-4 animate-pulse">
+        <div className="h-6 w-1/3 rounded bg-gray-200 dark:bg-gray-700" />
+        <div className="h-32 rounded-xl bg-gray-100 dark:bg-gray-800" />
       </div>
     );
   }
 
-  if (!expense) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <p className="text-gray-500">経費が見つかりません。</p>
-        <Link to="/expenses" className="mt-4 inline-block text-sm text-blue-600 hover:underline">一覧に戻る</Link>
-      </div>
-    );
+  if (isError || !expense) {
+    return <p className="p-8 text-center text-red-500">経費情報の読み込みに失敗しました。</p>;
   }
 
-  const canApprove = expense.status === 'submitted';
-  const canDelete = expense.status === 'draft';
+  const status = STATUS_MAP[expense.status] ?? { label: expense.status, color: 'bg-gray-100 text-gray-700' };
+  const isDraft = expense.status === 'draft';
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <main className="mx-auto max-w-3xl px-4 py-8 space-y-6">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-gray-500">
-        <Link to="/expenses" className="hover:text-gray-700 dark:hover:text-gray-300">経費一覧</Link>
-        <span>/</span>
-        <span className="text-gray-900 dark:text-white">{expense.title}</span>
+      <nav aria-label="パンくず">
+        <ol className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+          <li><Link to="/expenses" className="hover:underline">経費一覧</Link></li>
+          <li aria-hidden="true">/</li>
+          <li aria-current="page" className="text-gray-800 dark:text-gray-100">{expense.title}</li>
+        </ol>
       </nav>
 
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">{expense.title}</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {expense.submitted_by?.name} · {new Date(expense.created_at).toLocaleDateString('ja-JP')}
+      {/* Header card */}
+      <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow ring-1 ring-gray-200 dark:ring-gray-700">
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white truncate">{expense.title}</h1>
+            <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
+              {formatCurrency(expense.amount, expense.currency)}
             </p>
           </div>
-          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${STATUS_STYLES[expense.status]}`}>
-            {expense.status}
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${status.color}`}>
+            {status.label}
           </span>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { label: '金額', value: formatCurrency(expense.amount, expense.currency) },
-            { label: 'カテゴリ', value: expense.category },
-            { label: 'プロジェクトコード', value: expense.project_code ?? '—' },
-            { label: '申請日', value: expense.submitted_at ? new Date(expense.submitted_at).toLocaleDateString('ja-JP') : '—' },
-          ].map(({ label, value }) => (
-            <div key={label}>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-              <p className="mt-0.5 text-sm font-semibold text-gray-900 dark:text-white">{value}</p>
-            </div>
-          ))}
-        </div>
+        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+          <div>
+            <dt className="text-gray-500 dark:text-gray-400">日付</dt>
+            <dd className="font-medium text-gray-800 dark:text-gray-100">{expense.expense_date}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-500 dark:text-gray-400">カテゴリ</dt>
+            <dd className="font-medium text-gray-800 dark:text-gray-100">{expense.category?.name ?? '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-500 dark:text-gray-400">プロジェクト</dt>
+            <dd className="font-medium text-gray-800 dark:text-gray-100">{expense.project?.name ?? '—'}</dd>
+          </div>
+          <div>
+            <dt className="text-gray-500 dark:text-gray-400">申請者</dt>
+            <dd className="font-medium text-gray-800 dark:text-gray-100">{expense.user.name}</dd>
+          </div>
+        </dl>
 
         {expense.description && (
           <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{expense.description}</p>
+        )}
+
+        {/* Action buttons */}
+        {isDraft && (
+          <div className="mt-5 flex gap-3">
+            <Link
+              to={`/expenses/${expense.id}/edit`}
+              className="rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              編集
+            </Link>
+            <button
+              type="button"
+              onClick={() => submitMutation.mutate()}
+              disabled={submitMutation.isPending}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {submitMutation.isPending ? '申請中...' : '申請する'}
+            </button>
+            <button
+              type="button"
+              onClick={() => window.confirm('削除してもよいですか？') && deleteMutation.mutate()}
+              className="ml-auto text-sm text-red-500 hover:underline"
+            >
+              削除
+            </button>
+          </div>
         )}
       </div>
 
       {/* Receipts */}
       {expense.receipts.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">領収書 ({expense.receipts.length})</h2>
-          <div className="flex flex-wrap gap-3">
-            {expense.receipts.map(r => <ReceiptThumbnail key={r.id} receipt={r} />)}
-          </div>
-        </div>
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">領収書 ({expense.receipts.length})</h2>
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {expense.receipts.map(r => (
+              <li key={r.id}>
+                <a
+                  href={r.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  <span aria-hidden="true">{r.mime_type === 'application/pdf' ? '📄' : '🖼️'}</span>
+                  <span className="truncate text-gray-700 dark:text-gray-200">{r.name}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      {/* Approval timeline */}
-      {expense.approval_steps.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">承認フロー</h2>
-          <ol className="space-y-4">
-            {expense.approval_steps.map((step, i) => (
-              <li key={step.id} className="flex gap-4">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                  step.status === 'approved' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                  : step.status === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                  : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                }`}>
-                  {STEP_STATUS_ICON[step.status]}
-                </div>
+      {/* Approval steps */}
+      {expense.approvals.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">承認ステップ</h2>
+          <ol className="space-y-2">
+            {expense.approvals.map((a, i) => (
+              <li key={a.id} className="flex items-start gap-3 rounded-lg bg-gray-50 dark:bg-gray-800 p-3 text-sm">
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-xs font-medium">{i + 1}</span>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{step.approver_name}</p>
-                  {step.acted_at && (
-                    <p className="text-xs text-gray-400">{new Date(step.acted_at).toLocaleString('ja-JP')}</p>
-                  )}
-                  {step.comment && (
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2">
-                      {step.comment}
-                    </p>
-                  )}
+                  <p className="font-medium text-gray-800 dark:text-gray-100">{a.approver.name}</p>
+                  {a.comment && <p className="mt-0.5 text-gray-500 dark:text-gray-400">{a.comment}</p>}
                 </div>
+                <span className={`text-xs font-medium ${
+                  a.status === 'approved' ? 'text-green-600' :
+                  a.status === 'rejected' ? 'text-red-600' : 'text-gray-400'
+                }`}>
+                  {a.status === 'approved' ? '承認済' : a.status === 'rejected' ? '却下' : '待機中'}
+                </span>
               </li>
             ))}
           </ol>
-        </div>
+        </section>
       )}
 
-      {/* Approval actions */}
-      {canApprove && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">承認アクション</h2>
-          <textarea
-            value={approvalComment}
-            onChange={e => setApprovalComment(e.target.value)}
-            placeholder="コメント（任意）..."
-            rows={3}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm resize-none placeholder-gray-400"
-          />
-          <div className="flex gap-3">
-            <button
-              onClick={() => approveMutation.mutate('approve')}
-              disabled={approveMutation.isPending}
-              className="flex-1 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
-            >
-              承認
-            </button>
-            <button
-              onClick={() => approveMutation.mutate('reject')}
-              disabled={approveMutation.isPending}
-              className="flex-1 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
-            >
-              却下
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Comments */}
+      <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow ring-1 ring-gray-200 dark:ring-gray-700">
+        <CommentBox expenseId={expense.id} />
+      </div>
 
-      {/* Danger zone */}
-      {canDelete && (
-        <div className="flex justify-end">
-          <button
-            onClick={() => { if (confirm('この経費申請を削除しますか？')) deleteMutation.mutate(); }}
-            className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 hover:border-red-400 rounded-lg"
-          >
-            申請を削除
-          </button>
-        </div>
-      )}
-    </div>
+      {/* Timeline */}
+      <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow ring-1 ring-gray-200 dark:ring-gray-700">
+        <ExpenseTimeline expenseId={expense.id} />
+      </div>
+    </main>
   );
 }
