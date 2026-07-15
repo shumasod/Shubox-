@@ -1,143 +1,223 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 
-interface KpiData {
-  total_spend_mtd:     number;
-  total_spend_ytd:     number;
-  pending_count:       number;
-  pending_amount:      number;
-  approved_count:      number;
-  rejected_count:      number;
-  rejection_rate:      number;
-  avg_approval_days:   number;
-  currency:            string;
-}
-
-const useCountUp = (target: number, duration = 800): number => {
-  const [value, setValue] = React.useState(0);
-  const frame = useRef<number>(0);
-  const start = useRef<number>(0);
-
-  useEffect(() => {
-    if (target === 0) { setValue(0); return; }
-    const animate = (ts: number) => {
-      if (!start.current) start.current = ts;
-      const progress = Math.min((ts - start.current) / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(ease * target));
-      if (progress < 1) frame.current = requestAnimationFrame(animate);
-    };
-    frame.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(frame.current);
-  }, [target, duration]);
-
-  return value;
+type DashboardStats = {
+  total_expenses_this_month: number;
+  total_amount_this_month: number;
+  pending_approvals: number;
+  rejected_this_month: number;
+  budget_utilization_pct: number;
+  expenses_by_day: Array<{ date: string; amount: number }>;
+  recent_expenses: Array<{
+    id: number;
+    title: string;
+    amount: number;
+    currency: string;
+    status: string;
+    created_at: string;
+  }>;
 };
 
-const formatCurrency = (amount: number, currency = 'JPY') =>
-  new Intl.NumberFormat('ja-JP', { style: 'currency', currency }).format(amount / 100);
-
-interface WidgetProps {
-  label:     string;
-  value:     string | number;
-  sublabel?: string;
-  trend?:    'up' | 'down' | 'neutral';
-  color?:    string;
+function formatJPY(n: number) {
+  return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 }).format(n);
 }
 
-const Widget: React.FC<WidgetProps> = ({ label, value, sublabel, trend, color = 'indigo' }) => {
-  const colorMap: Record<string, string> = {
-    indigo: 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800',
-    green:  'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
-    yellow: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
-    red:    'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
-  };
-
-  const trendIcon = trend === 'up' ? '(+)' : trend === 'down' ? '(-)' : null;
-  const trendColor = trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-500' : '';
+// Inline sparkline using inline SVG
+function Sparkline({ data }: { data: number[] }) {
+  if (data.length < 2) return null;
+  const max = Math.max(...data, 1);
+  const w = 80;
+  const h = 28;
+  const step = w / (data.length - 1);
+  const points = data
+    .map((v, i) => `${i * step},${h - (v / max) * h}`)
+    .join(' ');
 
   return (
-    <div className={`rounded-xl border p-5 ${colorMap[color] ?? colorMap.indigo}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
-      {sublabel && (
-        <p className={`mt-1 text-sm ${trendColor || 'text-gray-500'}`}>
-          {trendIcon && <span className="mr-1">{trendIcon}</span>}{sublabel}
-        </p>
+    <svg width={w} height={h} aria-hidden="true" className="flex-shrink-0">
+      <polyline
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="text-blue-400"
+        points={points}
+      />
+    </svg>
+  );
+}
+
+const STATUS_DOT: Record<string, string> = {
+  draft:     'bg-gray-400',
+  submitted: 'bg-blue-500',
+  approved:  'bg-green-500',
+  rejected:  'bg-red-500',
+  paid:      'bg-teal-500',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  draft:     '下書き',
+  submitted: '申請中',
+  approved:  '承認済',
+  rejected:  '却下',
+  paid:      '支払済',
+};
+
+interface StatCardProps {
+  label: string;
+  value: string | number;
+  sub?: string;
+  accent?: string;
+  sparkData?: number[];
+}
+
+function StatCard({ label, value, sub, accent = 'text-gray-900 dark:text-white', sparkData }: StatCardProps) {
+  return (
+    <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow ring-1 ring-gray-200 dark:ring-gray-700">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</p>
+          <p className={`mt-1 text-2xl font-bold truncate ${accent}`}>{value}</p>
+          {sub && <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{sub}</p>}
+        </div>
+        {sparkData && <Sparkline data={sparkData} />}
+      </div>
+    </div>
+  );
+}
+
+function BudgetMeter({ pct }: { pct: number }) {
+  const clamped = Math.min(pct, 100);
+  const color = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-blue-500';
+
+  return (
+    <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow ring-1 ring-gray-200 dark:ring-gray-700">
+      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">今月予算利用率</p>
+      <p className={`mt-1 text-2xl font-bold ${
+        pct >= 90 ? 'text-red-600 dark:text-red-400' : pct >= 70 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'
+      }`}>{pct.toFixed(1)}%</p>
+      <div
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="予算利用率"
+        className="mt-3 h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700"
+      >
+        <div className={`h-2 rounded-full transition-all duration-500 ${color}`} style={{ width: `${clamped}%` }} />
+      </div>
+      {pct > 100 && (
+        <p className="mt-1 text-xs text-red-500">予算超過</p>
       )}
     </div>
   );
-};
+}
 
-export const DashboardWidgets: React.FC = () => {
-  const { data, isLoading } = useQuery<KpiData>({
-    queryKey: ['dashboard-kpi'],
-    queryFn: () => api.get('/dashboard/kpi').then(r => r.data),
-    refetchInterval: 60_000,
+export function DashboardWidgets() {
+  const { data: stats, isLoading } = useQuery<DashboardStats>({
+    queryKey: ['dashboard-stats'],
+    queryFn: () => api.get('/dashboard/stats').then(r => r.data),
+    staleTime: 2 * 60_000,
+    refetchInterval: 5 * 60_000,
   });
 
-  const pendingCount   = useCountUp(data?.pending_count   ?? 0);
-  const approvedCount  = useCountUp(data?.approved_count  ?? 0);
-  const rejectedCount  = useCountUp(data?.rejected_count  ?? 0);
-
-  if (isLoading) {
+  if (isLoading || !stats) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-28 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 animate-pulse">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-28 rounded-xl bg-gray-100 dark:bg-gray-800" />
         ))}
       </div>
     );
   }
 
-  if (!data) return null;
+  const sparkAmounts = stats.expenses_by_day.map(d => d.amount);
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      <Widget
-        label="Spend (MTD)"
-        value={formatCurrency(data.total_spend_mtd, data.currency)}
-        sublabel="This month"
-        color="indigo"
-      />
-      <Widget
-        label="Spend (YTD)"
-        value={formatCurrency(data.total_spend_ytd, data.currency)}
-        sublabel="This year"
-        color="indigo"
-      />
-      <Widget
-        label="Pending Approval"
-        value={pendingCount}
-        sublabel={formatCurrency(data.pending_amount, data.currency)}
-        color="yellow"
-      />
-      <Widget
-        label="Approved"
-        value={approvedCount}
-        sublabel="Total approved"
-        color="green"
-      />
-      <Widget
-        label="Rejected"
-        value={rejectedCount}
-        sublabel="Total rejected"
-        color="red"
-      />
-      <Widget
-        label="Rejection Rate"
-        value={`${data.rejection_rate.toFixed(1)}%`}
-        sublabel="of submitted"
-        trend={data.rejection_rate > 15 ? 'down' : 'neutral'}
-        color={data.rejection_rate > 15 ? 'red' : 'green'}
-      />
-      <Widget
-        label="Avg. Approval Time"
-        value={`${data.avg_approval_days.toFixed(1)}d`}
-        sublabel="Days to decision"
-        color="indigo"
-      />
+    <div className="space-y-6">
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard
+          label="今月の経費件数"
+          value={`${stats.total_expenses_this_month}件`}
+          sparkData={sparkAmounts}
+        />
+        <StatCard
+          label="今月の合計金額"
+          value={formatJPY(stats.total_amount_this_month)}
+          sparkData={sparkAmounts}
+        />
+        <StatCard
+          label="承認待ち"
+          value={stats.pending_approvals}
+          accent={stats.pending_approvals > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}
+        />
+        <StatCard
+          label="却下 (今月)"
+          value={stats.rejected_this_month}
+          accent={stats.rejected_this_month > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}
+        />
+      </div>
+
+      {/* Budget meter */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <BudgetMeter pct={stats.budget_utilization_pct} />
+
+        {/* Quick links */}
+        <div className="sm:col-span-2 rounded-xl bg-white dark:bg-gray-800 p-5 shadow ring-1 ring-gray-200 dark:ring-gray-700">
+          <p className="mb-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">クイックアクセス</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { to: '/expenses/new',      label: '+ 経費を申請' },
+              { to: '/approvals',         label: '承認インボックス' },
+              { to: '/reports',           label: 'レポート' },
+              { to: '/analytics',         label: '分析' },
+            ].map(l => (
+              <Link
+                key={l.to}
+                to={l.to}
+                className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Recent expenses */}
+      <div className="rounded-xl bg-white dark:bg-gray-800 shadow ring-1 ring-gray-200 dark:ring-gray-700 overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">最近の経費</h2>
+          <Link to="/expenses" className="text-xs text-blue-600 hover:underline dark:text-blue-400">すべて見る</Link>
+        </div>
+        <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+          {stats.recent_expenses.map(e => (
+            <li key={e.id}>
+              <Link
+                to={`/expenses/${e.id}`}
+                className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`h-2 w-2 flex-shrink-0 rounded-full ${STATUS_DOT[e.status] ?? 'bg-gray-400'}`}
+                  title={STATUS_LABEL[e.status]}
+                />
+                <span className="flex-1 truncate text-sm text-gray-800 dark:text-gray-100">{e.title}</span>
+                <span className="flex-shrink-0 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {formatJPY(e.amount)}
+                </span>
+                <span className="flex-shrink-0 text-xs text-gray-400">
+                  {new Intl.DateTimeFormat('ja-JP', { month: 'short', day: 'numeric' }).format(new Date(e.created_at))}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
-};
+}
