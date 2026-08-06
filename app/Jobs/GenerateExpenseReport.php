@@ -2,118 +2,150 @@
 
 namespace App\Jobs;
 
+use App\Models\Expense;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class GenerateExpenseReport implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
-    public int $timeout = 300;
+    public int $timeout = 600;
+    public int $tries = 2;
 
     public function __construct(
         private readonly int $tenantId,
-        private readonly int $userId,
-        private readonly array $filters,
+        private readonly int $requestedByUserId,
+        private readonly string $reportId,
         private readonly string $format,
-        private readonly string $reportKey,
+        private readonly string $grouping,
+        private readonly array $filters = [],
+        private readonly bool $includeReceipts = false,
     ) {}
 
     public function handle(): void
     {
-        $query = DB::table('expenses')
-            ->join('users', 'expenses.user_id', '=', 'users.id')
-            ->leftJoin('categories', 'expenses.category_id', '=', 'categories.id')
-            ->leftJoin('projects', 'expenses.project_id', '=', 'projects.id')
-            ->where('expenses.tenant_id', $this->tenantId)
-            ->whereNull('expenses.deleted_at')
-            ->select(
-                'expenses.id',
-                'expenses.title',
-                'expenses.amount',
-                'expenses.currency',
-                'expenses.expense_date',
-                'expenses.status',
-                'users.name as user_name',
-                'users.email as user_email',
-                'categories.name as category_name',
-                'projects.name as project_name',
-                'expenses.description',
-                'expenses.created_at',
-            );
+        $data = $this->fetchData();
+        $content = $this->render($data);
+        $s3Key = $this->upload($content);
+        $this->notify($s3Key);
+    }
 
-        if (! empty($this->filters['from'])) {
-            $query->whereDate('expenses.expense_date', '>=', $this->filters['from']);
-        }
-        if (! empty($this->filters['to'])) {
-            $query->whereDate('expenses.expense_date', '<=', $this->filters['to']);
-        }
+    private function fetchData(): array
+    {
+        $query = Expense::where('tenant_id', $this->tenantId)
+            ->whereBetween('submitted_at', [
+                $this->filters['date_from'],
+                $this->filters['date_to'],
+            ])
+            ->with(['submittedBy:id,name', 'department:id,name', 'vendor:id,name']);
+
         if (! empty($this->filters['status'])) {
-            $query->where('expenses.status', $this->filters['status']);
+            $query->whereIn('status', $this->filters['status']);
         }
-        if (! empty($this->filters['category_id'])) {
-            $query->where('expenses.category_id', $this->filters['category_id']);
+        if (! empty($this->filters['category'])) {
+            $query->where('category', $this->filters['category']);
         }
-        if (! empty($this->filters['user_id'])) {
-            $query->where('expenses.user_id', $this->filters['user_id']);
+        if (! empty($this->filters['department_id'])) {
+            $query->where('department_id', $this->filters['department_id']);
+        }
+        if (! empty($this->filters['project_id'])) {
+            $query->where('project_id', $this->filters['project_id']);
         }
 
-        $headers = [
-            'ID', '件名', '金額', '通貨', '日付', 'ステータス',
-            '申請者', 'メール', 'カテゴリ', 'プロジェクト', '説明', '作成日時',
-        ];
+        return $query->orderBy('submitted_at')->get()->toArray();
+    }
 
-        $tmpPath = sys_get_temp_dir() . '/' . Str::uuid() . '.csv';
-        $fp = fopen($tmpPath, 'w');
-        // BOM for Excel compatibility
-        fwrite($fp, "\xEF\xBB\xBF");
-        fputcsv($fp, $headers);
+    private function render(array $data): string
+    {
+        return match ($this->format) {
+            'csv'  => $this->renderCsv($data),
+            'xlsx' => $this->renderXlsx($data),
+            'pdf'  => $this->renderPdf($data),
+            default => throw new \InvalidArgumentException("Unsupported format: {$this->format}"),
+        };
+    }
 
-        $query->orderByDesc('expenses.expense_date')->chunk(500, function ($rows) use ($fp) {
-            foreach ($rows as $row) {
-                fputcsv($fp, [
-                    $row->id, $row->title, $row->amount, $row->currency,
-                    $row->expense_date, $row->status, $row->user_name, $row->user_email,
-                    $row->category_name, $row->project_name, $row->description, $row->created_at,
-                ]);
-            }
-        });
-
-        fclose($fp);
-
-        $s3Key = "reports/tenant-{$this->tenantId}/{$this->reportKey}.csv";
-        Storage::disk('s3')->put(
-            $s3Key,
-            fopen($tmpPath, 'r'),
-            [
-                'ContentType'            => 'text/csv; charset=UTF-8',
-                'ServerSideEncryption'   => 'aws:kms',
-                'ContentDisposition'     => 'attachment; filename="expense-report.csv"',
-            ]
-        );
-
-        unlink($tmpPath);
-
-        DB::table('expense_reports')
-            ->where('report_key', $this->reportKey)
-            ->update([
-                'status'       => 'completed',
-                'file_path'    => $s3Key,
-                'completed_at' => now(),
+    private function renderCsv(array $data): string
+    {
+        $handle = fopen('php://temp', 'r+');
+        fwrite($handle, "\xEF\xBB\xBF");
+        fputcsv($handle, ['ID', 'Title', 'Amount', 'Currency', 'Category', 'Status', 'Submitted By', 'Department', 'Date']);
+        foreach ($data as $row) {
+            fputcsv($handle, [
+                $row['id'], $row['title'],
+                number_format($row['amount'], 2, '.', ''),
+                $row['currency'], $row['category'], $row['status'],
+                $row['submitted_by']['name'] ?? '',
+                $row['department']['name'] ?? '',
+                $row['submitted_at'],
             ]);
+        }
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+        return $csv;
+    }
+
+    private function renderXlsx(array $data): string
+    {
+        // Placeholder — real implementation uses PhpSpreadsheet
+        return $this->renderCsv($data);
+    }
+
+    private function renderPdf(array $data): string
+    {
+        // Placeholder — real implementation uses DomPDF or wkhtmltopdf via Lambda
+        return $this->renderCsv($data);
+    }
+
+    private function upload(string $content): string
+    {
+        $ext = $this->format === 'xlsx' ? 'xlsx' : ($this->format === 'pdf' ? 'pdf' : 'csv');
+        $key = "reports/{$this->tenantId}/{$this->reportId}.{$ext}";
+
+        Storage::disk('s3')->put($key, $content, [
+            'ServerSideEncryption' => 'aws:kms',
+            'ContentType'          => $this->contentType(),
+        ]);
+
+        return $key;
+    }
+
+    private function notify(string $s3Key): void
+    {
+        $user = User::find($this->requestedByUserId);
+        if (! $user) return;
+
+        $url = Storage::disk('s3')->temporaryUrl($s3Key, now()->addHours(4));
+
+        $user->notify(new \App\Notifications\ReportReady(
+            reportId: $this->reportId,
+            downloadUrl: $url,
+            expiresAt: now()->addHours(4),
+        ));
+    }
+
+    private function contentType(): string
+    {
+        return match ($this->format) {
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'pdf'  => 'application/pdf',
+            default => 'text/csv; charset=UTF-8',
+        };
     }
 
     public function failed(\Throwable $e): void
     {
-        DB::table('expense_reports')
-            ->where('report_key', $this->reportKey)
-            ->update(['status' => 'failed']);
+        Log::error('Report generation failed', [
+            'report_id' => $this->reportId,
+            'error'     => $e->getMessage(),
+        ]);
     }
 }
