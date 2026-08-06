@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**', 'feat/**']
+  pull_request:
+    branches: [main, 'claude/**']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHP_VERSION: '8.3'
+  NODE_VERSION: '20'
+
+jobs:
+  # ── PHP lint (fast, no deps) ─────────────────────────────────────────────────────────
+  lint:
+    name: PHP Lint (Pint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Run Laravel Pint
+        run: vendor/bin/pint --test
+
+  # ── PHPStan static analysis ───────────────────────────────────────────────────────
+  analyse:
+    name: PHPStan Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Copy environment file
+        run: cp .env.example .env && php artisan key:generate
+
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=512M
+
+  # ── PHPUnit tests ──────────────────────────────────────────────────────────────
+  test:
+    name: PHPUnit Tests
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: expense_test
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_mysql, redis, mbstring, xml, bcmath, intl
+          tools: composer:v2
+          coverage: xdebug
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Set up environment
+        run: |
+          cp .env.testing .env
+          php artisan key:generate
+          php artisan migrate --force
+
+      - name: Run tests with coverage
+        run: |
+          vendor/bin/phpunit \
+            --coverage-clover coverage.xml \
+            --log-junit test-results.xml
+        env:
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: expense_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          REDIS_HOST: 127.0.0.1
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: coverage.xml
+
+  # ── Frontend type-check and build ──────────────────────────────────────────────
+  frontend:
+    name: Frontend (TypeScript + Build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Production build
+        run: npm run build
