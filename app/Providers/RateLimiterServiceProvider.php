@@ -11,54 +11,84 @@ class RateLimiterServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        $this->configureRateLimiters();
+        $this->configureApiLimiter();
+        $this->configureApiTenantLimiter();
+        $this->configureAuthLimiter();
+        $this->configureExportsLimiter();
+        $this->configureWebhookInvalidLimiter();
     }
 
-    private function configureRateLimiters(): void
+    /**
+     * General API rate limit: 60 req/min per authenticated user.
+     * Falls back to IP for unauthenticated requests.
+     */
+    private function configureApiLimiter(): void
     {
-        // General API: 300 req/min per user (or IP for unauthenticated)
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(300)
-                ->by($request->user()?->id ?? $request->ip())
-                ->response(fn () => response()->json([
-                    'message' => 'リクエストが多すぎます。しばらくしてから再試行してください。',
-                ], 429));
+            return $request->user()
+                ? Limit::perMinute(60)->by($request->user()->id)
+                : Limit::perMinute(20)->by($request->ip());
         });
+    }
 
-        // Auth endpoints: 10 req/min per IP (brute-force protection)
+    /**
+     * Per-tenant API rate limit: 600 req/min across the whole tenant.
+     * Prevents one tenant from starving others on shared infrastructure.
+     */
+    private function configureApiTenantLimiter(): void
+    {
+        RateLimiter::for('api.tenant', function (Request $request) {
+            $tenantId = $request->user()?->tenant_id;
+
+            if (! $tenantId) {
+                return Limit::none();
+            }
+
+            return Limit::perMinute(600)->by("tenant:{$tenantId}");
+        });
+    }
+
+    /**
+     * Auth endpoints: 5 attempts per minute per IP.
+     * Applies to login, password reset, and 2FA verify.
+     */
+    private function configureAuthLimiter(): void
+    {
         RateLimiter::for('auth', function (Request $request) {
-            return Limit::perMinute(10)
-                ->by($request->ip())
-                ->response(fn () => response()->json([
-                    'message' => 'ログイン試行が多すぎます。1分後に再試行してください。',
-                ], 429));
-        });
-
-        // File upload: 20 req/min per user
-        RateLimiter::for('uploads', function (Request $request) {
-            return Limit::perMinute(20)
-                ->by($request->user()?->id ?? $request->ip())
-                ->response(fn () => response()->json([
-                    'message' => 'アップロードの制限に達しました。しばらくしてから再試行してください。',
-                ], 429));
-        });
-
-        // Report export: 5 req/min per user (heavy operation)
-        RateLimiter::for('exports', function (Request $request) {
             return Limit::perMinute(5)
-                ->by($request->user()?->id ?? $request->ip())
-                ->response(fn () => response()->json([
-                    'message' => 'エクスポート要求が多すぎます。しばらくしてから再試行してください。',
-                ], 429));
+                ->by($request->ip())
+                ->response(function () {
+                    return response()->json([
+                        'message' => 'Too many authentication attempts. Please try again later.',
+                    ], 429);
+                });
         });
+    }
 
-        // Webhook dispatch: 60 req/min per tenant
-        RateLimiter::for('webhooks', function (Request $request) {
-            return Limit::perMinute(60)
-                ->by($request->user()?->tenant_id ?? $request->ip())
-                ->response(fn () => response()->json([
-                    'message' => 'Webhook配信の制限に達しました。',
-                ], 429));
+    /**
+     * Export endpoint: 5 exports per 10 minutes per user.
+     * Exports are expensive — queue-based but still guarded.
+     */
+    private function configureExportsLimiter(): void
+    {
+        RateLimiter::for('exports', function (Request $request) {
+            return $request->user()
+                ? Limit::perMinutes(10, 5)->by($request->user()->id)
+                : Limit::perMinutes(10, 1)->by($request->ip());
+        });
+    }
+
+    /**
+     * Webhook invalid-signature backoff: track per endpoint + IP.
+     * After 20 invalid signatures in 5 min, the IP is effectively blocked.
+     */
+    private function configureWebhookInvalidLimiter(): void
+    {
+        RateLimiter::for('webhook.invalid', function (Request $request) {
+            $endpointId = $request->route('endpointId', 'unknown');
+
+            return Limit::perMinutes(5, 20)
+                ->by($request->ip() . ':' . $endpointId);
         });
     }
 }
