@@ -5,19 +5,13 @@ variable "vpc_cidr" {
 }
 
 variable "availability_zones" {
-  description = "List of AZs to deploy subnets into"
+  description = "List of availability zones to use (2 or 3)"
   type        = list(string)
-  default     = ["ap-northeast-1a", "ap-northeast-1c", "ap-northeast-1d"]
-}
-
-variable "enable_nat_gateway" {
-  description = "Whether to create NAT Gateways for private subnets"
-  type        = bool
-  default     = true
+  default     = ["ap-northeast-1a", "ap-northeast-1c"]
 }
 
 variable "single_nat_gateway" {
-  description = "Use a single NAT Gateway for all private subnets (cost saving for non-prod)"
+  description = "Use a single NAT gateway instead of one per AZ (cheaper for non-prod)"
   type        = bool
   default     = false
 }
