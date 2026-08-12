@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Auth;
 
 class NotificationController extends Controller
@@ -12,87 +12,64 @@ class NotificationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'unread_only' => 'boolean',
-            'type'        => 'nullable|string|max:255',
-            'per_page'    => 'integer|min:1|max:100',
+            'unread_only' => 'nullable|boolean',
+            'type'        => 'nullable|string|max:100',
+            'per_page'    => 'nullable|integer|min:1|max:50',
         ]);
 
-        $user  = Auth::user();
-        $query = $user->notifications();
+        $user        = Auth::user();
+        $perPage     = $request->integer('per_page', 20);
+        $unreadOnly  = $request->boolean('unread_only', false);
 
-        if ($request->boolean('unread_only')) {
-            $query->whereNull('read_at');
-        }
+        $query = $user->notifications()
+            ->when($unreadOnly, fn($q) => $q->whereNull('read_at'))
+            ->when($request->filled('type'), fn($q) => $q->where('type', $request->type));
 
-        if ($request->filled('type')) {
-            $query->where('type', $request->input('type'));
-        }
-
-        $perPage       = (int) $request->input('per_page', 20);
-        $notifications = $query->latest()->paginate($perPage);
+        $notifications = $query->paginate($perPage);
 
         return response()->json([
-            'data' => $notifications->items(),
-            'meta' => [
+            'data'         => $notifications->items(),
+            'unread_count' => $user->unreadNotifications()->count(),
+            'meta'         => [
                 'current_page' => $notifications->currentPage(),
                 'last_page'    => $notifications->lastPage(),
                 'total'        => $notifications->total(),
-                'unread_count' => $user->unreadNotifications()->count(),
             ],
         ]);
     }
 
-    public function show(string $id): JsonResponse
+    public function markRead(string $id): JsonResponse
     {
-        $notification = Auth::user()->notifications()->findOrFail($id);
+        $notification = Auth::user()
+            ->notifications()
+            ->findOrFail($id);
 
-        return response()->json(['data' => $notification]);
-    }
-
-    public function markAsRead(string $id): JsonResponse
-    {
-        $notification = Auth::user()->notifications()->findOrFail($id);
         $notification->markAsRead();
 
-        return response()->json(['data' => $notification]);
+        return response()->json([
+            'id'      => $notification->id,
+            'read_at' => $notification->read_at,
+        ]);
     }
 
-    public function markAllAsRead(): JsonResponse
+    public function markAllRead(): JsonResponse
     {
-        $user = Auth::user();
-        $count = $user->unreadNotifications()->count();
-        $user->unreadNotifications->markAsRead();
+        $count = Auth::user()->unreadNotifications()->count();
+        Auth::user()->unreadNotifications()->update(['read_at' => now()]);
 
-        return response()->json([
-            'message'      => 'All notifications marked as read',
-            'marked_count' => $count,
-        ]);
+        return response()->json(['marked_read' => $count]);
     }
 
     public function destroy(string $id): JsonResponse
     {
-        $notification = Auth::user()->notifications()->findOrFail($id);
-        $notification->delete();
-
+        Auth::user()->notifications()->findOrFail($id)->delete();
         return response()->json(null, 204);
     }
 
-    public function destroyRead(): JsonResponse
+    public function destroyAll(): JsonResponse
     {
-        $user  = Auth::user();
-        $count = $user->readNotifications()->count();
-        $user->readNotifications()->delete();
-
-        return response()->json([
-            'message'       => 'Read notifications deleted',
-            'deleted_count' => $count,
-        ]);
-    }
-
-    public function unreadCount(): JsonResponse
-    {
-        return response()->json([
-            'unread_count' => Auth::user()->unreadNotifications()->count(),
-        ]);
+        $count = Auth::user()->notifications()->count();
+        Auth::user()->notifications()->delete();
+        return response()->json(['deleted' => $count]);
     }
 }
