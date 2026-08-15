@@ -1,5 +1,5 @@
-variable "budget_alert_emails" {
-  description = "Email addresses to subscribe to budget alert SNS topic"
+variable "ops_alert_emails" {
+  description = "List of email addresses to subscribe to the ops-alerts SNS topic"
   type        = list(string)
   default     = []
 }
