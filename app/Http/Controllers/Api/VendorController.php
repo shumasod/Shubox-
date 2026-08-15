@@ -2,140 +2,127 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use App\Models\AuditLog;
 use App\Models\Vendor;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 
 class VendorController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $request->validate([
-            'search'   => 'nullable|string|max:100',
-            'status'   => 'nullable|in:active,inactive,blocked',
-            'category' => 'nullable|string|max:80',
-            'per_page' => 'integer|min:1|max:100',
-        ]);
+        $vendors = Vendor::forTenant(Auth::user()->tenant_id)
+            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->when($request->search, fn($q) => $q->where(function ($q) use ($request) {
+                $q->where('name', 'like', "%{$request->search}%")
+                  ->orWhere('code', 'like', "%{$request->search}%")
+                  ->orWhere('email', 'like', "%{$request->search}%");
+            }))
+            ->withCount('expenses')
+            ->orderBy('name')
+            ->paginate(20);
 
-        $tenantId = Auth::user()->tenant_id;
-
-        $query = Vendor::forTenant($tenantId)->orderBy('name');
-
-        if ($request->filled('search')) {
-            $q = $request->input('search');
-            $query->where(fn ($q2) => $q2
-                ->where('name', 'like', "%{$q}%")
-                ->orWhere('code', 'like', "%{$q}%")
-                ->orWhere('email', 'like', "%{$q}%")
-            );
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->input('status'));
-        }
-
-        if ($request->filled('category')) {
-            $query->where('category', $request->input('category'));
-        }
-
-        $vendors = $query->paginate((int) $request->input('per_page', 24));
-
-        return response()->json([
-            'data' => $vendors->items(),
-            'meta' => [
-                'current_page' => $vendors->currentPage(),
-                'last_page'    => $vendors->lastPage(),
-                'total'        => $vendors->total(),
-            ],
-        ]);
+        return response()->json($vendors);
     }
 
     public function store(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'name'          => 'required|string|max:200',
+            'code'          => 'nullable|string|max:50',
+            'email'         => 'nullable|email|max:200',
+            'phone'         => 'nullable|string|max:30',
+            'website'       => 'nullable|url|max:300',
+            'address'       => 'nullable|string|max:500',
+            'tax_id'        => 'nullable|string|max:50',
+            'payment_terms' => 'nullable|string|max:100',
+            'currency'      => 'nullable|string|size:3',
+            'notes'         => 'nullable|string|max:1000',
+        ]);
+
         $tenantId = Auth::user()->tenant_id;
 
-        $validated = $request->validate([
-            'name'     => 'required|string|max:150',
-            'code'     => ['nullable', 'string', 'max:32',
-                           Rule::unique('vendors')->where('tenant_id', $tenantId)->whereNull('deleted_at')],
-            'email'    => 'nullable|email|max:150',
-            'phone'    => 'nullable|string|max:32',
-            'website'  => 'nullable|url|max:255',
-            'tax_id'   => 'nullable|string|max:64',
-            'currency' => 'nullable|string|size:3',
-            'status'   => 'nullable|in:active,inactive,blocked',
-            'category' => 'nullable|string|max:80',
-            'notes'    => 'nullable|string|max:2000',
-        ]);
+        if (!empty($validated['code'])) {
+            $exists = Vendor::forTenant($tenantId)
+                ->where('code', $validated['code'])
+                ->exists();
+            if ($exists) {
+                return response()->json(['message' => 'Vendor code already in use.'], 422);
+            }
+        }
 
         $vendor = Vendor::create(array_merge($validated, ['tenant_id' => $tenantId]));
 
-        AuditLog::record('vendor.created', 'Vendor', $vendor->id);
-
-        return response()->json(['data' => $vendor], 201);
+        return response()->json($vendor, 201);
     }
 
     public function show(int $id): JsonResponse
     {
-        $vendor = Vendor::forTenant(Auth::user()->tenant_id)->findOrFail($id);
+        $vendor = Vendor::forTenant(Auth::user()->tenant_id)
+            ->withCount('expenses')
+            ->findOrFail($id);
 
-        return response()->json([
-            'data' => array_merge($vendor->toArray(), ['spend_stats' => $vendor->spend_stats]),
-        ]);
+        return response()->json($vendor);
     }
 
     public function update(Request $request, int $id): JsonResponse
     {
-        $tenantId = Auth::user()->tenant_id;
-        $vendor   = Vendor::forTenant($tenantId)->findOrFail($id);
+        $vendor = Vendor::forTenant(Auth::user()->tenant_id)->findOrFail($id);
 
         $validated = $request->validate([
-            'name'     => 'sometimes|string|max:150',
-            'code'     => ['nullable', 'string', 'max:32',
-                           Rule::unique('vendors')->where('tenant_id', $tenantId)->whereNull('deleted_at')->ignore($id)],
-            'email'    => 'nullable|email|max:150',
-            'phone'    => 'nullable|string|max:32',
-            'website'  => 'nullable|url|max:255',
-            'tax_id'   => 'nullable|string|max:64',
-            'currency' => 'nullable|string|size:3',
-            'status'   => 'nullable|in:active,inactive,blocked',
-            'category' => 'nullable|string|max:80',
-            'notes'    => 'nullable|string|max:2000',
+            'name'          => 'sometimes|string|max:200',
+            'email'         => 'sometimes|nullable|email|max:200',
+            'phone'         => 'sometimes|nullable|string|max:30',
+            'website'       => 'sometimes|nullable|url|max:300',
+            'address'       => 'sometimes|nullable|string|max:500',
+            'payment_terms' => 'sometimes|nullable|string|max:100',
+            'status'        => 'sometimes|in:active,inactive,blocked',
+            'notes'         => 'sometimes|nullable|string|max:1000',
         ]);
 
         $vendor->update($validated);
-        AuditLog::record('vendor.updated', 'Vendor', $id);
 
-        return response()->json(['data' => $vendor->fresh()]);
+        return response()->json($vendor);
     }
 
     public function destroy(int $id): JsonResponse
     {
-        $tenantId = Auth::user()->tenant_id;
-        $vendor   = Vendor::forTenant($tenantId)->withCount('expenses')->findOrFail($id);
+        $vendor = Vendor::forTenant(Auth::user()->tenant_id)->findOrFail($id);
 
-        if ($vendor->expenses_count > 0) {
-            return response()->json(['message' => '経費が紐付いているため削除できません。無効化を利用してください。'], 409);
+        if ($vendor->expenses()->exists()) {
+            return response()->json(['message' => 'Cannot delete vendor with linked expenses.'], 409);
         }
 
         $vendor->delete();
-        AuditLog::record('vendor.deleted', 'Vendor', $id);
-
         return response()->json(null, 204);
     }
 
-    public function categories(): JsonResponse
+    public function stats(int $id): JsonResponse
     {
-        $categories = Vendor::forTenant(Auth::user()->tenant_id)
-            ->whereNotNull('category')
-            ->distinct()
-            ->orderBy('category')
-            ->pluck('category');
+        $vendor = Vendor::forTenant(Auth::user()->tenant_id)->findOrFail($id);
 
-        return response()->json(['data' => $categories]);
+        $stats = DB::table('expenses')
+            ->where('vendor_id', $id)
+            ->where('tenant_id', Auth::user()->tenant_id)
+            ->selectRaw('
+                COUNT(*) as total_count,
+                SUM(amount) as total_amount,
+                AVG(amount) as avg_amount,
+                MIN(expense_date) as first_expense,
+                MAX(expense_date) as last_expense,
+                COUNT(CASE WHEN status = \'approved\' THEN 1 END) as approved_count
+            ')
+            ->first();
+
+        return response()->json([
+            'vendor'         => $vendor,
+            'total_count'    => (int) $stats->total_count,
+            'total_amount'   => (float) $stats->total_amount,
+            'avg_amount'     => round((float) $stats->avg_amount, 2),
+            'first_expense'  => $stats->first_expense,
+            'last_expense'   => $stats->last_expense,
+            'approved_count' => (int) $stats->approved_count,
+        ]);
     }
 }
