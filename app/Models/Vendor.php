@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Vendor extends Model
 {
@@ -12,7 +12,11 @@ class Vendor extends Model
 
     protected $fillable = [
         'tenant_id', 'name', 'code', 'email', 'phone', 'website',
-        'tax_id', 'currency', 'status', 'category', 'notes',
+        'address', 'tax_id', 'payment_terms', 'currency', 'status', 'notes', 'metadata',
+    ];
+
+    protected $casts = [
+        'metadata' => 'array',
     ];
 
     public function expenses(): HasMany
@@ -20,21 +24,18 @@ class Vendor extends Model
         return $this->hasMany(Expense::class);
     }
 
+    public function getTotalSpentAttribute(): string
+    {
+        return $this->expenses()->sum('amount');
+    }
+
     public function scopeForTenant($query, int $tenantId)
     {
         return $query->where('tenant_id', $tenantId);
     }
 
-    public function getSpendStatsAttribute(): array
+    public function scopeActive($query)
     {
-        $stats = $this->expenses()
-            ->selectRaw('COUNT(*) as total_count, SUM(amount) as total_amount, MAX(expense_date) as last_expense_date')
-            ->first();
-
-        return [
-            'total_count'       => (int) ($stats->total_count ?? 0),
-            'total_amount'      => (int) ($stats->total_amount ?? 0),
-            'last_expense_date' => $stats->last_expense_date,
-        ];
+        return $query->where('status', 'active');
     }
 }
