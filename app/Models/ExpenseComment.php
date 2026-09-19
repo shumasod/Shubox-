@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ExpenseComment extends Model
 {
+    use SoftDeletes;
+
+    protected $fillable = ['tenant_id', 'expense_id', 'user_id', 'body'];
     use HasFactory, SoftDeletes;
 
     protected $fillable = ['expense_id', 'user_id', 'tenant_id', 'body', 'is_internal'];
@@ -26,6 +29,9 @@ class ExpenseComment extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function expense(): BelongsTo
+    {
+        return $this->belongsTo(Expense::class);
     public function scopeForTenant(Builder $query, int $tenantId): Builder
     {
         return $query->where('tenant_id', $tenantId);
