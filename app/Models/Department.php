@@ -2,6 +2,23 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Department extends Model
+{
+    protected $fillable = [
+        'tenant_id', 'parent_id', 'name', 'code',
+        'monthly_budget', 'is_active', 'depth',
+    ];
+
+    protected $casts = [
+        'is_active'      => 'boolean',
+        'monthly_budget' => 'integer',
+        'depth'          => 'integer',
+    ];
+
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -41,6 +58,12 @@ class Department extends Model
         return $this->hasMany(Department::class, 'parent_id');
     }
 
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class, 'department_id');
+    }
+
+    public function scopeForTenant($query, int $tenantId)
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_user_id');
@@ -61,6 +84,7 @@ class Department extends Model
         return $query->where('tenant_id', $tenantId);
     }
 
+    public function scopeRoots($query)
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
