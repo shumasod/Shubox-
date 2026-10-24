@@ -1,3 +1,7 @@
+# WAFv2 Web ACL — must be deployed in us-east-1 for CloudFront
+resource "aws_wafv2_web_acl" "main" {
+  provider    = aws.us_east_1
+  name        = "${var.project}-${var.environment}-web-acl"
 # WAFv2 must be created in us-east-1 for CloudFront association
 resource "aws_wafv2_web_acl" "main" {
   provider    = aws.us_east_1
@@ -9,6 +13,7 @@ resource "aws_wafv2_web_acl" "main" {
     allow {}
   }
 
+  # AWS Managed Rules — Common Rule Set
   # AWS Managed Rules: Core rule set
   rule {
     name     = "AWSManagedRulesCommonRuleSet"
@@ -34,11 +39,13 @@ resource "aws_wafv2_web_acl" "main" {
 
     visibility_config {
       cloudwatch_metrics_enabled = true
+      metric_name                = "CommonRuleSet"
       metric_name                = "${var.project}-${var.environment}-common-rules"
       sampled_requests_enabled   = true
     }
   }
 
+  # AWS Managed Rules — Known Bad Inputs
   # AWS Managed Rules: Known bad inputs
   rule {
     name     = "AWSManagedRulesKnownBadInputsRuleSet"
@@ -57,11 +64,13 @@ resource "aws_wafv2_web_acl" "main" {
 
     visibility_config {
       cloudwatch_metrics_enabled = true
+      metric_name                = "KnownBadInputs"
       metric_name                = "${var.project}-${var.environment}-bad-inputs"
       sampled_requests_enabled   = true
     }
   }
 
+  # AWS Managed Rules — SQL Injection
   # AWS Managed Rules: SQL injection
   rule {
     name     = "AWSManagedRulesSQLiRuleSet"
@@ -80,11 +89,15 @@ resource "aws_wafv2_web_acl" "main" {
 
     visibility_config {
       cloudwatch_metrics_enabled = true
+      metric_name                = "SQLiRuleSet"
       metric_name                = "${var.project}-${var.environment}-sqli"
       sampled_requests_enabled   = true
     }
   }
 
+  # Custom rate limiting — 1000 req/5min per IP on /api/*
+  rule {
+    name     = "ApiRateLimit"
   # Custom: IP-based rate limiting per 5-minute window
   rule {
     name     = "RateLimitPerIP"
@@ -96,6 +109,7 @@ resource "aws_wafv2_web_acl" "main" {
 
     statement {
       rate_based_statement {
+        limit              = 1000
         limit              = var.waf_rate_limit_per_ip
         aggregate_key_type = "IP"
       }
@@ -124,6 +138,11 @@ resource "aws_wafv2_web_acl" "main" {
 
         scope_down_statement {
           byte_match_statement {
+            field_to_match {
+              uri_path {}
+            }
+            positional_constraint = "STARTS_WITH"
+            search_string         = "/api/"
             search_string         = "/api/auth"
             field_to_match {
               uri_path {}
@@ -140,11 +159,16 @@ resource "aws_wafv2_web_acl" "main" {
 
     visibility_config {
       cloudwatch_metrics_enabled = true
+      metric_name                = "ApiRateLimit"
       metric_name                = "${var.project}-${var.environment}-auth-rate-limit"
       sampled_requests_enabled   = true
     }
   }
 
+  # Stricter rate limit on auth endpoints — 20 req/5min per IP
+  rule {
+    name     = "AuthRateLimit"
+    priority = 50
   # Custom: Block requests with oversized bodies on upload endpoint
   rule {
     name     = "BlockLargeBodyOnNonUpload"
@@ -155,6 +179,20 @@ resource "aws_wafv2_web_acl" "main" {
     }
 
     statement {
+      rate_based_statement {
+        limit              = 20
+        aggregate_key_type = "IP"
+
+        scope_down_statement {
+          byte_match_statement {
+            field_to_match {
+              uri_path {}
+            }
+            positional_constraint = "STARTS_WITH"
+            search_string         = "/api/auth/"
+            text_transformation {
+              priority = 0
+              type     = "LOWERCASE"
       and_statement {
         statement {
           size_constraint_statement {
@@ -194,6 +232,7 @@ resource "aws_wafv2_web_acl" "main" {
 
     visibility_config {
       cloudwatch_metrics_enabled = true
+      metric_name                = "AuthRateLimit"
       metric_name                = "${var.project}-${var.environment}-large-body"
       sampled_requests_enabled   = true
     }
@@ -201,6 +240,20 @@ resource "aws_wafv2_web_acl" "main" {
 
   visibility_config {
     cloudwatch_metrics_enabled = true
+    metric_name                = "${var.project}-${var.environment}-web-acl"
+    sampled_requests_enabled   = true
+  }
+
+  tags = local.common_tags
+}
+
+# CloudWatch dashboard for WAF metrics
+resource "aws_cloudwatch_log_group" "waf" {
+  provider          = aws.us_east_1
+  name              = "/aws/waf/${var.project}-${var.environment}"
+  retention_in_days = 90
+
+  tags = local.common_tags
     metric_name                = "${var.project}-${var.environment}-waf"
     sampled_requests_enabled   = true
   }
@@ -223,6 +276,9 @@ resource "aws_wafv2_web_acl_logging_configuration" "main" {
   log_destination_configs = [aws_cloudwatch_log_group.waf.arn]
   resource_arn            = aws_wafv2_web_acl.main.arn
 
+  redacted_fields {
+    single_header {
+      name = "authorization"
   logging_filter {
     default_behavior = "DROP"
 
@@ -241,6 +297,11 @@ resource "aws_wafv2_web_acl_logging_configuration" "main" {
 }
 
 output "waf_web_acl_arn" {
+  value = aws_wafv2_web_acl.main.arn
+}
+
+output "waf_web_acl_id" {
+  value = aws_wafv2_web_acl.main.id
   description = "WAFv2 WebACL ARN for CloudFront association"
   value       = aws_wafv2_web_acl.main.arn
 }
